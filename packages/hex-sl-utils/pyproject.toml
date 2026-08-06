@@ -14,6 +14,7 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 
 [project.urls]
+changelog = "https://github.com/hex-inc/hex-sl-utils/blob/main/packages/hex-sl-utils/CHANGELOG.md"
 repository = "https://github.com/hex-inc/hex-sl-utils"
 
 [tool.smoke-test]
@@ -22,3 +23,6 @@ python-versions = ["3.9", "3.14"]
 [build-system]
 requires = ["uv_build>=0.12.2,<0.13"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+source-include = ["CHANGELOG.md"]

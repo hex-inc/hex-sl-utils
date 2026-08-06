@@ -1,5 +1,6 @@
 """Smoke-test every built distribution artifact in an isolated environment."""
 
+import argparse
 import os
 import subprocess
 import tomllib
@@ -81,6 +82,19 @@ def workspace_packages(packages_dir: Path = PACKAGES) -> list[Package]:
     return packages
 
 
+def select_packages(packages: list[Package], names: list[str]) -> list[Package]:
+    """Select workspace packages by normalized distribution name."""
+    requested = {canonicalize_name(name) for name in names}
+    selected = [
+        package for package in packages if canonicalize_name(package.name) in requested
+    ]
+    found = {canonicalize_name(package.name) for package in selected}
+    if missing := requested - found:
+        missing_names = ", ".join(sorted(missing))
+        raise ValueError(f"Unknown workspace package(s): {missing_names}")
+    return selected
+
+
 def package_artifacts(package: Package, dist_dir: Path = DIST) -> list[Path]:
     """Return the package's one wheel and one source distribution."""
     expected_name = canonicalize_name(package.name)
@@ -106,9 +120,20 @@ def package_artifacts(package: Package, dist_dir: Path = DIST) -> list[Path]:
 
 def main() -> None:
     """Install and smoke-test each artifact in its own environment."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--package",
+        action="append",
+        default=[],
+        help="Smoke-test only this distribution; may be repeated",
+    )
+    args = parser.parse_args()
+
     packages = workspace_packages()
     if not packages:
         raise SystemExit("No publishable packages found under packages/")
+    if args.package:
+        packages = select_packages(packages, args.package)
 
     for package in packages:
         if not package.smoke_test.is_file():
