@@ -9,10 +9,12 @@ license-files = ["LICENSE"]
 
 [dependency-groups]
 dev = [
+  "inline-snapshot>=0.31.1",
   "packaging>=26.3",
   "pyright>=1.1.411",
   "pytest>=8.4.2",
   "pytest-cov>=7.1.0",
+  "pyyaml>=6.0.3",
   "ruff>=0.16.1",
   "rumdl>=0.2.52",
   "tomli>=2.0.1",
