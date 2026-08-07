@@ -46,6 +46,9 @@
         "uv build --all-packages --no-sources",
         "uv run --locked --all-packages python scripts/schema/generate_schema.py"
       ],
+      "verify": [
+        "python scripts/check_generated_schema.py"
+      ],
       "smoke-test": [
         "uv run --locked --all-packages python scripts/smoke_test_packages.py"
       ],

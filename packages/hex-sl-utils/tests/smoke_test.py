@@ -5,9 +5,15 @@ from tempfile import TemporaryDirectory
 
 import hex_sl_utils
 from hex_sl_utils.load import load_project
+from hex_sl_utils.schema import (
+    resource_json_schema,
+    resource_typescript_declarations,
+)
 from hex_sl_utils.types import Model
 
 assert Path(hex_sl_utils.__file__).name == "__init__.py"
+assert resource_json_schema()["title"] == "Resource"
+assert "export type Resource =" in resource_typescript_declarations()
 
 with TemporaryDirectory() as temp_dir:
     project_dir = Path(temp_dir)

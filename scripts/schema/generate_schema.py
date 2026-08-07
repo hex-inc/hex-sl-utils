@@ -91,6 +91,10 @@ def export_json_schemas() -> None:
     schema = HexResourceRoot.model_json_schema(
         schema_generator=HexGenerateJsonSchema,
     )
+    schema = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        **schema,
+    }
     with schema_dir.joinpath("hex_resource_schema.json").open("w") as file:
         json.dump(schema, file, indent=2)
 

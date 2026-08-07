@@ -14,28 +14,20 @@ devbox shell
 ```
 
 `setup` synchronizes the Python workspace and installs the locked pnpm
-workspace dependencies. If you manage the tools yourself, run the equivalent
-commands directly:
-
-```shell
-uv sync --all-packages
-pnpm install --frozen-lockfile
-```
-
-Run pnpm commands from the repository root so pnpm uses
-`pnpm-workspace.yaml` and the root `pnpm-lock.yaml`.
+workspace dependencies.
 
 ## Generate and verify artifacts
 
-The public entry points are Poe tasks and should be run from the repository
-root:
+Run the workspace Devbox scripts from the repository root:
 
 ```shell
-uv run --all-packages poe generate-schema
-uv run --all-packages poe check-schema
+devbox run build
+devbox run verify
 ```
 
-`generate-schema` performs the following steps:
+`build` builds the Python distributions, then runs
+[`generate_schema.py`](generate_schema.py), which performs the following
+steps:
 
 1. Generates JSON Schema from the Pydantic `Resource` model.
 2. Installs the locked pnpm dependencies.
@@ -46,15 +38,32 @@ The artifacts are written beneath
 `packages/hex-sl-utils/src/hex_sl_utils/schema_files`. Commit intentional
 artifact changes together with their generator or model changes.
 
-`check-schema` regenerates the artifacts and fails if the result differs from
-the committed files. CI runs this guard on every pull request.
+`verify` runs [`check_generated_schema.py`](../check_generated_schema.py),
+regenerates the artifacts, and fails if the result differs from the committed
+files. CI runs this guard on every pull request.
+
+Run the workspace checks after changing the generator or its TypeScript
+transforms:
+
+```shell
+devbox run check
+devbox run format
+```
+
+`check` runs the package's `tsc --noEmit` check as well as type-aware Oxlint
+and Oxfmt. `format` applies the available Python, Markdown, and TypeScript
+fixes.
 
 To invoke only the TypeScript stage while iterating on its transforms, first
 generate or update the JSON Schema, then run:
 
 ```shell
-pnpm --filter @hex/sl-utils-scripts-schema run build
+devbox run -- pnpm --filter @hex/sl-utils-scripts-schema run build
 ```
+
+Use this focused command only when the JSON Schema input is already current;
+the workspace `build` script remains the normal entry point for generating the
+complete artifact set.
 
 ## Dependency changes
 
@@ -62,22 +71,25 @@ Add or update JavaScript dependencies through the workspace from the
 repository root. For example:
 
 ```shell
-pnpm --filter @hex/sl-utils-scripts-schema add --save-dev <package>
+devbox run -- pnpm --filter @hex/sl-utils-scripts-schema add --save-dev <package>
 ```
 
 Commit both `scripts/schema/package.json` and `pnpm-lock.yaml`. Do not create a
 package-local lockfile or restore `package-lock.json`.
 
 Python development dependencies belong in the root `pyproject.toml` and are
-locked in `uv.lock`.
+locked in `uv.lock`. Make intentional Python dependency changes through the
+Devbox environment as well.
 
 ## Before opening a pull request
 
-Run the schema guard and its focused tests:
+Regenerate and verify the schema artifacts, then run the workspace checks and
+tests:
 
 ```shell
-uv run --all-packages poe check-schema
-uv run pytest packages/hex-sl-utils/tests/test_schema.py
+devbox run verify
+devbox run check
+devbox run test
 ```
 
 The complete repository check is available as:

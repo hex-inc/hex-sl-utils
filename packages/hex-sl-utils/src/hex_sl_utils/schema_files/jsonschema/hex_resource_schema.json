@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$defs": {
     "DataType": {
       "description": "An abstract data type.\n\n- `number` includes int, bigint, float, decimal, double, real, etc.\n- `string` includes char, varchar, text, etc.\n- `timestamp_tz` timezone-aware\n- `timestamp_naive` without timezone\n- `date` the calendar date portion of a timestamp; always without a timezone\n- `boolean`\n- `null`\n- `other`",
