@@ -83,6 +83,26 @@ def test_load_model_extra_key():
     )
 
 
+def test_load_model_reports_non_list_members():
+    yml = make_model_yml(dimensions={"id": "test_dimension", "type": "string"})
+    assert snapshot_yml_load_problems(yml, include_causes=True) == snapshot(
+        """\
+[ERROR] Dimensions must be provided as a list
+Cause: ['test', 'dimensions']\
+"""
+    )
+
+
+def test_load_model_reports_non_mapping_member():
+    yml = make_model_yml(dimensions=["test_dimension"])
+    assert snapshot_yml_load_problems(yml, include_causes=True) == snapshot(
+        """\
+[ERROR] Dimension without an id or name: Input should be a valid dictionary or instance of Dimension
+Cause: ['test', 'dimensions']\
+"""
+    )
+
+
 def test_load_model_bad_id():
     yml = make_model_yml(id="bad id")
     assert snapshot_yml_load_problems(yml) == snapshot(

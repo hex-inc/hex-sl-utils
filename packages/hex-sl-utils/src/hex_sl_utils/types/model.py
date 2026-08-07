@@ -32,8 +32,8 @@ class Model(BaseModel):
         ...,
         description=(
             "The unique identifier for this model.\n"
-            "This identifier is used as its reference and must be unique across all"
-            "models in the project. Changing this identifier may invalidate existing"
+            "This identifier is used as its reference and must be unique across all "
+            "models in the project. Changing this identifier may invalidate existing "
             "references."
         ),
     )

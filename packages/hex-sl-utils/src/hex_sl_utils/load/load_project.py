@@ -35,6 +35,22 @@ def load_project(
         dialect = Dialect("duckdb")  # just to keep things moving along
 
     project_dir = Path(project_dir)
+    project_dir_is_valid = True
+    if not project_dir.exists():
+        project_dir_is_valid = False
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Project directory does not exist: `{project_dir}`",
+            path=[],
+        )
+    elif not project_dir.is_dir():
+        project_dir_is_valid = False
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Project path is not a directory: `{project_dir}`",
+            path=[],
+        )
+
     loaded_resources: list[Resource] = []
     loaded_source_files: list[SourceFile] = []
 
@@ -49,7 +65,8 @@ def load_project(
         loaded_source_files.append(source_file)
         loaded_resources.extend(resources)
 
-    if not any(r for r in loaded_resources if r.type == "model"):
+    any_models = any(r for r in loaded_resources if r.type == "model")
+    if project_dir_is_valid and not any_models:
         ctx.report_problem(
             severity="error",
             message="No valid models found.",

@@ -38,8 +38,8 @@ class View(BaseModel):
         ...,
         description=(
             "The unique identifier for this view.\n"
-            "This identifier is used as its reference and must be unique across all"
-            "views in the project. Changing this identifier may invalidate existing"
+            "This identifier is used as its reference and must be unique across all "
+            "views in the project. Changing this identifier may invalidate existing "
             "references."
         ),
     )
@@ -64,14 +64,14 @@ class View(BaseModel):
     name: str = Field(
         default_factory=name_from_id_default_factory,
         description=(
-            "The user-facing display name for this model.\n"
+            "The user-facing display name for this view.\n"
             "If omitted, defaults to the sentence-case value of `id`."
         ),
     )
 
     description: str = Field(
         "",
-        description="The user-facing description of this model.",
+        description="The user-facing description of this view.",
     )
 
     @classmethod

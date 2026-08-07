@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, cast
 
 from inline_snapshot import snapshot
@@ -36,6 +37,43 @@ def test_load_no_models():
     assert problems_snapshot(loaded.problems) == snapshot(
         "[ERROR] No valid models found."
     )
+
+
+def test_load_missing_project_directory(tmp_path: Path):
+    missing_dir = tmp_path / "missing"
+    loaded = load_project(
+        project_dir=missing_dir,
+        project_name="",
+        dialect_name="duckdb",
+    )
+    assert problems_snapshot(loaded.problems) == snapshot(
+        f"[FATAL] Project directory does not exist: `{missing_dir}`"
+    )
+
+
+def test_load_project_path_must_be_directory(tmp_path: Path):
+    project_file = tmp_path / "project.yml"
+    project_file.write_text("", encoding="utf-8")
+    loaded = load_project(
+        project_dir=project_file,
+        project_name="",
+        dialect_name="duckdb",
+    )
+    assert problems_snapshot(loaded.problems) == snapshot(
+        f"[FATAL] Project path is not a directory: `{project_file}`"
+    )
+
+
+def test_load_non_mapping_resource():
+    with tmp_project_dir("not-a-resource") as project_dir:
+        loaded = load_project(
+            project_dir=project_dir,
+            project_name="",
+            dialect_name="duckdb",
+        )
+    problem_messages = problems_snapshot(loaded.problems)
+    assert "[ERROR] Resource declarations must be mappings" in problem_messages
+    assert "Internal error" not in problem_messages
 
 
 def test_source_info():

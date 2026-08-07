@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, TypeVar, cast
 
 from pydantic import BaseModel, ValidationError
@@ -12,12 +13,20 @@ T = TypeVar("T", bound=BaseModel)
 
 def load_items(
     model_type: type[T],
-    data: list[dict[str, Any]] | None,
+    data: Any,
     *,
     label: str,
     ctx: LoadContext,
 ) -> list[T]:
-    if data is None or not isinstance(data, list):
+    if data is None:
+        return []
+    if not isinstance(data, list):
+        ctx.report_problem(
+            severity="error",
+            message=f"{label}s must be provided as a list",
+            path=[],
+            validated_by_json_schema=True,
+        )
         return []
     load_results = [load_item(model_type, item, label=label, ctx=ctx) for item in data]
     return [item for item in load_results if item is not None]
@@ -25,7 +34,7 @@ def load_items(
 
 def load_item(
     model_type: type[T],
-    data: dict[str, Any],
+    data: Any,
     *,
     label: str,
     ctx: LoadContext,
@@ -37,10 +46,16 @@ def load_item(
         # The import is failed at this point, anything we do beyond this point
         # is just to continue to capture as many errors as possible, and to
         # convert stuff somewhat defensively
-        maybe_id: str | None = data.get("id")
-        maybe_name: str | None = data.get("name")
+        data_mapping = data if isinstance(data, Mapping) else {}
+        maybe_id = data_mapping.get("id")
+        maybe_name = data_mapping.get("name")
+        maybe_id = maybe_id if isinstance(maybe_id, str) else None
+        maybe_name = maybe_name if isinstance(maybe_name, str) else None
+        current_scope_key = (
+            ctx.current_problem_path[-1] if ctx.current_problem_path else None
+        )
         item_problem_path: KeyPath = (
-            [maybe_id] if maybe_id and maybe_id != ctx.current_problem_path[-1] else []
+            [maybe_id] if maybe_id and maybe_id != current_scope_key else []
         )
         item_reported_label = (
             f"{label} `{maybe_id}`"
@@ -61,13 +76,20 @@ def load_item(
             locs_str = f" at `{locs_str}`" if locs_str else ""
 
             err_conflict_keys = err.get("ctx", {}).get("conflict_keys", [])
+            error_path = [loc for loc in err["loc"] if isinstance(loc, (str, int))]
             report_paths: list[KeyPath] = (
                 [
                     [*ctx.current_problem_path, *item_problem_path, conflict_key + ":"]
                     for conflict_key in err_conflict_keys
                 ]
                 if err_conflict_keys
-                else [[*ctx.current_problem_path, *item_problem_path]]
+                else [
+                    [
+                        *ctx.current_problem_path,
+                        *item_problem_path,
+                        *error_path,
+                    ]
+                ]
             )
 
             ctx.report_problem(
@@ -82,12 +104,14 @@ def load_item(
                 top_level_error_keys.add(err["loc"][0])
 
         # then, try to recover with partial overrides
+        if not isinstance(data, Mapping):
+            return None
         return attempt_recovery_load(model_type, data, top_level_error_keys, ctx=ctx)
 
 
 def attempt_recovery_load(
     model_type: type[T],
-    data: dict[str, Any],
+    data: Mapping[str, Any],
     top_level_recovery_keys: set[str],
     *,
     ctx: LoadContext,

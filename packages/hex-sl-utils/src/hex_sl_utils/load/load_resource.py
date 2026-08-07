@@ -10,10 +10,19 @@ from .load_view import load_view
 
 
 def load_resource(
-    resource_data: dict[str, Any],
+    resource_data: Any,
     *,
     ctx: LoadContext,
 ) -> Resource | None:
+    if not isinstance(resource_data, dict):
+        ctx.report_problem(
+            severity="error",
+            message="Resource declarations must be mappings",
+            path=[],
+            validated_by_json_schema=True,
+        )
+        return None
+
     try:
         resource_type: str = resource_data.get("type", DEFAULT_RESOURCE_TYPE)
         if resource_type == "model":

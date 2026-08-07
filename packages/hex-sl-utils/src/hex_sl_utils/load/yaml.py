@@ -70,9 +70,6 @@ NAN_VALUES = frozenset({".nan", ".NaN", ".NAN"})
 
 
 def parse_scalar(val: str) -> Any:
-    if not val:
-        return ""
-
     if val in NONE_VALUES:
         return None
     elif val in TRUE_VALUES:
