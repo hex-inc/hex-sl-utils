@@ -42,6 +42,7 @@ uv run --all-packages poe format      # apply automatic formatting and fixes
 uv run --all-packages poe test        # run all tests
 uv run --all-packages poe test-cov    # run tests and write coverage.xml
 uv run --all-packages poe build       # build every publishable package
+uv run --all-packages poe smoke-test  # test each built artifact in isolation
 uv lock --upgrade                     # intentionally update dependencies
 ```
 
@@ -60,6 +61,7 @@ packages/example-package/
 │   ├── __init__.py
 │   └── py.typed
 └── tests/
+    └── smoke_test.py
 ```
 
 The `packages/*` workspace glob and repository-level test/type-check commands
@@ -73,7 +75,9 @@ hex-sl-utils = { workspace = true }
 ```
 
 Every distribution owns its runtime dependencies, README, version, and build
-metadata. Do not put runtime dependencies in the root development group.
+metadata. It must also provide an executable `tests/smoke_test.py` that imports
+its public API and checks any package data needed at import time. Do not put
+runtime dependencies in the root development group.
 
 ## Package boundaries
 
@@ -111,10 +115,17 @@ content and its presence in a built wheel.
 uv run --all-packages poe check
 uv run --all-packages poe test
 uv run --all-packages poe build
+uv run --all-packages poe smoke-test
 ```
 
-The build task builds every workspace distribution with workspace-only source
-overrides disabled, catching undeclared inter-package dependencies before
-publication.
+The `build` task builds a wheel and source distribution for every workspace
+package with uv source overrides disabled.
 
+The `smoke-test` task installs each artifact by itself in a fresh isolated
+environment and runs that package's smoke test, following
+[uv's distribution-testing recommendation][uv-publish]. This catches missing
+package data and undeclared dependencies used by eager imports. Lazy and
+optional code paths still require focused unit and integration tests.
+
+[uv-publish]: https://docs.astral.sh/uv/guides/integration/github/#publishing-to-pypi
 [uv-workspaces]: https://docs.astral.sh/uv/concepts/projects/workspaces/

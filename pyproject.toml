@@ -9,6 +9,7 @@ license-files = ["LICENSE"]
 
 [dependency-groups]
 dev = [
+  "packaging>=26.3",
   "poethepoet>=0.48.0",
   "pyright>=1.1.411",
   "pytest>=9.1.1",
@@ -26,7 +27,7 @@ required-version = ">=0.12.2"
 members = ["packages/*"]
 
 [tool.poe.tasks]
-build = "python scripts/build_packages.py"
+build = "uv build --all-packages --no-sources"
 check = [
   { cmd = "ruff check ." },
   { cmd = "ruff format --check ." },
@@ -34,7 +35,7 @@ check = [
   { cmd = "rumdl check ." },
   { cmd = "rumdl fmt --check ." },
 ]
-ci = ["check", "test", "build"]
+ci = ["check", "test", "build", "smoke-test"]
 format = [
   { cmd = "ruff check --fix ." },
   { cmd = "ruff format ." },
@@ -42,6 +43,7 @@ format = [
 ]
 test = "pytest"
 test-cov = "pytest --cov=packages --cov-report=term-missing --cov-report=xml"
+smoke-test = "python scripts/smoke_test_packages.py"
 
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers"]

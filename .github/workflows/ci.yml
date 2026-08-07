@@ -30,6 +30,8 @@ jobs:
         run: uv run --locked --all-packages poe check
       - name: Build distributions
         run: uv run --locked --all-packages poe build
+      - name: Smoke-test distributions
+        run: uv run --locked --all-packages poe smoke-test
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
