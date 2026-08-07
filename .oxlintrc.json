@@ -1,0 +1,8 @@
+{
+  "categories": {
+    "correctness": "warn"
+  },
+  "options": {
+    "typeAware": true
+  }
+}

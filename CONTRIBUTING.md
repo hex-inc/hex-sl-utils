@@ -111,6 +111,12 @@ code generators. JavaScript packages belong to the root pnpm workspace when
 one is present, while each package owns its dependencies and scripts in its
 `package.json`.
 
+The workspace `check` and `format` commands use Oxlint and Oxfmt for TypeScript
+sources. Oxlint runs its stable type-aware rules and discovers the relevant
+`tsconfig.json` for each TypeScript package. Keep TypeScript formatting and
+lint configuration at the workspace root unless one package has a documented
+need for an override.
+
 Run pnpm commands from the repository root so they use the workspace and its
 root lockfile. Target a specific tooling package with a pnpm filter rather than
 creating package-local lockfiles. Commit `pnpm-lock.yaml` with intentional
