@@ -1,0 +1,15 @@
+id: customers
+name: Valued Customers
+base_sql_table: pizza_bytes.users
+description: Dimensional table of customer information.
+dimensions:
+  - id: id
+    type: string
+    visibility: internal
+    unique: true
+  - id: name
+    type: string
+  - id: address
+    type: string
+  - id: phone_number
+    type: string

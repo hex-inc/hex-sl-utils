@@ -1,0 +1,6 @@
+id: test_view
+type: view
+base: test_model
+contents:
+  - dimensions: ...
+    measures: ...
