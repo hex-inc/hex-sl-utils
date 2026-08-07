@@ -1,6 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.5/.schema/devbox.schema.json",
   "packages": {
+    "nodejs": "24",
+    "pnpm": "11.18.0",
     "python": {
       "version": "3.14",
       "disable_plugin": true
@@ -14,14 +16,16 @@
   "shell": {
     "scripts": {
       "setup": [
-        "uv sync --locked --all-packages"
+        "uv sync --locked --all-packages",
+        "if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; fi"
       ],
       "check": [
         "uv run --locked --all-packages ruff check .",
         "uv run --locked --all-packages ruff format --check .",
         "uv run --locked --all-packages pyright",
         "uv run --locked --all-packages rumdl check .",
-        "uv run --locked --all-packages rumdl fmt --check ."
+        "uv run --locked --all-packages rumdl fmt --check .",
+        "pnpm --recursive --if-present run check"
       ],
       "format": [
         "uv run --locked --all-packages ruff check --fix .",
@@ -42,6 +46,7 @@
         "uv run --locked --all-packages pyright",
         "uv run --locked --all-packages rumdl check .",
         "uv run --locked --all-packages rumdl fmt --check .",
+        "pnpm --recursive --if-present run check",
         "uv run --locked --all-packages pytest",
         "uv build --all-packages --no-sources",
         "uv run --locked --all-packages python scripts/smoke_test_packages.py"

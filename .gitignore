@@ -8,11 +8,14 @@ htmlcov/
 
 # Environments and tool caches
 .venv/
+.pnpm-store/
 .pytest_cache/
 .ruff_cache/
 .rumdl_cache/
 .mypy_cache/
 .pyright/
+node_modules/
+**/node_modules/
 
 # Builds
 build/

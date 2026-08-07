@@ -104,6 +104,18 @@ Update Python dependencies intentionally and commit `uv.lock`:
 uv lock --upgrade
 ```
 
+## JavaScript and TypeScript toolchain
+
+Node.js and pnpm are available through Devbox for repository tooling such as
+code generators. JavaScript packages belong to the root pnpm workspace when
+one is present, while each package owns its dependencies and scripts in its
+`package.json`.
+
+Run pnpm commands from the repository root so they use the workspace and its
+root lockfile. Target a specific tooling package with a pnpm filter rather than
+creating package-local lockfiles. Commit `pnpm-lock.yaml` with intentional
+dependency changes.
+
 ## Tests and external services
 
 Unit tests should remain close to the package they exercise. Integration tests
