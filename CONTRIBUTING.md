@@ -25,9 +25,9 @@ that uses them.
 
 ## Setup
 
-The workspace supports CPython 3.11 through 3.14. Python 3.14 is the default
-local development version; CI runs the complete supported-version matrix on
-Linux and smoke tests the newest version on macOS and Windows.
+The packages require CPython 3.11 or newer. Python 3.14 is the default local
+development version; CI currently tests Python 3.11 through 3.14 on Linux and
+smoke tests Python 3.14 on macOS and Windows.
 
 ```bash
 uv sync --all-packages

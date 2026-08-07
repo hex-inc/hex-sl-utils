@@ -2,7 +2,7 @@
 name = "hex-sl-utils-workspace"
 version = "0.0.0"
 description = "Development workspace for Hex semantic-layer utility packages"
-requires-python = ">=3.11,<3.15"
+requires-python = ">=3.11"
 dependencies = []
 license = "Apache-2.0"
 license-files = ["LICENSE"]
