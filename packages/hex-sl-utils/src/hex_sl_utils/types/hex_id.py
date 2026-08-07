@@ -31,8 +31,7 @@ def exclude_reserved_ids(hex_id: str) -> str:
     return hex_id
 
 
-f"""
-All IDs must conform to the following rules:
+HEX_ID_DESCRIPTION = f"""All IDs must conform to the following rules:
 
 - Begins with a lowercase letter or an underscore
 - Only contains lowercase letters, underscores, and numbers
@@ -48,6 +47,7 @@ HexID = TypeAliasType(
         str,
         Field(
             title="HexID",
+            description=HEX_ID_DESCRIPTION,
             pattern=ID_PATTERN,
             min_length=2,
             max_length=128,

@@ -37,7 +37,7 @@ def tmp_project_dir(*documents: str | Resource) -> Iterator[Path]:
                 if isinstance(document, str)
                 else make_yml(document.model_dump(mode="json"))
             )
-            (project_dir / f"file_{index}.yml").write_text(text)
+            (project_dir / f"file_{index}.yml").write_text(text, encoding="utf-8")
         yield project_dir
 
 

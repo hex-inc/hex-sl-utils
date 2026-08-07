@@ -63,6 +63,25 @@ def test_source_info():
     assert view_file_resources[0].resource_type == "view"
 
 
+def test_load_utf8_source_file():
+    yml = make_yml(
+        {
+            "id": "international_model",
+            "base_sql_table": "international_table",
+            "description": "Crème brûlée 🍮",
+        }
+    )
+    with tmp_project_dir(yml) as project_dir:
+        loaded = load_project(
+            project_dir=project_dir,
+            project_name="Test",
+            dialect_name="duckdb",
+        )
+
+    assert loaded.problems == []
+    assert loaded.project.models[0].description == "Crème brûlée 🍮"
+
+
 def test_load_multiple_resources_in_file():
     d1 = make_yml(make_stub_model("model_1").model_dump(mode="json"))
     d2 = make_yml(make_stub_model("model_2").model_dump(mode="json"))

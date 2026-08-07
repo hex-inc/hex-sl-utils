@@ -80,6 +80,20 @@ def test_load_invalid_view_missing_fields():
     )
 
 
+def test_load_view_recovers_missing_fields():
+    yml = make_yml({"id": "test", "type": "view"})
+    with tmp_project_dir(yml, make_stub_model("test_model")) as project_dir:
+        loaded = load_project(
+            project_dir=project_dir,
+            project_name="Test",
+            dialect_name="duckdb",
+        )
+
+    assert len(loaded.project.views) == 1
+    assert loaded.project.views[0].base == ""
+    assert loaded.project.views[0].contents == []
+
+
 def test_load_view_extra_key():
     yml = make_view_yml(extra_key="extra_value")
     assert snapshot_yml_load_problems(yml) == snapshot(

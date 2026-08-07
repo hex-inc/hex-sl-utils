@@ -17,6 +17,14 @@ def test_model_defaults() -> None:
     assert model.dimensions[0].expr_sql == "order_id"
 
 
+def test_hex_id_schema_includes_description() -> None:
+    schema = Model.model_json_schema()
+
+    assert schema["$defs"]["HexID"]["description"].startswith(
+        "All IDs must conform to the following rules:"
+    )
+
+
 def test_project_resource_discrimination() -> None:
     project = Project.model_validate(
         {

@@ -80,7 +80,7 @@ class View(BaseModel):
             "id": ctx.generate_programmatic_id("__unknown_view"),
             "name": "",
             "description": "",
-            "base_model": "",
+            "base": "",
             "contents": [],
         }
 

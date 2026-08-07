@@ -93,7 +93,7 @@ def parse_yml_file(
     source_file = SourceFile(filepath=str(relative_path), contents_text="")
     problem_path: KeyPath = [str(relative_path)]
     try:
-        source_file.contents_text = full_path.read_text()
+        source_file.contents_text = full_path.read_text(encoding="utf-8")
         file_data = ryml_parse(source_file.contents_text)
         file_data = file_data if isinstance(file_data, list) else [file_data]
     except Exception as e:  # noqa: BLE001
