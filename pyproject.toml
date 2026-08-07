@@ -1,0 +1,88 @@
+[project]
+name = "hex-sl-utils-workspace"
+version = "0.0.0"
+description = "Development workspace for Hex semantic-layer utility packages"
+requires-python = ">=3.11"
+dependencies = []
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+
+[dependency-groups]
+dev = [
+  "packaging>=26.3",
+  "poethepoet>=0.48.0",
+  "pyright>=1.1.411",
+  "pytest>=9.1.1",
+  "pytest-cov>=7.1.0",
+  "ruff>=0.16.1",
+  "rumdl>=0.2.52",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+package = false
+required-version = ">=0.12.2"
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
+[tool.poe.tasks]
+build = "uv build --all-packages --no-sources"
+check = [
+  { cmd = "ruff check ." },
+  { cmd = "ruff format --check ." },
+  { cmd = "pyright" },
+  { cmd = "rumdl check ." },
+  { cmd = "rumdl fmt --check ." },
+]
+ci = ["check", "test", "build", "smoke-test"]
+format = [
+  { cmd = "ruff check --fix ." },
+  { cmd = "ruff format ." },
+  { cmd = "rumdl fmt ." },
+]
+test = "pytest"
+test-cov = "pytest --cov=packages --cov-report=term-missing --cov-report=xml"
+smoke-test = "python scripts/smoke_test_packages.py"
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers"]
+pythonpath = ["."]
+testpaths = ["packages", "tests"]
+markers = [
+  "database: requires a database service or database-specific client",
+  "integration: crosses a process or external-service boundary",
+]
+
+[tool.coverage.run]
+branch = true
+omit = ["*/tests/*"]
+source = ["packages"]
+
+[tool.coverage.report]
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+]
+show_missing = true
+
+[tool.pyright]
+include = ["packages", "scripts"]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+venv = ".venv"
+venvPath = "."
+
+[tool.ruff]
+line-length = 88
+required-version = ">=0.16.1"
+target-version = "py311"
+
+[tool.ruff.lint.isort]
+known-first-party = ["hex_sl_utils"]
+
+[tool.rumdl]
+flavor = "gfm"
+
+[tool.rumdl.MD013]
+reflow = true

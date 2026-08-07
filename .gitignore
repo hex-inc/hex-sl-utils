@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+coverage.xml
+htmlcov/
+
+# Environments and tool caches
+.venv/
+.pytest_cache/
+.ruff_cache/
+.rumdl_cache/
+.mypy_cache/
+.pyright/
+
+# Builds
+build/
+dist/
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
