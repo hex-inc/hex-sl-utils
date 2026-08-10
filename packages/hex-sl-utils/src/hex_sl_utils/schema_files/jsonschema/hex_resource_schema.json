@@ -1,0 +1,841 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "DataType": {
+      "description": "An abstract data type.\n\n- `number` includes int, bigint, float, decimal, double, real, etc.\n- `string` includes char, varchar, text, etc.\n- `timestamp_tz` timezone-aware\n- `timestamp_naive` without timezone\n- `date` the calendar date portion of a timestamp; always without a timezone\n- `boolean`\n- `null`\n- `other`",
+      "enum": [
+        "number",
+        "string",
+        "timestamp_tz",
+        "timestamp_naive",
+        "date",
+        "boolean",
+        "null",
+        "other"
+      ],
+      "title": "DataType",
+      "type": "string"
+    },
+    "Dimension": {
+      "additionalProperties": false,
+      "description": "A dimension represents a selectable column expression.\n\nThese can be physical columns, complex SQL snippets, or formulas.",
+      "examples": [
+        {
+          "id": "order_id",
+          "type": "string",
+          "unique": true,
+          "visibility": "internal"
+        },
+        {
+          "expr_sql": "status = 'cancelled'",
+          "id": "is_cancelled",
+          "type": "boolean"
+        },
+        {
+          "expr_sql": "price",
+          "id": "price_usd",
+          "type": "number"
+        },
+        {
+          "expr_sql": "${price_usd} * 0.86",
+          "id": "price_euro",
+          "type": "number"
+        }
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The unique identifier for this dimension.\nThis identifier is used as its reference and must be unique across all dimensions, measures, and relations in this model. Changing this identifier may invalidate existing references."
+        },
+        "type": {
+          "$ref": "#/$defs/DataType",
+          "description": "The abstract data type of this dimension."
+        },
+        "expr_sql": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A sql select column expression that produces a scalar for each row. This is often a column name.\nOne of `expr_sql` or `expr_calc` can be provided. If neither is provided, defaults to `expr_sql` being the `id` of this dimension.",
+          "title": "Expr Sql"
+        },
+        "expr_calc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A [Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations) which produces a scalar for each row.",
+          "title": "Expr Calc"
+        },
+        "unique": {
+          "default": false,
+          "description": "If true, this dimension is unique for all rows in this model.\nThis dimension may be used in the construction of primary keys.",
+          "title": "Unique",
+          "type": "boolean"
+        },
+        "name": {
+          "description": "The user-facing display name for this dimension.\nIf omitted, defaults to the sentence-case value of `id`.",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "The user-facing description of this dimension.",
+          "title": "Description",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "public",
+          "description": "The visibility of this dimension."
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "title": "Dimension",
+      "type": "object"
+    },
+    "EntityId": {
+      "description": "All IDs must conform to the following rules:\n\n- Begins with a lowercase letter or an underscore\n- Only contains lowercase letters, underscores, and numbers\n- Between 2 and 128 characters long (inclusive)\n\nIn addition, the following IDs are reserved by the system and cannot be used:\ndataset, model, this, self, env or any ID beginning with '__hex'.\n",
+      "maxLength": 128,
+      "minLength": 2,
+      "not": {
+        "anyOf": [
+          {
+            "enum": [
+              "dataset",
+              "model",
+              "this",
+              "self",
+              "env"
+            ]
+          },
+          {
+            "pattern": "^__hex"
+          }
+        ]
+      },
+      "pattern": "^[a-z_][a-z0-9_]{1,127}$",
+      "title": "EntityId",
+      "type": "string"
+    },
+    "Measure": {
+      "additionalProperties": false,
+      "description": "A measure represents a aggregated expression.",
+      "examples": [
+        {
+          "func": "count",
+          "id": "total_sales"
+        },
+        {
+          "func": "sum",
+          "id": "total_revenue_usd",
+          "of": "price_usd"
+        },
+        {
+          "filters": [
+            "is_cancelled"
+          ],
+          "func": "count",
+          "id": "cancelled_sales_count"
+        }
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The unique identifier for this measure.\nThis identifier is used as its reference and must be unique across all measures in this model. Changing this identifier may invalidate existing references."
+        },
+        "func": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureFuncName"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A standard aggregation function to use.\nOne of `func`+`of`, `func_sql` or `func_calc` must be provided."
+        },
+        "of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/ScalarExpressionDefaultNumber"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Specifies the dimension over which the `func` aggregation is applied.\nThis dimension can be specified as a referenced dimension ID, or an inline dimension. If `type` is unspecified in an inline dimension, it is assumed to be `number`.",
+          "title": "Of"
+        },
+        "func_sql": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "An aggregating sql select expression that produces a scalar over a set of rows.",
+          "title": "Func Sql"
+        },
+        "func_calc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "An aggregating [Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations) which produces a scalar over a set of rows.",
+          "title": "Func Calc"
+        },
+        "type": {
+          "$ref": "#/$defs/DataType",
+          "default": "number",
+          "description": "The abstract data type of this measure.\nIf omitted, defaults to `number`."
+        },
+        "filters": {
+          "description": "A list of boolean dimensions which must be true for a row to be included in the measure's aggregation.\nOnly supported for `func` measures.\nThese dimensions can be specified as a referenced dimension ID, or an inline dimension. If `type` is unspecified in an inline dimension, it is assumed to be `boolean`.",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/ScalarExpressionDefaultBoolean"
+              }
+            ]
+          },
+          "title": "Filters",
+          "type": "array"
+        },
+        "name": {
+          "description": "The user-facing display name for this measure.\nIf omitted, defaults to the sentence-case value of `id`.",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "The user-facing description of this measure.",
+          "title": "Description",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "public",
+          "description": "The visibility of this measure."
+        },
+        "semi_additive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SemiAdditive"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Semi-additive aggregation that selects specific rows before calculation.\nFilters to minimum or maximum values of the specified dimension, then aggregates only those rows.\n"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Measure",
+      "type": "object"
+    },
+    "MeasureFuncName": {
+      "description": "An aggregation function.",
+      "enum": [
+        "count",
+        "count_distinct",
+        "sum",
+        "sum_boolean",
+        "avg",
+        "min",
+        "max",
+        "median",
+        "stddev",
+        "stddev_pop",
+        "variance",
+        "variance_pop"
+      ],
+      "title": "MeasureFuncName",
+      "type": "string"
+    },
+    "Model": {
+      "additionalProperties": false,
+      "description": "A semantic model represents a rectangle of data and its capabilities.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The unique identifier for this model.\nThis identifier is used as its reference and must be unique across all models in the project. Changing this identifier may invalidate existing references."
+        },
+        "type": {
+          "const": "model",
+          "default": "model",
+          "description": "The type of this resource. `model` for data models, `view` for views.",
+          "title": "Type",
+          "type": "string"
+        },
+        "base_sql_table": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A table or view in the data connection to use as the base for this model.\nOne of `base_sql_query` or `base_sql_table` must be provided.",
+          "title": "Base Sql Table"
+        },
+        "base_sql_query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A SQL statement that produces a table to use as the base of this model.\nOne of `base_sql_query` or `base_sql_table` must be provided.",
+          "title": "Base Sql Query"
+        },
+        "dimensions": {
+          "description": "A dimension represents a selectable column expression. \nThese can be physical columns, complex SQL snippets, or formulas. ",
+          "items": {
+            "$ref": "#/$defs/Dimension"
+          },
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "measures": {
+          "description": "A measure represents a aggregated expression. ",
+          "items": {
+            "$ref": "#/$defs/Measure"
+          },
+          "title": "Measures",
+          "type": "array"
+        },
+        "relations": {
+          "description": "A relation defines a link between two models, aka a \"join\". \nThe properties of a relation can be referenced with dot-syntax within a bracket reference, such as `${relation_id.dimension_id}`. ",
+          "items": {
+            "$ref": "#/$defs/Relation"
+          },
+          "title": "Relations",
+          "type": "array"
+        },
+        "name": {
+          "description": "The user-facing display name for this model.\nIf omitted, defaults to the sentence-case value of `id`.",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "The user-facing description of this model.",
+          "title": "Description",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "public",
+          "description": "The visibility of this model."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "Model",
+      "type": "object"
+    },
+    "Relation": {
+      "additionalProperties": false,
+      "description": "A relation defines a link between two models, aka a \"join\".\n\nThe properties of a relation can be referenced with dot-syntax within a\nbracket reference, such as `${relation_id.dimension_id}`.",
+      "examples": [
+        {
+          "id": "message_contents",
+          "join_sql": "${id} = ${message_contents.message_id}",
+          "type": "one_to_one"
+        },
+        {
+          "id": "sender",
+          "join_sql": "${sender_id} = ${sender.id}",
+          "target": "users",
+          "type": "many_to_one"
+        },
+        {
+          "id": "receiver",
+          "join_sql": "${receiver_id} = ${receiver.id}",
+          "target": "users",
+          "type": "many_to_one"
+        }
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The unique identifier for this relation.\nTypically, this should be the id of the model being joined to.\nRelations with the same id will be considered symmetric with one another.\nRelation ids must be unique across all dimensions, measures, and relations in this model. Changing this identifier may invalidate existing references."
+        },
+        "target": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The identifier of the target model for this relation.\nIf omitted, defaults to the value of `id`."
+        },
+        "type": {
+          "$ref": "#/$defs/RelationType",
+          "description": "The cardinality of the join, from the base model to the target.\nThis is declared to ensure Hex can properly invoke fan-out prevention."
+        },
+        "join_sql": {
+          "description": "The SQL condition to join the base model to a target.\nWithin this snippet, all dimensions and relations (including this one) are in scope for `${ }` interpolation.",
+          "title": "Join Sql",
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/$defs/Visibility",
+          "default": "public",
+          "description": "The visibility of this relation."
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "join_sql"
+      ],
+      "title": "Relation",
+      "type": "object"
+    },
+    "RelationType": {
+      "description": "The cardinality of the join, from the base model to the target model.",
+      "enum": [
+        "many_to_one",
+        "one_to_one",
+        "one_to_many"
+      ],
+      "title": "RelationType",
+      "type": "string"
+    },
+    "ScalarExpressionDefaultBoolean": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "expr_sql"
+          ]
+        },
+        {
+          "required": [
+            "expr_calc"
+          ]
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/DataType",
+          "default": "boolean"
+        },
+        "expr_sql": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A sql select column expression that produces a scalar for each row. This is often a column name.\nOne of `expr_sql` or `expr_calc` can be provided. If neither is provided, defaults to `expr_sql` being the `id` of this dimension.",
+          "title": "Expr Sql"
+        },
+        "expr_calc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A [Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations) which produces a scalar for each row.",
+          "title": "Expr Calc"
+        }
+      },
+      "title": "ScalarExpressionDefaultBoolean",
+      "type": "object"
+    },
+    "ScalarExpressionDefaultNumber": {
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "expr_sql"
+          ]
+        },
+        {
+          "required": [
+            "expr_calc"
+          ]
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/DataType",
+          "default": "number"
+        },
+        "expr_sql": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A sql select column expression that produces a scalar for each row. This is often a column name.\nOne of `expr_sql` or `expr_calc` can be provided. If neither is provided, defaults to `expr_sql` being the `id` of this dimension.",
+          "title": "Expr Sql"
+        },
+        "expr_calc": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A [Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations) which produces a scalar for each row.",
+          "title": "Expr Calc"
+        }
+      },
+      "title": "ScalarExpressionDefaultNumber",
+      "type": "object"
+    },
+    "SemiAdditive": {
+      "additionalProperties": false,
+      "description": "A semi-additive specification controls how measures aggregate over specific\ndimensions.\n\nSemi-additive measures are useful for metrics like account balances or inventory\nlevels, where you want the most recent value within each group rather than\nsumming all values.",
+      "properties": {
+        "over": {
+          "description": "List of dimensions that determine row selection for aggregation.\nRows will be filtered to those with minimum or maximum values of these dimensions.\nLimited to a single dimension.",
+          "items": {
+            "$ref": "#/$defs/SemiAdditiveOverMember"
+          },
+          "maxItems": 1,
+          "minItems": 1,
+          "title": "SemiAdditiveOver",
+          "type": "array"
+        },
+        "groupings": {
+          "description": "List of dimension identifiers to group by when determining min/max values.\nThe semi-additive filtering will be applied within each group.",
+          "items": {
+            "type": "string"
+          },
+          "title": "SemiAdditiveGroupings",
+          "type": "array"
+        }
+      },
+      "title": "SemiAdditive",
+      "type": "object"
+    },
+    "SemiAdditiveOverMember": {
+      "additionalProperties": false,
+      "description": "A criteria for determining the rows to include in the semi-additive measure.\n\nDefines which dimension to use for row selection and how to select the rows.",
+      "properties": {
+        "dimension": {
+          "description": "The identifier of the dimension to use for row selection.",
+          "title": "Dimension",
+          "type": "string"
+        },
+        "pick": {
+          "default": "max",
+          "description": "Whether to select rows with the minimum or maximum dimension value.\nIf omitted, defaults to 'max'.",
+          "enum": [
+            "min",
+            "max"
+          ],
+          "title": "Pick",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dimension"
+      ],
+      "title": "SemiAdditiveOverMember",
+      "type": "object"
+    },
+    "View": {
+      "additionalProperties": false,
+      "description": "A semantic view represents a curated set of model properties and join paths.\n\nViews can be used to define a fit-for-purpose exposure of models and their\nproperties, providing a cleaner sandbox for users and agents interacting with\nyour semantic project.",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/EntityId",
+          "description": "The unique identifier for this view.\nThis identifier is used as its reference and must be unique across all views in the project. Changing this identifier may invalidate existing references."
+        },
+        "type": {
+          "const": "view",
+          "default": "view",
+          "description": "The type of this resource. `model` for data models, `view` for views.",
+          "title": "Type",
+          "type": "string"
+        },
+        "base": {
+          "description": "The ID of the model that this view is based on.",
+          "title": "Base",
+          "type": "string"
+        },
+        "contents": {
+          "description": "The contents of the view.",
+          "items": {
+            "$ref": "#/$defs/ViewContentsGroup"
+          },
+          "title": "Contents",
+          "type": "array"
+        },
+        "name": {
+          "description": "The user-facing display name for this view.\nIf omitted, defaults to the sentence-case value of `id`.",
+          "title": "Name",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "description": "The user-facing description of this view.",
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "base",
+        "contents"
+      ],
+      "title": "View",
+      "type": "object"
+    },
+    "ViewContentDimensionItem": {
+      "description": "A dimension included within a view content group.",
+      "properties": {
+        "dimension": {
+          "description": "The ID path to the dimension to include.",
+          "title": "Dimension",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override the user-facing display name for this dimension.",
+          "title": "Name"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override the user-facing description for this dimension.",
+          "title": "Description"
+        }
+      },
+      "required": [
+        "dimension"
+      ],
+      "title": "ViewContentDimensionItem",
+      "type": "object"
+    },
+    "ViewContentMeasureItem": {
+      "description": "A measure included within a view content group.",
+      "properties": {
+        "measure": {
+          "description": "The ID path to the measure to include.",
+          "title": "Measure",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override the user-facing display name for this measure.",
+          "title": "Name"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Override the user-facing description for this measure.",
+          "title": "Description"
+        }
+      },
+      "required": [
+        "measure"
+      ],
+      "title": "ViewContentMeasureItem",
+      "type": "object"
+    },
+    "ViewContentsGroup": {
+      "additionalProperties": false,
+      "properties": {
+        "relation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The relation path acting as a base for this content group.\nWhen omitted, references the base model.",
+          "title": "Relation"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User-facing display name for this content group.\nIf omitted, defaults to the name of the `relation` or `base`.",
+          "title": "Name"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "User-facing description for this content group.\nIf omitted, defaults to the description of the `relation` or `base`.",
+          "title": "Description"
+        },
+        "dimensions": {
+          "anyOf": [
+            {
+              "const": "...",
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ViewContentDimensionItem"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The list of dimensions at this level to include.\nThe wildcard `...` can be used to include all dimensions at this level. To omit an item, prefix it with `~`.",
+          "title": "Dimensions"
+        },
+        "measures": {
+          "anyOf": [
+            {
+              "const": "...",
+              "type": "string"
+            },
+            {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/ViewContentMeasureItem"
+                  }
+                ]
+              },
+              "type": "array"
+            }
+          ],
+          "description": "The list of measures at this level to include.\nThe wildcard `...` can be used to include all measures at this level. To omit an item, prefix it with `~`.",
+          "title": "Measures"
+        },
+        "contents": {
+          "description": "Content nested within this group.",
+          "items": {
+            "$ref": "#/$defs/ViewContentsGroup"
+          },
+          "title": "Contents",
+          "type": "array"
+        }
+      },
+      "title": "ViewContentsGroup",
+      "type": "object"
+    },
+    "Visibility": {
+      "description": "The visibility determines the scope the associated declaration.\nEither `public`, `internal`, or `private`.\n\n`visibility` is not to be relied on as a security control and is only used\nto visually hide content in the UI. For the strongest security guarantees,\nconfigure OAuth or role-based access within your database.",
+      "enum": [
+        "public",
+        "private",
+        "internal"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "description": "Union over all definable resource types",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/Model"
+    },
+    {
+      "$ref": "#/$defs/View"
+    }
+  ],
+  "title": "Resource"
+}

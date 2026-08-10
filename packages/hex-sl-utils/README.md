@@ -11,6 +11,7 @@ APIs may change until the first stable release.
   measures, and relations.
 - Project loading from YAML files with structured validation problems.
 - Support for multiple SQL dialects.
+- Generated JSON Schema and TypeScript declarations.
 
 ## Installation
 
@@ -70,6 +71,15 @@ model = Model.model_validate(
         "base_sql_table": "analytics.orders",
     }
 )
+```
+
+The generated schema artifacts are included in the distribution and can be
+read without relying on a checkout path:
+
+```python
+from hex_sl_utils.schema import resource_json_schema
+
+schema = resource_json_schema()
 ```
 
 Repository development instructions are in the workspace

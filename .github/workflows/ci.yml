@@ -27,6 +27,8 @@ jobs:
         run: devbox run setup
       - name: Run checks
         run: devbox run check
+      - name: Check generated artifacts
+        run: devbox run verify
       - name: Build distributions
         run: devbox run build
       - name: Smoke-test distributions

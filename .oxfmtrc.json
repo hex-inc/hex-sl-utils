@@ -1,1 +1,5 @@
-{}
+{
+  "ignorePatterns": ["**/schema_files/**"],
+  "sortImports": true,
+  "sortPackageJson": true
+}
