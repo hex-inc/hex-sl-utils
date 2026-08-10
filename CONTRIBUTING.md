@@ -2,19 +2,20 @@
 
 ## Local environment
 
-Devbox is the source of truth for the system tools used across this workspace.
-It provides the pinned versions without requiring contributors to install each
-toolchain independently.
+[Devbox][devbox] is the source of truth for the system tools used across this
+workspace. It provides the pinned versions without requiring contributors to
+install each toolchain independently.
 
-From the repository root, install the workspace dependencies and enter the
-development shell:
+Install [direnv][direnv] and configure its hook for your shell. Then authorize
+the repository environment and install the workspace dependencies:
 
 ```bash
+direnv allow
 devbox run setup
-devbox shell
 ```
 
-`setup` synchronizes the locked Python environment.
+- Run `direnv allow` again after `.envrc` changes.
+- Run `devbox run setup` again when dependency lockfiles change.
 
 Run the complete local CI workflow after setup:
 
@@ -139,5 +140,7 @@ public entry point, following
 distributions. This catches missing package data and undeclared eager
 dependencies; lazy and optional paths still require focused tests.
 
+[devbox]: https://www.jetify.com/docs/devbox/
+[direnv]: https://direnv.net/docs/hook.html
 [uv-publish]: https://docs.astral.sh/uv/guides/integration/github/#publishing-to-pypi
 [uv-workspaces]: https://docs.astral.sh/uv/concepts/projects/workspaces/
