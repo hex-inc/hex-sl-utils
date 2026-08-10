@@ -42,7 +42,10 @@
       "test-cov": [
         "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
       ],
-      "build": ["uv build --all-packages --no-sources"],
+      "build": [
+        "uv build --all-packages --no-sources",
+        "uv run --locked --all-packages python scripts/schema/generate_schema.py"
+      ],
       "smoke-test": [
         "uv run --locked --all-packages python scripts/smoke_test_packages.py"
       ],
