@@ -5,14 +5,14 @@ from .expression import (
     ScalarExpressionDefaultBoolean,
     ScalarExpressionDefaultNumber,
 )
-from .hex_id import HexID
+from .hex_id import ID_PATTERN, RESERVED_ID_PREFIX, RESERVED_IDS, HexID, id_to_name
 from .loaded_project import LoadedProject
 from .measure import Measure, MeasureFuncName, SemiAdditive, SemiAdditiveOverMember
 from .model import Model
 from .problems import KeyPath, Problem, ProblemSeverity
 from .project import Project
 from .relation import Relation, RelationType
-from .resource import Resource
+from .resource import DEFAULT_RESOURCE_TYPE, Resource, parse_resource
 from .source_file import SourceFile, SourceFileResource
 from .view import (
     View,
@@ -24,6 +24,10 @@ from .view import (
 )
 
 __all__ = [
+    "DEFAULT_RESOURCE_TYPE",
+    "ID_PATTERN",
+    "RESERVED_IDS",
+    "RESERVED_ID_PREFIX",
     "DataType",
     "Dialect",
     "DialectName",
@@ -54,4 +58,6 @@ __all__ = [
     "ViewContentsGroup",
     "ViewContentsMeasureItemList",
     "Visibility",
+    "id_to_name",
+    "parse_resource",
 ]

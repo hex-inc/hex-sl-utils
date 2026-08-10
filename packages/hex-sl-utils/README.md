@@ -23,7 +23,7 @@ uv add hex-sl-utils
 python -m pip install hex-sl-utils
 ```
 
-Python 3.11 or newer is required.
+Python 3.9 or newer is required.
 
 ## Usage
 
@@ -43,6 +43,19 @@ for problem in loaded.problems:
 
 for model in loaded.project.models:
     print(model.id)
+```
+
+Converters and other callers that already hold file contents in memory can use
+the equivalent `load_project_files` entry point:
+
+```python
+from hex_sl_utils.load import load_project_files
+
+loaded = load_project_files(
+    files={"orders.yml": "id: orders\nbase_sql_table: analytics.orders\n"},
+    project_name="My project",
+    dialect_name="duckdb",
+)
 ```
 
 Models are also available directly from `hex_sl_utils.types` for validation and

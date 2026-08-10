@@ -23,16 +23,7 @@ def load_project(
     Load a Hex project from a directory into memory.
     """
     ctx = LoadContext()
-
-    try:
-        dialect = Dialect(dialect_name)
-    except ValidationError:
-        ctx.report_problem(
-            severity="fatal",
-            message=f"Invalid dialect name: {dialect_name}",
-            path=[],
-        )
-        dialect = Dialect("duckdb")  # just to keep things moving along
+    dialect = _load_dialect(dialect_name, ctx=ctx)
 
     project_dir = Path(project_dir)
     project_dir_is_valid = True
@@ -65,8 +56,69 @@ def load_project(
         loaded_source_files.append(source_file)
         loaded_resources.extend(resources)
 
-    any_models = any(r for r in loaded_resources if r.type == "model")
-    if project_dir_is_valid and not any_models:
+    return _finish_load(
+        ctx=ctx,
+        project_name=project_name,
+        dialect=dialect,
+        resources=loaded_resources,
+        source_files=loaded_source_files,
+        require_model=project_dir_is_valid,
+    )
+
+
+def load_project_files(
+    *,
+    files: dict[str, str],
+    project_name: str,
+    dialect_name: DialectName,
+) -> LoadedProject:
+    """Load a Hex project from an in-memory mapping of paths to YAML text."""
+    ctx = LoadContext()
+    dialect = _load_dialect(dialect_name, ctx=ctx)
+    loaded_resources: list[Resource] = []
+    loaded_source_files: list[SourceFile] = []
+
+    for file_name, contents_text in files.items():
+        resources, source_file = parse_yml_text(
+            contents_text=contents_text,
+            relative_path=Path(file_name),
+            ctx=ctx,
+        )
+        loaded_resources.extend(resources)
+        loaded_source_files.append(source_file)
+
+    return _finish_load(
+        ctx=ctx,
+        project_name=project_name,
+        dialect=dialect,
+        resources=loaded_resources,
+        source_files=loaded_source_files,
+        require_model=True,
+    )
+
+
+def _load_dialect(dialect_name: DialectName, *, ctx: LoadContext) -> Dialect:
+    try:
+        return Dialect(dialect_name)
+    except ValidationError:
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Invalid dialect name: {dialect_name}",
+            path=[],
+        )
+        return Dialect("duckdb")
+
+
+def _finish_load(
+    *,
+    ctx: LoadContext,
+    project_name: str,
+    dialect: Dialect,
+    resources: list[Resource],
+    source_files: list[SourceFile],
+    require_model: bool,
+) -> LoadedProject:
+    if require_model and not any(resource.type == "model" for resource in resources):
         ctx.report_problem(
             severity="error",
             message="No valid models found.",
@@ -75,13 +127,13 @@ def load_project(
 
     ctx.project = Project(
         name=project_name,
-        resources=loaded_resources,
+        resources=resources,
         dialect=dialect,
     )
     return LoadedProject(
         project=ctx.project,
         problems=ctx.problems,
-        source_files=loaded_source_files,
+        source_files=source_files,
     )
 
 
@@ -107,11 +159,39 @@ def parse_yml_file(
     Parse a YML file into a set of resources. This can return multiple resources,
     since YML allows many documents in a single file separated by `---` markers.
     """
-    source_file = SourceFile(filepath=str(relative_path), contents_text="")
+    try:
+        contents_text = full_path.read_text(encoding="utf-8")
+    except Exception as e:  # noqa: BLE001
+        source_file = SourceFile(filepath=str(relative_path), contents_text="")
+        ctx.report_problem(
+            severity="error",
+            message=f"Invalid YAML in file `{relative_path}`: {e}",
+            path=[str(relative_path)],
+            validated_by_json_schema=True,
+        )
+        return [], source_file
+
+    return parse_yml_text(
+        contents_text=contents_text,
+        relative_path=relative_path,
+        ctx=ctx,
+    )
+
+
+def parse_yml_text(
+    *,
+    contents_text: str,
+    relative_path: Path,
+    ctx: LoadContext,
+) -> tuple[list[Resource], SourceFile]:
+    """Parse one YAML source into resources and source-file metadata."""
+    source_file = SourceFile(
+        filepath=str(relative_path),
+        contents_text=contents_text,
+    )
     problem_path: KeyPath = [str(relative_path)]
     try:
-        source_file.contents_text = full_path.read_text(encoding="utf-8")
-        file_data = ryml_parse(source_file.contents_text)
+        file_data = ryml_parse(contents_text)
         file_data = file_data if isinstance(file_data, list) else [file_data]
     except Exception as e:  # noqa: BLE001
         ctx.report_problem(

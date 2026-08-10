@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -54,7 +54,7 @@ class Problem(BaseModel):
 
 
 KeyPath = Annotated[
-    list[str | int],
+    list[Union[str, int]],
     Field(title="ProblemKeyPath"),
 ]
 """

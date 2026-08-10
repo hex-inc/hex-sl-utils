@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 from pydantic import (
     BaseModel,
@@ -159,9 +159,9 @@ class ViewContentDimensionItem(BaseModel):
     )
 
 
-ViewContentsDimensionItemList = (
-    WildcardSymbolLiteral | list[str | ViewContentDimensionItem]
-)
+ViewContentsDimensionItemList = Union[
+    WildcardSymbolLiteral, list[Union[str, ViewContentDimensionItem]]
+]
 
 
 class ViewContentMeasureItem(BaseModel):
@@ -185,4 +185,6 @@ class ViewContentMeasureItem(BaseModel):
     )
 
 
-ViewContentsMeasureItemList = WildcardSymbolLiteral | list[str | ViewContentMeasureItem]
+ViewContentsMeasureItemList = Union[
+    WildcardSymbolLiteral, list[Union[str, ViewContentMeasureItem]]
+]

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any
 
 from pydantic import (
     BaseModel,
@@ -10,6 +10,7 @@ from pydantic import (
 )
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticCustomError
+from typing_extensions import Self
 
 from .common import DataType
 

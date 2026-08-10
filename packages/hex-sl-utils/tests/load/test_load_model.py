@@ -51,9 +51,13 @@ def test_load_invalid_yml():
     oh no
     base_sql_table: test
     """
-    problems = snapshot_yml_load_problems(yml)
-    assert problems.startswith("[ERROR] Invalid YAML in file `file_0.yml`:")
-    assert "could not find ':'" in problems
+    assert snapshot_yml_load_problems(yml) == snapshot(
+        """\
+[ERROR] Invalid YAML in file `file_0.yml`: 2:10: (22B): ERROR: could not find ':' colon after key
+2:10:     oh no  (size=9)
+               ^  (cols 10-10)\
+"""
+    )
 
 
 def test_load_invalid_model_missing_base():

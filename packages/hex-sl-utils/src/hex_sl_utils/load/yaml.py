@@ -21,9 +21,35 @@ def ryml_parse(data: str) -> dict[str, Any] | list[dict[str, Any]]:
     """
     import ryml
 
-    with capture_stderr_as_exception(ValueError):
-        tree: ryml.Tree = ryml.parse_in_arena(data)
+    try:
+        with suppress_stderr():
+            tree: ryml.Tree = ryml.parse_in_arena(data)
+    except ryml.ExceptionParse as exc:
+        raise ValueError(_format_parse_error(data, exc)) from exc
     return ryml_tree_to_dict(tree)
+
+
+def _format_parse_error(data: str, error: ryml.ExceptionParse) -> str:
+    location = error.errdata_parse.ymlloc
+    line = int(location.line)
+    col = int(location.col)
+    offset = int(location.offset)
+    header = f"{line}:{col}: ({offset}B): ERROR: {error.msg}"
+
+    source_lines = data.splitlines()
+    if line < 1 or line > len(source_lines) or col < 1:
+        return header
+
+    source_line = source_lines[line - 1]
+    prefix = f"{line}:{col}: "
+    caret = " " * (len(prefix) + col - 1)
+    return "\n".join(
+        [
+            header,
+            f"{prefix}{source_line}  (size={len(source_line)})",
+            f"{caret}^  (cols {col}-{col})",
+        ]
+    )
 
 
 def ryml_tree_to_dict(tree: ryml.Tree) -> dict[str, Any]:
@@ -119,26 +145,18 @@ def memoryview_to_str(mv: memoryview) -> str:
 
 
 @contextmanager
-def capture_stderr_as_exception(
-    exception_type: type[BaseException],
-) -> Generator[None, None, None]:
+def suppress_stderr() -> Generator[None, None, None]:
     """
-    Capture stderr as an exception. `ryml` prints errors directly to stderr,
-    without a clear way (in Python at least) to capture them. This overrides
-    the stderr file descriptor to a temporary file, and raises an exception
-    with the captured contents. This override is more aggressive than the
-    built-in `redirect_stderr` context manager because it needs to work down
-    to the C level.
+    Suppress stderr emitted by `ryml` while preserving its structured exception.
+
+    This override is more aggressive than the built-in `redirect_stderr`
+    context manager because it needs to work down to the C level.
     """
     original_stderr_fd = os.dup(2)  # 2 is stderr
     temp_std_err_file = tempfile.TemporaryFile(mode="w+b")  # noqa: SIM115
     _ = os.dup2(temp_std_err_file.fileno(), 2)
     try:
         yield
-    except Exception as e:
-        _ = temp_std_err_file.seek(0)
-        std_err_msg = temp_std_err_file.read().decode("utf-8").strip()
-        raise exception_type(std_err_msg) from e
     finally:
         _ = os.dup2(original_stderr_fd, 2)
         os.close(original_stderr_fd)

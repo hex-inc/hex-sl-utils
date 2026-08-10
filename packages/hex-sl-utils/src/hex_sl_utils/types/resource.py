@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Union, cast
 
-from pydantic import Discriminator, Tag
+from pydantic import Discriminator, Tag, TypeAdapter
 
 from .model import Model
 from .view import View
@@ -17,6 +17,13 @@ def discriminate_types(v: Any) -> str:
 
 
 Resource = Annotated[
-    Annotated[Model, Tag("model")] | Annotated[View, Tag("view")],
+    Union[Annotated[Model, Tag("model")], Annotated[View, Tag("view")]],
     Discriminator(discriminate_types),
 ]
+
+_RESOURCE_ADAPTER = TypeAdapter(Resource)
+
+
+def parse_resource(data: dict[str, Any]) -> Resource:
+    """Parse one resource mapping without validation recovery."""
+    return _RESOURCE_ADAPTER.validate_python(data)

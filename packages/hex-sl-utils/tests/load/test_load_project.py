@@ -3,7 +3,7 @@ from typing import Any, cast
 
 from inline_snapshot import snapshot
 
-from hex_sl_utils.load import load_project
+from hex_sl_utils.load import load_project, load_project_files
 
 from .utils import (
     get_test_project_dir,
@@ -14,6 +14,24 @@ from .utils import (
 )
 
 # ====== Problem detection ======
+
+
+def test_load_project_files_from_memory():
+    model_1 = make_yml(make_stub_model("model_1").model_dump(mode="json"))
+    model_2 = make_yml(make_stub_model("model_2").model_dump(mode="json"))
+
+    loaded = load_project_files(
+        files={"models.yml": f"{model_1}---\n{model_2}"},
+        project_name="Demo",
+        dialect_name="snowflake",
+    )
+
+    assert loaded.problems == []
+    assert loaded.project.name == "Demo"
+    assert loaded.project.dialect.root == "snowflake"
+    assert [model.id for model in loaded.project.models] == ["model_1", "model_2"]
+    assert loaded.source_files[0].filepath == "models.yml"
+    assert loaded.source_files[0].contents_text == f"{model_1}---\n{model_2}"
 
 
 def test_load_invalid_dialect():
