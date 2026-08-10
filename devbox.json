@@ -48,8 +48,8 @@
       "ci": [
         "devbox run check",
         "devbox run test",
-        "devbox run build",
         "devbox run verify",
+        "devbox run build",
         "devbox run smoke-test"
       ]
     }
