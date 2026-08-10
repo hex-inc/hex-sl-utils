@@ -8,7 +8,7 @@ from pydantic import (
     Field,
 )
 
-from .hex_id import HexID, name_from_id_default_factory
+from .entity_id import EntityId, name_from_id_default_factory
 
 if TYPE_CHECKING:
     from ._context import RecoveryContext
@@ -34,7 +34,7 @@ class View(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: HexID = Field(
+    id: EntityId = Field(
         ...,
         description=(
             "The unique identifier for this view.\n"

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 from .common import Dialect
-from .hex_id import HexID
+from .entity_id import EntityId
 from .model import Model
 from .resource import Resource
 from .view import View
@@ -43,13 +43,13 @@ class Project(BaseModel):
     def views(self) -> list[View]:
         return [v for v in self.resources if v.type == "view"]
 
-    def get_model(self, model_id: HexID) -> Model | None:
+    def get_model(self, model_id: EntityId) -> Model | None:
         return next(
             (m for m in self.models if m.id == model_id),
             None,
         )
 
-    def get_view(self, view_id: HexID) -> View | None:
+    def get_view(self, view_id: EntityId) -> View | None:
         return next(
             (v for v in self.views if v.id == view_id),
             None,

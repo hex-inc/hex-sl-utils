@@ -1,11 +1,17 @@
 from .common import DataType, Dialect, DialectName, Visibility
 from .dimension import Dimension
+from .entity_id import (
+    ID_PATTERN,
+    RESERVED_ID_PREFIX,
+    RESERVED_IDS,
+    EntityId,
+    id_to_name,
+)
 from .expression import (
     ScalarExpression,
     ScalarExpressionDefaultBoolean,
     ScalarExpressionDefaultNumber,
 )
-from .hex_id import ID_PATTERN, RESERVED_ID_PREFIX, RESERVED_IDS, HexID, id_to_name
 from .loaded_project import LoadedProject
 from .measure import Measure, MeasureFuncName, SemiAdditive, SemiAdditiveOverMember
 from .model import Model
@@ -32,7 +38,7 @@ __all__ = [
     "Dialect",
     "DialectName",
     "Dimension",
-    "HexID",
+    "EntityId",
     "KeyPath",
     "LoadedProject",
     "Measure",

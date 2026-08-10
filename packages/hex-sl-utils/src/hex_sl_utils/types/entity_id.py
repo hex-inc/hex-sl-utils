@@ -15,23 +15,23 @@ RESERVED_IDS = [
 RESERVED_ID_PREFIX = "__hex"
 
 
-def exclude_reserved_ids(hex_id: str) -> str:
-    if hex_id in RESERVED_IDS:
+def exclude_reserved_ids(entity_id: str) -> str:
+    if entity_id in RESERVED_IDS:
         raise PydanticCustomError(
             "custom.string_disallowed",
-            "ID '{hex_id}' is a reserved term and cannot be used",
-            {"hex_id": hex_id},
+            "ID '{entity_id}' is a reserved term and cannot be used",
+            {"entity_id": entity_id},
         )
-    elif hex_id.startswith(RESERVED_ID_PREFIX):
+    elif entity_id.startswith(RESERVED_ID_PREFIX):
         raise PydanticCustomError(
             "custom.string_disallowed",
-            "ID '{hex_id}' cannot begin with '{RESERVED_ID_PREFIX}'",
-            {"hex_id": hex_id, "RESERVED_ID_PREFIX": RESERVED_ID_PREFIX},
+            "ID '{entity_id}' cannot begin with '{RESERVED_ID_PREFIX}'",
+            {"entity_id": entity_id, "RESERVED_ID_PREFIX": RESERVED_ID_PREFIX},
         )
-    return hex_id
+    return entity_id
 
 
-HEX_ID_DESCRIPTION = f"""All IDs must conform to the following rules:
+ENTITY_ID_DESCRIPTION = f"""All IDs must conform to the following rules:
 
 - Begins with a lowercase letter or an underscore
 - Only contains lowercase letters, underscores, and numbers
@@ -41,13 +41,13 @@ In addition, the following IDs are reserved by the system and cannot be used:
 {", ".join(RESERVED_IDS)} or any ID beginning with '{RESERVED_ID_PREFIX}'.
 """
 
-HexID = TypeAliasType(
-    "HexID",
+EntityId = TypeAliasType(
+    "EntityId",
     Annotated[
         str,
         Field(
-            title="HexID",
-            description=HEX_ID_DESCRIPTION,
+            title="EntityId",
+            description=ENTITY_ID_DESCRIPTION,
             pattern=ID_PATTERN,
             min_length=2,
             max_length=128,
@@ -65,8 +65,8 @@ HexID = TypeAliasType(
 )
 
 
-def id_to_name(hex_id: HexID) -> str:
-    words = hex_id.split("_")
+def id_to_name(entity_id: EntityId) -> str:
+    words = entity_id.split("_")
     words[0] = words[0].title()
     return " ".join(words)
 

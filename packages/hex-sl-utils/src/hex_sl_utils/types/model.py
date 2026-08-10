@@ -14,7 +14,7 @@ from typing_extensions import Self
 from ._utils import clean_doc_comment
 from .common import Visibility
 from .dimension import Dimension
-from .hex_id import HexID, name_from_id_default_factory
+from .entity_id import EntityId, name_from_id_default_factory
 from .measure import Measure
 from .relation import Relation
 
@@ -29,7 +29,7 @@ class Model(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: HexID = Field(
+    id: EntityId = Field(
         ...,
         description=(
             "The unique identifier for this model.\n"

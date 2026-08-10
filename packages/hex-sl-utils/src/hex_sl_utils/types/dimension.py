@@ -11,8 +11,8 @@ from pydantic_core import PydanticCustomError
 from typing_extensions import Self
 
 from .common import DataType, Visibility
+from .entity_id import EntityId, name_from_id_default_factory
 from .expression import ScalarExpression
-from .hex_id import HexID, name_from_id_default_factory
 
 if TYPE_CHECKING:
     from ._context import RecoveryContext
@@ -54,7 +54,7 @@ class Dimension(ScalarExpression):
         },
     )
 
-    id: HexID = Field(
+    id: EntityId = Field(
         ...,
         description=(
             "The unique identifier for this dimension.\n"

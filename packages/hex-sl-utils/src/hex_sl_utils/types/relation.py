@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from .common import Visibility
-from .hex_id import HexID
+from .entity_id import EntityId
 
 if TYPE_CHECKING:
     from ._context import RecoveryContext
@@ -45,7 +45,7 @@ class Relation(BaseModel):
         },
     )
 
-    id: HexID = Field(
+    id: EntityId = Field(
         ...,
         description=(
             "The unique identifier for this relation."
@@ -61,7 +61,7 @@ class Relation(BaseModel):
         ),
     )
 
-    target: HexID = Field(
+    target: EntityId = Field(
         default_factory=lambda d: d.get("id", ""),
         description=(
             "The identifier of the target model for this relation.\n"

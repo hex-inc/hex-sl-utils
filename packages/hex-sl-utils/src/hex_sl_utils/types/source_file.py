@@ -5,7 +5,7 @@ from typing import Literal
 from pydantic import BaseModel
 from pydantic.fields import Field
 
-from .hex_id import HexID
+from .entity_id import EntityId
 
 
 class SourceFile(BaseModel):
@@ -41,7 +41,7 @@ class SourceFileResource(BaseModel):
         ),
     )
 
-    resource_id: HexID | None = Field(
+    resource_id: EntityId | None = Field(
         None,
         description=(
             "The identifier of the resource, or None if the declaration contains no id."
