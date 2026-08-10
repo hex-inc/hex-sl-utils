@@ -19,7 +19,7 @@
     "scripts": {
       "setup": [
         "uv sync --locked --all-packages",
-        "if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; fi"
+        "pnpm install --frozen-lockfile"
       ],
       "check": [
         "uv run --locked --all-packages ruff check .",
