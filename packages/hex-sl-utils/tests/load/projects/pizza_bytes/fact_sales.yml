@@ -1,0 +1,76 @@
+id: sales
+base_sql_table: pizza_bytes.sales
+description: Fact table of sales information.
+
+measures:
+  - id: revenue
+    func: sum
+    of: value
+    description: |
+      The total sales of pizza.
+      synonyms: sales, top line revenue
+  - id: number_of_customers
+    func: count_distinct
+    of: customer_id
+  - id: number_of_orders
+    func: count_distinct
+    of: order_id
+  - id: revenue_per_customer
+    func_calc: revenue / number_of_customers
+  - id: revenue_per_order
+    func_calc: revenue / number_of_orders
+  - id: avg_unit_price
+    func_calc: SUM(value) / SUM(quantity)
+  - id: orders_per_customer
+    func_calc: number_of_orders / number_of_customers
+  - id: revenue_adjusted_for_delivery_cost
+    func: sum
+    of:
+      expr_sql: ${value} * IF(${orders.is_delivery}, 0.8, 1)
+  - id: revenue_from_custom_delivery_pizza
+    func: sum
+    of: value
+    filters:
+      - orders.is_delivery
+      - expr_sql: ${products.pizza_type} = 'Custom'
+
+dimensions:
+  # facts
+  - id: value
+    type: number
+    expr_sql: item_price * quantity
+    description: The total price paid for the sale.
+  - id: item_price
+    type: number
+  - id: quantity
+    type: number
+  - id: timestamp
+    type: timestamp_tz
+  # ids
+  - id: id
+    type: string
+    unique: true
+    visibility: internal
+  - id: item_id
+    type: number
+    visibility: internal
+  - id: customer_id
+    type: string
+    visibility: internal
+  - id: order_id
+    type: number
+    visibility: internal
+  - id: product_id
+    type: string
+    visibility: internal
+
+relations:
+  - id: customers
+    join_sql: ${customer_id} = ${customers.id}
+    type: many_to_one
+  - id: orders
+    join_sql: ${order_id} = ${orders.id}
+    type: many_to_one
+  - id: products
+    join_sql: ${product_id} = ${products.id}
+    type: many_to_one

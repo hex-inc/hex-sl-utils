@@ -1,41 +1,16 @@
-# Hex semantic layer
+# Hex semantic layer utilities
 
-Libraries for working with the Hex semantic-layer format and integrations.
-
-This project is in its **initial development phase**. The first milestone is to
-publicly release the Hex semantic resource models, project loaders, and
-generated schemas into a public, standalone library. The APIs and package names
-may change until the first stable release.
+A workspace for libraries that work with the Hex semantic-layer format and
+integrations.
 
 ## Packages
 
-### `hex-sl-utils` (Python)
+- [`hex-sl-utils`](packages/hex-sl-utils/README.md): Python models and loaders
+  for Hex semantic resources.
 
-_Status: Not yet published._
-
-Models and I/O for Hex semantic resources.
-
-#### Design goals
-
-- Consumers should be able to parse, validate, inspect, and generate Hex
-  semantic resources.
-- Support projects like [Apache Ossie](https://ossie.apache.org/).
-
-## Installation
-
-The packages are not published yet. Once available, install with:
-
-```bash
-uv add hex-sl-utils
-
-# or
-python -m pip install hex-sl-utils
-```
-
-Python 3.9 or newer is required.
-
-For repository setup, development commands, package structure, and the release
-process, see [CONTRIBUTING.md](CONTRIBUTING.md).
+For workspace setup, development commands, package structure, and the release
+process, see [CONTRIBUTING.md](CONTRIBUTING.md). Package-specific documentation
+lives alongside each package under [`packages/`](packages/).
 
 ## License
 

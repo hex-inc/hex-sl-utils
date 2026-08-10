@@ -1,0 +1,59 @@
+id: orders
+base_sql_table: pizza_bytes.orders
+description: Fact table of order information.
+
+measures:
+  - id: count
+    name: Number of orders
+    func: count
+  - id: total_order_value
+    func: sum
+    of: order_value
+
+dimensions:
+  # facts
+  - id: timestamp
+    type: timestamp_naive
+  - id: payment_method
+    type: string
+  - id: is_delivery
+    type: boolean
+    expr_sql: delivery = 'Yes'
+  - id: type
+    type: string
+  - id: order_value
+    type: number
+  - id: discount_code
+    type: string
+  - id: feedback_rating
+    type: number
+  - id: delivery_time
+    type: number
+  - id: preparation_time
+    type: number
+  - id: special_request
+    type: string
+  - id: referral_source
+    type: string
+  # ids
+  - id: id
+    type: number
+    visibility: internal
+    unique: true
+  - id: customer_id
+    type: string
+    visibility: internal
+  - id: cook_id
+    type: string
+    visibility: internal
+  - id: location_id
+    type: string
+    visibility: internal
+
+relations:
+  - id: customers
+    join_sql: ${customer_id} = ${customers.id}
+    type: many_to_one
+  - id: sales
+    join_sql: ${id} = ${sales.order_id}
+    type: one_to_many
