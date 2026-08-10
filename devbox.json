@@ -17,10 +17,7 @@
   },
   "shell": {
     "scripts": {
-      "setup": [
-        "uv sync --locked --all-packages",
-        "pnpm install --frozen-lockfile"
-      ],
+      "setup": ["uv sync --locked --all-packages", "pnpm install --frozen-lockfile"],
       "check": [
         "uv run --locked --all-packages ruff check .",
         "uv run --locked --all-packages ruff format --check .",
@@ -29,14 +26,14 @@
         "uv run --locked --all-packages rumdl fmt --check .",
         "pnpm --recursive --if-present run check",
         "oxlint . --deny-warnings --no-error-on-unmatched-pattern",
-        "oxfmt --check --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts}'"
+        "oxfmt --check --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
       ],
       "format": [
         "uv run --locked --all-packages ruff check --fix .",
         "uv run --locked --all-packages ruff format .",
         "uv run --locked --all-packages rumdl fmt .",
         "oxlint . --fix --deny-warnings --no-error-on-unmatched-pattern",
-        "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts}'"
+        "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
       ],
       "test": ["uv run --locked --all-packages pytest"],
       "test-cov": [
@@ -46,12 +43,8 @@
         "uv build --all-packages --no-sources",
         "uv run --locked --all-packages python scripts/schema/generate_schema.py"
       ],
-      "verify": [
-        "uv run --locked --all-packages python scripts/check_generated_schema.py"
-      ],
-      "smoke-test": [
-        "uv run --locked --all-packages python scripts/smoke_test_packages.py"
-      ],
+      "verify": ["uv run --locked --all-packages python scripts/check_generated_schema.py"],
+      "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py"],
       "ci": [
         "devbox run check",
         "devbox run test",

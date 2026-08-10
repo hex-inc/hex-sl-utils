@@ -2,18 +2,19 @@
   "name": "@hex/sl-utils-scripts-schema",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@11.18.0",
   "description": "Schema generation helpers for hex-sl-utils",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "build": "ts-node generate_ts_declarations.ts",
-    "check": "tsc --noEmit"
+    "build": "node generate_ts_declarations.ts",
+    "check": "tsgo --noEmit"
   },
   "devDependencies": {
     "@types/node": "^24.0.13",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "json-schema-to-typescript": "^15.0.4",
     "prettier": "^3.6.2",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
-  }
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "pnpm@11.18.0"
 }

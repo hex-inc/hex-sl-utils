@@ -1,4 +1,5 @@
-import ts, { EmitHint, Identifier, Node } from "typescript";
+import ts from "typescript";
+import type { EmitHint, Identifier, Node } from "typescript";
 
 /*
 --------------------------------------------------------------------------------------------------------------------------------

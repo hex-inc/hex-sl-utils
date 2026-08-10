@@ -50,10 +50,6 @@ devbox run check
 devbox run format
 ```
 
-`check` runs the package's `tsc --noEmit` check as well as type-aware Oxlint
-and Oxfmt. `format` applies the available Python, Markdown, and TypeScript
-fixes.
-
 To invoke only the TypeScript stage while iterating on its transforms, first
 generate or update the JSON Schema, then run:
 

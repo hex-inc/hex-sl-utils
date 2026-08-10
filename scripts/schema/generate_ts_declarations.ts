@@ -1,16 +1,18 @@
 import fs from "fs";
 import path from "path";
-import { format as prettierFormat } from "prettier";
+
 import { compile as jsonSchemaToTs } from "json-schema-to-typescript";
+import { format as prettierFormat } from "prettier";
+
 import {
   removeDuplicateTSDeclarations,
   removeRedundantPropertyTypeTitlesFromJsonSchema,
   removeUnsupportedConfigsFromJsonSchema,
   replaceAdditionalPropertiesWithAny,
-} from "./generate_ts_declarations_transforms";
+} from "./generate_ts_declarations_transforms.ts";
 
 const SCHEMA_FILES_PATH = path.resolve(
-  __dirname,
+  import.meta.dirname,
   "../../packages/hex-sl-utils/src/hex_sl_utils/schema_files",
 );
 const JSON_SCHEMAS_PATH = path.join(SCHEMA_FILES_PATH, "jsonschema");
