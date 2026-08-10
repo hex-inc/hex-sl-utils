@@ -111,7 +111,12 @@ def export_json_schemas() -> None:
     )
 
     print("Validating generated TypeScript files...")
-    for ts_file in ts_dir.glob("*.d.ts"):
+    ts_files = sorted(ts_dir.glob("*.d.ts"))
+    if not ts_files:
+        msg = f"No TypeScript declaration files were generated in {ts_dir}"
+        raise RuntimeError(msg)
+
+    for ts_file in ts_files:
         print(f"  Checking {ts_file.name}...")
         content = ts_file.read_text()
         self_ref_pattern = r"export\s+type\s+(\w+)\s*=\s*.*\b\1\b.*?;"
