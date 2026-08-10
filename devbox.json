@@ -1,6 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.5/.schema/devbox.schema.json",
   "packages": {
+    "nodejs": "24",
+    "oxfmt": "0.59.0",
+    "oxlint": "1.75.0",
     "python": {
       "version": "3.14",
       "disable_plugin": true
@@ -8,25 +11,32 @@
     "uv": "0.12.1"
   },
   "env": {
+    "DEVBOX_COREPACK_ENABLED": "true",
     "UV_PYTHON_DOWNLOADS": "never",
     "UV_PYTHON_PREFERENCE": "only-system"
   },
   "shell": {
     "scripts": {
       "setup": [
-        "uv sync --locked --all-packages"
+        "uv sync --locked --all-packages",
+        "pnpm install --frozen-lockfile"
       ],
       "check": [
         "uv run --locked --all-packages ruff check .",
         "uv run --locked --all-packages ruff format --check .",
         "uv run --locked --all-packages pyright",
         "uv run --locked --all-packages rumdl check .",
-        "uv run --locked --all-packages rumdl fmt --check ."
+        "uv run --locked --all-packages rumdl fmt --check .",
+        "pnpm --recursive --if-present run check",
+        "oxlint . --deny-warnings --no-error-on-unmatched-pattern",
+        "oxfmt --check --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts}'"
       ],
       "format": [
         "uv run --locked --all-packages ruff check --fix .",
         "uv run --locked --all-packages ruff format .",
-        "uv run --locked --all-packages rumdl fmt ."
+        "uv run --locked --all-packages rumdl fmt .",
+        "oxlint . --fix --deny-warnings --no-error-on-unmatched-pattern",
+        "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts}'"
       ],
       "test": ["uv run --locked --all-packages pytest"],
       "test-cov": [
@@ -42,6 +52,9 @@
         "uv run --locked --all-packages pyright",
         "uv run --locked --all-packages rumdl check .",
         "uv run --locked --all-packages rumdl fmt --check .",
+        "pnpm --recursive --if-present run check",
+        "oxlint . --deny-warnings --no-error-on-unmatched-pattern",
+        "oxfmt --check --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts}'",
         "uv run --locked --all-packages pytest",
         "uv build --all-packages --no-sources",
         "uv run --locked --all-packages python scripts/smoke_test_packages.py"
