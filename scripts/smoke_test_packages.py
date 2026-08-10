@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import subprocess
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+import tomli as tomllib
 from packaging.utils import (
     canonicalize_name,
     parse_sdist_filename,

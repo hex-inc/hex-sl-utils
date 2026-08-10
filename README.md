@@ -32,7 +32,7 @@ uv add hex-sl-utils
 python -m pip install hex-sl-utils
 ```
 
-Python 3.11 or newer is required.
+Python 3.9 or newer is required.
 
 For repository setup, development commands, package structure, and the release
 process, see [CONTRIBUTING.md](CONTRIBUTING.md).

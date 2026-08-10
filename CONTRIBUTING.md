@@ -80,7 +80,7 @@ and avoid splitting one import namespace across multiple distributions.
 
 ## Python toolchain
 
-Python packages form a [uv workspace][uv-workspaces]. They support CPython 3.11
+Python packages form a [uv workspace][uv-workspaces]. They support CPython 3.9
 or newer; Devbox provides the default Python 3.14 environment, while CI tests
 the supported version and operating-system matrix.
 
