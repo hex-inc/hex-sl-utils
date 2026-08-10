@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.17.5/.schema/devbox.schema.json",
+  "packages": {
+    "python": {
+      "version": "3.14",
+      "disable_plugin": true
+    },
+    "uv": "0.12.1"
+  },
+  "env": {
+    "UV_PYTHON_DOWNLOADS": "never",
+    "UV_PYTHON_PREFERENCE": "only-system"
+  },
+  "shell": {
+    "scripts": {
+      "setup": [
+        "uv sync --locked --all-packages"
+      ],
+      "check": [
+        "uv run --locked --all-packages ruff check .",
+        "uv run --locked --all-packages ruff format --check .",
+        "uv run --locked --all-packages pyright",
+        "uv run --locked --all-packages rumdl check .",
+        "uv run --locked --all-packages rumdl fmt --check ."
+      ],
+      "format": [
+        "uv run --locked --all-packages ruff check --fix .",
+        "uv run --locked --all-packages ruff format .",
+        "uv run --locked --all-packages rumdl fmt ."
+      ],
+      "test": ["uv run --locked --all-packages pytest"],
+      "test-cov": [
+        "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
+      ],
+      "build": ["uv build --all-packages --no-sources"],
+      "smoke-test": [
+        "uv run --locked --all-packages python scripts/smoke_test_packages.py"
+      ],
+      "ci": [
+        "uv run --locked --all-packages ruff check .",
+        "uv run --locked --all-packages ruff format --check .",
+        "uv run --locked --all-packages pyright",
+        "uv run --locked --all-packages rumdl check .",
+        "uv run --locked --all-packages rumdl fmt --check .",
+        "uv run --locked --all-packages pytest",
+        "uv build --all-packages --no-sources",
+        "uv run --locked --all-packages python scripts/smoke_test_packages.py"
+      ]
+    }
+  }
+}

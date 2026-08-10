@@ -18,22 +18,19 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install uv and Python
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
         with:
-          version: ${{ env.UV_VERSION }}
-          python-version: "3.14"
-          enable-cache: true
-          cache-dependency-glob: uv.lock
-          prune-cache: true
+          devbox-version: 0.17.5
+          enable-cache: "true"
       - name: Sync workspace
-        run: uv sync --locked --all-packages
+        run: devbox run setup
       - name: Run checks
-        run: uv run --locked --all-packages poe check
+        run: devbox run check
       - name: Build distributions
-        run: uv run --locked --all-packages poe build
+        run: devbox run build
       - name: Smoke-test distributions
-        run: uv run --locked --all-packages poe smoke-test
+        run: devbox run smoke-test
 
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
@@ -68,4 +65,4 @@ jobs:
       - name: Sync workspace
         run: uv sync --locked --all-packages
       - name: Run tests
-        run: uv run --locked --all-packages poe test
+        run: uv run --locked --all-packages pytest
