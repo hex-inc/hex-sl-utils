@@ -303,7 +303,11 @@ export interface View {
   description?: string;
 }
 export interface ViewContentsGroup {
-  relation?: Relation;
+  /**
+   * The relation path acting as a base for this content group.
+   * When omitted, references the base model.
+   */
+  relation?: string | null;
   name?: Name;
   description?: Description;
   dimensions?: Dimensions;

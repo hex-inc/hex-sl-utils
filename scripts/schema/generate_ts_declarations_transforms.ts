@@ -26,9 +26,15 @@ This is done to simplify the generated TS declarations by omitting indirect type
 export function removeRedundantPropertyTypeTitlesFromJsonSchema(
   jsonSchema: any,
   context: "properties" | { propertyKey: string } | null = null,
+  definitionNames: Set<string> = new Set(Object.keys(jsonSchema.$defs ?? {})),
 ): any {
+  const hasAtMostOneNonNullVariant = (variants: any[] | undefined) =>
+    !variants || variants.filter((variant) => variant.type !== "null").length <= 1;
+
   if (Array.isArray(jsonSchema)) {
-    return jsonSchema.map((i) => removeRedundantPropertyTypeTitlesFromJsonSchema(i, null));
+    return jsonSchema.map((i) =>
+      removeRedundantPropertyTypeTitlesFromJsonSchema(i, null, definitionNames),
+    );
   } else if (typeof jsonSchema === "object" && jsonSchema !== null) {
     const result: any = {};
     if (context && typeof context === "object" && "propertyKey" in context) {
@@ -36,8 +42,11 @@ export function removeRedundantPropertyTypeTitlesFromJsonSchema(
       if (
         jsonSchema.title &&
         normalizeName(jsonSchema.title) === normalizeName(context.propertyKey) &&
-        (!jsonSchema.anyOf || jsonSchema.anyOf.length <= 1) &&
-        (!jsonSchema.oneOf || jsonSchema.oneOf.length <= 1) &&
+        (((!jsonSchema.anyOf || jsonSchema.anyOf.length <= 1) &&
+          (!jsonSchema.oneOf || jsonSchema.oneOf.length <= 1)) ||
+          (definitionNames.has(jsonSchema.title) &&
+            hasAtMostOneNonNullVariant(jsonSchema.anyOf) &&
+            hasAtMostOneNonNullVariant(jsonSchema.oneOf))) &&
         (!jsonSchema.enum || jsonSchema.enum.length <= 1)
       ) {
         return { ...jsonSchema, title: undefined };
@@ -45,13 +54,25 @@ export function removeRedundantPropertyTypeTitlesFromJsonSchema(
     } else {
       for (const [key, value] of Object.entries(jsonSchema)) {
         if (context === "properties") {
-          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(value, {
-            propertyKey: key,
-          });
+          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(
+            value,
+            {
+              propertyKey: key,
+            },
+            definitionNames,
+          );
         } else if (key === "properties") {
-          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(value, "properties");
+          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(
+            value,
+            "properties",
+            definitionNames,
+          );
         } else {
-          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(value, null);
+          result[key] = removeRedundantPropertyTypeTitlesFromJsonSchema(
+            value,
+            null,
+            definitionNames,
+          );
         }
       }
       return result;
@@ -77,7 +98,7 @@ Type1, Type2, Type3, instead of a shared type definition.
  */
 
 // FITS strings that do not end with digits (so duplicated types)
-// AND strings that contain V1,V2,V3,... ant the end (versioned API is considered as not duplicate)
+// AND strings that contain V1,V2,V3,... at the end (versioned API is considered as not duplicate)
 const NON_DUPLICATED_IDENTIFIER_REGEXP = /\b(?!\w*\d+$)\w+\b|\b\w*V\d+\b/;
 
 function isDuplicatedTypeIdentifier(typeIdentifier: Identifier): boolean {

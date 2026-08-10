@@ -23,7 +23,7 @@ function main() {
     let jsonSchema = JSON.parse(fs.readFileSync(jsonSchemaPath, "utf8"));
     jsonSchema = removeUnsupportedConfigsFromJsonSchema(jsonSchema);
     jsonSchema = removeRedundantPropertyTypeTitlesFromJsonSchema(jsonSchema);
-    void jsonSchemaToTs(jsonSchema, "Dataset", { additionalProperties: false })
+    void jsonSchemaToTs(jsonSchema, "Model", { additionalProperties: false })
       .then(replaceAdditionalPropertiesWithAny)
       .then(removeDuplicateTSDeclarations)
       .then((s) => prettierFormat(s, { parser: "typescript" }))

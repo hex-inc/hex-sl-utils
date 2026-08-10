@@ -15,3 +15,4 @@ def test_resource_typescript_declarations_are_distributed() -> None:
     declarations = resource_typescript_declarations()
 
     assert "export type Resource =" in declarations
+    assert "relation?: string | null;" in declarations
