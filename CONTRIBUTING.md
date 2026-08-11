@@ -97,7 +97,14 @@ hex-sl-utils = { workspace = true }
 
 Use a `src` layout for publishable Python packages. Each distribution must
 include a package README and an executable smoke test that imports its public
-API and verifies package data required at runtime.
+API and verifies package data required at runtime. Smoke tests are run against
+the declared Python versions in the project configuration file (typically a
+floor and ceiling version).
+
+```toml pyproject.toml
+[tool.smoke-test]
+python-versions = ["3.9", "3.14"]
+```
 
 Update Python dependencies intentionally and commit `uv.lock`:
 
@@ -153,11 +160,10 @@ devbox run ci
 ```
 
 The build command creates every publishable artifact. The smoke-test command
-installs each artifact by itself in a fresh environment and exercises its
-public entry point, following
-[uv's distribution-testing recommendation][uv-publish] for Python
-distributions. This catches missing package data and undeclared eager
-dependencies; lazy and optional paths still require focused tests.
+installs each artifact by itself in a fresh environment and exercises its public
+entry point (following [uv's distribution-testing recommendation][uv-publish]
+for Python distributions). This catches missing package data and undeclared
+eager dependencies; lazy and optional paths still require focused tests.
 
 [devbox]: https://www.jetify.com/docs/devbox/
 [direnv]: https://direnv.net/docs/hook.html
