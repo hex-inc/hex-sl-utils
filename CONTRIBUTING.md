@@ -81,9 +81,9 @@ and avoid splitting one import namespace across multiple distributions.
 
 ## Python toolchain
 
-Python packages form a [uv workspace][uv-workspaces]. They support CPython 3.9
-or newer; Devbox provides the default Python 3.14 environment, while CI tests
-the supported version and operating-system matrix.
+Python packages form a [uv workspace][uv-workspaces]. Configure each package for
+their minimum supported Python version in the `pyproject.toml` file. The
+workspace otherwise targets the latest stable Python version.
 
 Declare shared Python development dependencies in the root `pyproject.toml`.
 Declare runtime dependencies in the consuming package's `pyproject.toml`. When

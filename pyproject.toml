@@ -51,15 +51,24 @@ show_missing = true
 
 [tool.pyright]
 include = ["packages", "scripts"]
-pythonVersion = "3.9"
+pythonVersion = "3.14"
 typeCheckingMode = "standard"
 venv = ".venv"
 venvPath = "."
+executionEnvironments = [
+  { root = "packages/hex-sl-utils", pythonVersion = "3.9" },
+  { root = "scripts", pythonVersion = "3.14" },
+  { root = ".", pythonVersion = "3.14" },
+]
 
 [tool.ruff]
 line-length = 88
 required-version = ">=0.16.1"
-target-version = "py39"
+target-version = "py314"
+
+[tool.ruff.per-file-target-version]
+"packages/hex-sl-utils/**/*.py" = "py39"
+"scripts/**/*.py" = "py314"
 
 [tool.ruff.lint.isort]
 known-first-party = ["hex_sl_utils"]
