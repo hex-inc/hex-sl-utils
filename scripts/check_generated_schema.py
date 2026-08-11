@@ -1,7 +1,5 @@
 """Regenerate schema artifacts and fail when checked-in files are stale."""
 
-from __future__ import annotations
-
 import subprocess
 import sys
 from pathlib import Path
