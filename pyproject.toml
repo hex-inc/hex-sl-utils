@@ -17,7 +17,6 @@ dev = [
   "pyyaml>=6.0.3",
   "ruff>=0.16.1",
   "rumdl>=0.2.52",
-  "tomli>=2.0.1",
 ]
 
 [tool.uv]

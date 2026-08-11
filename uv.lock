@@ -386,7 +386,6 @@ dev = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "rumdl" },
-    { name = "tomli" },
 ]
 
 [package.metadata]
@@ -401,7 +400,6 @@ dev = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff", specifier = ">=0.16.1" },
     { name = "rumdl", specifier = ">=0.2.52" },
-    { name = "tomli", specifier = ">=2.0.1" },
 ]
 
 [[package]]

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import re
 import shutil
@@ -7,13 +5,18 @@ import subprocess
 from pathlib import Path
 
 from pydantic import RootModel
-from pydantic.json_schema import GenerateJsonSchema, JsonSchemaValue
+from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, JsonSchemaValue
 from pydantic_core import CoreSchema
 
 from hex_sl_utils.types import Resource
 
 here = Path(__file__).absolute().parent
 root = here.parent.parent
+
+type JsonValue = (
+    None | bool | int | float | str | list[JsonValue] | dict[str, JsonValue]
+)
+type JsonContainer = dict[str, JsonValue] | list[JsonValue]
 
 
 class HexResourceRoot(RootModel[Resource]):
@@ -31,8 +34,10 @@ class TitleGenerateJsonSchema(GenerateJsonSchema):
     match their title rather than Python class name.
     """
 
-    def generate(self, schema: CoreSchema, mode: str = "validation") -> JsonSchemaValue:
-        json_schema = super().generate(schema, mode=mode)  # pyright: ignore[reportArgumentType]
+    def generate(
+        self, schema: CoreSchema, mode: JsonSchemaMode = "validation"
+    ) -> JsonSchemaValue:
+        json_schema = super().generate(schema, mode=mode)
         for key, item in list(json_schema.get("$defs", {}).items()):
             title = item.get("title")
             title = title and self._transform_key(title)
@@ -49,28 +54,27 @@ class TitleGenerateJsonSchema(GenerateJsonSchema):
 
     def _update_refs(
         self,
-        schema: dict[str, CoreSchema] | list[CoreSchema],
+        schema: JsonContainer,
         old_name: str,
         new_name: str,
     ) -> None:
         if isinstance(schema, dict):
             for key, value in schema.items():
                 if key == "$ref" and value == f"#/$defs/{old_name}":
-                    schema[key] = f"#/$defs/{new_name}"  # pyright: ignore[reportArgumentType]
+                    schema[key] = f"#/$defs/{new_name}"
                 elif isinstance(value, (dict, list)):
-                    self._update_refs(value, old_name, new_name)  # pyright: ignore[reportArgumentType]
+                    self._update_refs(value, old_name, new_name)
         elif isinstance(schema, list):
             for item in schema:
-                self._update_refs(item, old_name, new_name)  # pyright: ignore[reportArgumentType]
+                if isinstance(item, (dict, list)):
+                    self._update_refs(item, old_name, new_name)
 
 
 class HexGenerateJsonSchema(TitleGenerateJsonSchema):
     """Remove `Hex` prefixes from definition names in a schema."""
 
     def _transform_key(self, key: str) -> str:
-        if key.startswith("Hex"):
-            return key[len("Hex") :]
-        return key
+        return key.removeprefix("Hex")
 
 
 def export_json_schemas() -> None:
@@ -121,7 +125,7 @@ def export_json_schemas() -> None:
         content = ts_file.read_text()
         self_ref_pattern = r"export\s+type\s+(\w+)\s*=\s*.*\b\1\b.*?;"
 
-        for line_num, line in enumerate(content.split("\n"), 1):
+        for line in content.splitlines():
             match = re.search(self_ref_pattern, line)
             if match:
                 type_name = match.group(1)
