@@ -27,6 +27,8 @@ jobs:
         run: devbox run setup
       - name: Run checks
         run: devbox run check
+      - name: Run workspace tests
+        run: devbox run test
       - name: Check generated artifacts
         run: devbox run verify
       - name: Build distributions
@@ -70,5 +72,5 @@ jobs:
           prune-cache: true
       - name: Sync workspace
         run: uv sync --locked --all-packages
-      - name: Run tests
-        run: uv run --locked --all-packages pytest
+      - name: Run package tests
+        run: uv run --locked --all-packages pytest packages
