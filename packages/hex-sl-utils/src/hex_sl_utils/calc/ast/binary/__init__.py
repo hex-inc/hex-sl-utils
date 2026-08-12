@@ -1,0 +1,98 @@
+from typing import Annotated, Union
+
+from hex_sl.utils import UserFacingError
+
+from .base import BinaryBase
+from .comparison import (
+    BinaryEqual,
+    BinaryGreater,
+    BinaryGreaterEqual,
+    BinaryLess,
+    BinaryLessEqual,
+    BinaryNotEqual,
+)
+from .logical import BinaryAnd, BinaryOr
+from .math import (
+    BinaryDivide,
+    BinaryMinus,
+    BinaryModulus,
+    BinaryMultiply,
+    BinaryPlus,
+    BinaryPower,
+)
+
+TaggedBinaryExprUnion = Union[
+    Annotated[BinaryPlus, BinaryPlus.tag()],
+    Annotated[BinaryMinus, BinaryMinus.tag()],
+    Annotated[BinaryMultiply, BinaryMultiply.tag()],
+    Annotated[BinaryDivide, BinaryDivide.tag()],
+    Annotated[BinaryPower, BinaryPower.tag()],
+    Annotated[BinaryModulus, BinaryModulus.tag()],
+    Annotated[BinaryOr, BinaryOr.tag()],
+    Annotated[BinaryAnd, BinaryAnd.tag()],
+    Annotated[BinaryLess, BinaryLess.tag()],
+    Annotated[BinaryLessEqual, BinaryLessEqual.tag()],
+    Annotated[BinaryGreater, BinaryGreater.tag()],
+    Annotated[BinaryGreaterEqual, BinaryGreaterEqual.tag()],
+    Annotated[BinaryEqual, BinaryEqual.tag()],
+    Annotated[BinaryNotEqual, BinaryNotEqual.tag()],
+]
+
+
+def binary_for_name(name: str) -> type[TaggedBinaryExprUnion]:
+    name_lower = name.lower()
+    if name_lower == "+":
+        return BinaryPlus
+    elif name_lower == "-":
+        return BinaryMinus
+    elif name_lower == "*":
+        return BinaryMultiply
+    elif name_lower == "/":
+        return BinaryDivide
+    elif name_lower in ("^", "**"):
+        return BinaryPower
+    elif name_lower == "%":
+        return BinaryModulus
+    elif name_lower in ("||", "or"):
+        return BinaryOr
+    elif name_lower in ("&&", "and"):
+        return BinaryAnd
+    elif name_lower == "<":
+        return BinaryLess
+    elif name_lower == "<=":
+        return BinaryLessEqual
+    elif name_lower == ">":
+        return BinaryGreater
+    elif name_lower == ">=":
+        return BinaryGreaterEqual
+    elif name_lower in ("=", "=="):
+        return BinaryEqual
+    elif name_lower in ("!=", "<>"):
+        return BinaryNotEqual
+    else:
+        msg = f"Unknown binary operator: {name}"
+        raise UserFacingError(msg)
+
+
+__all__ = [
+    "TaggedBinaryExprUnion",
+    # BinaryBase
+    "BinaryBase",
+    # BinaryMath
+    "BinaryPlus",
+    "BinaryMinus",
+    "BinaryMultiply",
+    "BinaryDivide",
+    "BinaryModulus",
+    "BinaryPower",
+    # BinaryComparison
+    "BinaryEqual",
+    "BinaryNotEqual",
+    "BinaryGreater",
+    "BinaryGreaterEqual",
+    "BinaryLess",
+    "BinaryLessEqual",
+    # BinaryLogical
+    "BinaryAnd",
+    "BinaryOr",
+]
