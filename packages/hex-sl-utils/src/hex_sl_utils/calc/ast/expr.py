@@ -5,7 +5,9 @@ import sys
 from typing import TYPE_CHECKING, Any, Union, get_args
 
 if TYPE_CHECKING:
-    from hex_sl_utils.calc.protocols import CalcDialect
+    from hex_sl_utils.calc.compiled import ExpressionContext, TypedSelectExpression
+    from hex_sl_utils.calc.protocols import CalcDialect, CalcSchema
+    from hex_sl_utils.types import DataType
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -120,6 +122,33 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
     def to_string(self) -> str:
         result: str = self.root.to_string()
         return result
+
+    def compile(
+        self,
+        dialect: CalcDialect,
+        *,
+        context: ExpressionContext,
+        schema: CalcSchema,
+        timezone: str,
+        parameters: dict[str, DataType] | None = None,
+        substitutions: dict[str, TypedSelectExpression] | None = None,
+        wrap_for_context: bool = True,
+        skip_mangle: bool | list[str] | None = None,
+    ) -> TypedSelectExpression:
+        """Compile this calc using services supplied by a SQL dialect adapter."""
+        from hex_sl_utils.calc.compiler import compile_calc_expression
+
+        return compile_calc_expression(
+            self,
+            dialect=dialect,
+            context=context,
+            schema=schema,
+            timezone=timezone,
+            parameters=parameters,
+            substitutions=substitutions,
+            wrap_for_context=wrap_for_context,
+            skip_mangle=skip_mangle,
+        )
 
     def substitute(
         self, substitutions: dict[str, ExprBase], dialect: CalcDialect

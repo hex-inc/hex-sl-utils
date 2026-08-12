@@ -2,8 +2,13 @@ from typing import get_args
 
 from hex_sl_utils.calc.ast.args import Args
 from hex_sl_utils.calc.ast.expr import TaggedCalcExprUnion
+from hex_sl_utils.calc.ast.functions.rolling import CalcRollingWindow
 
 from .ast import CalcExpr
+from .compiled import ExpressionContext, ExpressionKind, TypedSelectExpression
+from .compiler import CalcToTypedSelectVisitor, compile_calc_expression
+from .parser import ParseError, parse_calc_expression
+from .protocols import CalcDialect, CalcSchema
 from .visitor import HEXSL_CALC_FN_NAME
 
 # This is needed to resolve pydantic errors like:
@@ -17,4 +22,17 @@ for union_type in get_args(TaggedCalcExprUnion):
         if hasattr(cls, "model_rebuild"):
             cls.model_rebuild()
 
-__all__ = ["HEXSL_CALC_FN_NAME", "CalcExpr"]
+__all__ = [
+    "HEXSL_CALC_FN_NAME",
+    "CalcDialect",
+    "CalcExpr",
+    "CalcRollingWindow",
+    "CalcSchema",
+    "CalcToTypedSelectVisitor",
+    "ExpressionContext",
+    "ExpressionKind",
+    "ParseError",
+    "TypedSelectExpression",
+    "compile_calc_expression",
+    "parse_calc_expression",
+]

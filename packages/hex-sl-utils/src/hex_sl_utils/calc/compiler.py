@@ -26,6 +26,7 @@ from hex_sl_utils.calc.visitor import CalcVisitor
 from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
+    from hex_sl_utils.calc.ast.expr import CalcExpr
     from hex_sl_utils.calc.protocols import CalcDialect
 
 
@@ -132,3 +133,31 @@ class CalcToTypedSelectVisitor(CalcVisitor[TypedSelectExpression]):
         return TypedSelectExpression.from_sqlglot(
             resolved_expr, sql_expr.data_type, strict=True
         )
+
+
+def compile_calc_expression(
+    expression: CalcExpr,
+    *,
+    dialect: CalcDialect,
+    context: ExpressionContext,
+    schema: CalcSchema,
+    timezone: str,
+    parameters: dict[str, DataType] | None = None,
+    substitutions: dict[str, TypedSelectExpression] | None = None,
+    wrap_for_context: bool = True,
+    skip_mangle: bool | list[str] | None = None,
+) -> TypedSelectExpression:
+    """Compile a parsed calc into a typed SQLGlot select expression."""
+    visitor = CalcToTypedSelectVisitor(
+        dialect=dialect,
+        context=context,
+        schema=schema,
+        timezone=timezone,
+        parameters=parameters,
+        substitutions=substitutions,
+        skip_mangle=skip_mangle,
+    )
+    compiled = expression.root.accept(visitor)
+    if wrap_for_context:
+        return dialect.wrap_expression_for_context(compiled, context)
+    return compiled
