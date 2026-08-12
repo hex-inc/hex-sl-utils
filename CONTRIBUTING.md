@@ -165,7 +165,80 @@ entry point (following [uv's distribution-testing recommendation][uv-publish]
 for Python distributions). This catches missing package data and undeclared
 eager dependencies; lazy and optional paths still require focused tests.
 
+## Publishing
+
+Packages are released independently using tags of the form
+`<distribution>-v<version>`, for example `hex-sl-utils-v0.1.0`. The tag must
+exactly match a workspace distribution name and the version in that package's
+`pyproject.toml`.
+
+### One-time repository setup
+
+1. Create a protected GitHub environment named `pypi`. Require maintainer
+   approval for deployments to that environment.
+2. Create the package project on PyPI.
+3. In the PyPI project's publishing settings, add this repository and
+   `.github/workflows/publish.yml` as a Trusted Publisher using the `pypi`
+   environment.
+4. Repeat the Trusted Publisher configuration for each distribution added to
+   the workspace.
+
+No long-lived PyPI token is stored in GitHub. The workflow exchanges GitHub's
+short-lived identity token for publishing credentials.
+
+### Versioning policy
+
+Every distribution has a static [PEP 440][pep-440] version in its own
+`pyproject.toml`. Versions are independent: releasing one workspace package
+does not require changing any other package's version.
+
+The default branch should normally carry the next anticipated development
+version using the `.dev0` suffix. For example, after releasing `0.1.0`, begin
+the next development cycle with `0.2.0.dev0`. Changes accumulate under the
+package changelog's `Unreleased` heading during this phase. Development
+versions identify unreleased source and must not be published.
+
+A release pull request removes `.dev0` and updates the changelog. Final,
+prerelease (`aN`, `bN`, or `rcN`), and post-release versions may be published;
+`.devN` versions may not. The non-development version exists on `main` long
+enough to tag and publish the release. A follow-up pull request then advances
+the package to its next `.dev0` version.
+
+This policy is enforced by `scripts/release.py`: publishing requires a tag that
+exactly matches the distribution name and metadata version, and the validator
+rejects any version for which PEP 440 reports `is_devrelease`. Tests in
+`tests/test_release.py` cover both the accepted and rejected forms.
+
+### Releasing a package
+
+1. Open a release pull request that:
+   - sets a non-development version in the package's `pyproject.toml`;
+   - moves the package's changes from `Unreleased` to that version in its
+     `CHANGELOG.md`;
+   - refreshes `uv.lock`; and
+   - passes `devbox run ci`.
+
+2. Merge the release pull request to `main`.
+3. Create an annotated tag at that merge commit and push it:
+
+   ```bash
+   git tag -a hex-sl-utils-v0.1.0 -m "hex-sl-utils 0.1.0"
+   git push origin hex-sl-utils-v0.1.0
+   ```
+
+4. Review and approve the `pypi` environment deployment. The publish workflow
+   validates the tag and metadata, reruns checks and tests, then builds and
+   smoke-tests the selected package. A separate job with publishing credentials
+   downloads and publishes those exact artifacts through Trusted Publishing.
+5. Open a follow-up pull request setting the next development version, such as
+   `0.2.0.dev0`, and restore an empty `Unreleased` section.
+
+Published files are immutable. If publishing fails after any artifact reaches
+PyPI, fix the issue and release a new version; never move or reuse a release
+tag.
+
 [devbox]: https://www.jetify.com/docs/devbox/
 [direnv]: https://direnv.net/docs/hook.html
 [uv-publish]: https://docs.astral.sh/uv/guides/integration/github/#publishing-to-pypi
 [uv-workspaces]: https://docs.astral.sh/uv/concepts/projects/workspaces/
+[pep-440]: https://packaging.python.org/en/latest/specifications/version-specifiers/
