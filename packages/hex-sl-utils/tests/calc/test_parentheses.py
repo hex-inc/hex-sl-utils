@@ -2,9 +2,9 @@
 
 import pytest
 from inline_snapshot import snapshot
-from hex_sl._vendor.sqlglot import exp
 
-from hex_sl.calc.parentheses import (
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.parentheses import (
     OPERATOR_PRECEDENCE,
     parens_if_needed,
 )

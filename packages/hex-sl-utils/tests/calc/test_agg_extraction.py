@@ -1,12 +1,12 @@
-from hex_sl.calc.agg_extraction import (
+from inline_snapshot import snapshot
+
+from hex_sl_utils.calc.agg_extraction import (
     AggregateExtractionVisitor,
 )
-
-from hex_sl.calc.ast.binary.math import BinaryMultiply, BinaryPlus
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.functions.aggs import FuncAvg, FuncSum
-from hex_sl.calc.visitor import CalcToStringVisitor
-from inline_snapshot import snapshot
+from hex_sl_utils.calc.ast.binary.math import BinaryMultiply, BinaryPlus
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions.aggs import FuncAvg, FuncSum
+from hex_sl_utils.calc.visitor import CalcToStringVisitor
 
 
 def test_aggregate_replacement_visitor():
@@ -22,9 +22,9 @@ def test_aggregate_replacement_visitor():
     expr = BinaryPlus(lhs=avg_expr, rhs=sum_expr)
 
     # Use the visitor to replace aggregate expressions
-    from hex_sl.dialect.duckdb import HexSLDuckDB
+    from ._dialect import TestDialect
 
-    dialect = HexSLDuckDB()
+    dialect = TestDialect()
     visitor = AggregateExtractionVisitor(dialect)
     modified_expr, column_to_agg = expr.accept(visitor)
 

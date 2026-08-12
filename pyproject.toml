@@ -54,6 +54,7 @@ show_missing = true
 [tool.pyright]
 include = ["packages", "scripts", "tests"]
 exclude = ["**/_vendor", "**/calc/_calc_parser_standalone.py"]
+ignore = ["packages/hex-sl-utils/tests/calc"]
 pythonVersion = "3.14"
 typeCheckingMode = "standard"
 venv = ".venv"

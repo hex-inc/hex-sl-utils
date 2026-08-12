@@ -6,7 +6,8 @@ These tests verify that the calc parser correctly handles qualified column synta
 """
 
 import pytest
-from hex_sl.calc.parser import parse_calc_expression, ParseError
+
+from hex_sl_utils.calc.parser import ParseError, parse_calc_expression
 
 
 def test_parse_simple_qualified_identifier():

@@ -1,7 +1,9 @@
 from datetime import datetime
 
 import pytest
-from hex_sl.calc.ast.binary import (
+from inline_snapshot import snapshot
+
+from hex_sl_utils.calc.ast.binary import (
     BinaryAnd,
     BinaryDivide,
     BinaryMinus,
@@ -11,8 +13,9 @@ from hex_sl.calc.ast.binary import (
     BinaryPlus,
     BinaryPower,
 )
-from hex_sl.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions import FuncConcat, FuncLeft, FuncSin, FuncSqrt
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -20,13 +23,10 @@ from hex_sl.calc.ast.literals import (
     LiteralString,
     LiteralTimestamp,
 )
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.functions import FuncConcat, FuncLeft, FuncSin, FuncSqrt
-from hex_sl.calc.ast.parameter import Parameter
-
-from hex_sl.calc.parser import ParseError, parse_calc_expression
-from hex_sl.utils import UserFacingError
-from inline_snapshot import snapshot
+from hex_sl_utils.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
+from hex_sl_utils.calc.errors import UserFacingError
+from hex_sl_utils.calc.parser import ParseError, parse_calc_expression
 
 
 # Literal tests
@@ -108,7 +108,12 @@ def test_literal_date():
     expression = 'd"2023-06-01"'
     ast = parse_calc_expression(expression).root
     assert isinstance(ast, LiteralDate)
-    assert ast.date_value == datetime.strptime("2023-06-01", "%Y-%m-%d").date()
+    assert (
+        ast.date_value
+        == datetime.strptime(  # noqa: DTZ007
+            "2023-06-01", "%Y-%m-%d"
+        ).date()
+    )
     expected_string = snapshot('d"2023-06-01"')
     assert ast.to_string() == expected_string
 
@@ -117,7 +122,7 @@ def test_literal_timestamp():
     expression = 't"2023-06-01T12:34:56"'
     ast = parse_calc_expression(expression).root
     assert isinstance(ast, LiteralTimestamp)
-    assert ast.timestamp_value == datetime.strptime(
+    assert ast.timestamp_value == datetime.strptime(  # noqa: DTZ007
         "2023-06-01T12:34:56", "%Y-%m-%dT%H:%M:%S"
     )
     expected_string = snapshot('t"2023-06-01T12:34:56"')
@@ -128,7 +133,7 @@ def test_literal_timestamp_with_milliseconds():
     expression = 't"2023-06-01T12:34:56.789"'
     ast = parse_calc_expression(expression).root
     assert isinstance(ast, LiteralTimestamp)
-    assert ast.timestamp_value == datetime.strptime(
+    assert ast.timestamp_value == datetime.strptime(  # noqa: DTZ007
         "2023-06-01T12:34:56.789", "%Y-%m-%dT%H:%M:%S.%f"
     )
     expected_string = snapshot('t"2023-06-01T12:34:56.789"')
