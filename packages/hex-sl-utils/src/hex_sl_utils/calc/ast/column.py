@@ -1,19 +1,19 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, TypeVar, Union
+from typing import TYPE_CHECKING, Annotated, TypeVar
 
-from hex_sl_common.exceptions import SemanticItemNotFoundError
 from pydantic import Field, Tag
 
-import hex_sl._vendor.sqlglot.expressions as exp
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+import hex_sl_utils._vendor.sqlglot.expressions as exp
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.compiled import ExpressionKind, TypedSelectExpression
+from hex_sl_utils.calc.errors import SemanticItemNotFoundError, TypeCheckError
+from hex_sl_utils.calc.protocols import CalcDialect
 
 if TYPE_CHECKING:
-    from hex_sl.calc.visitor import CalcVisitor
-    from hex_sl.schema import Schema
+    from hex_sl_utils.calc.protocols import CalcSchema
+    from hex_sl_utils.calc.visitor import CalcVisitor
 
 T = TypeVar("T")
 
@@ -55,10 +55,10 @@ class Column(ExprBase):
 
     def compile(
         self,
-        schema: Schema,
-        dialect: HexSLDialect,
+        schema: CalcSchema,
+        dialect: CalcDialect,
         substitutions: dict[str, TypedSelectExpression],
-        skip_mangle: Union[bool, list[str], None] = None,
+        skip_mangle: bool | list[str] | None = None,
     ) -> TypedSelectExpression:
         """
         Compile the column to a sqlglot expression.

@@ -1,3 +1,4 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 import sys
@@ -10,11 +11,11 @@ else:
 
 from pydantic import BaseModel, ConfigDict, Tag
 
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils.calc.errors import TypeCheckError
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.expr import CalcExpr
-    from hex_sl.calc.visitor import CalcVisitor, T
+    from hex_sl_utils.calc.ast.expr import CalcExpr
+    from hex_sl_utils.calc.visitor import CalcVisitor, T
 
 # Type alias for qualified column references
 # Format: (qualifiers, column_name) where qualifiers is a tuple of dataset path
@@ -58,7 +59,7 @@ class ExprBase(BaseModel):
         raise NotImplementedError(msg)
 
     def to_string(self) -> str:
-        from hex_sl.calc.visitor import CalcToStringVisitor
+        from hex_sl_utils.calc.visitor import CalcToStringVisitor
 
         visitor = CalcToStringVisitor()
         return self.accept(visitor)
@@ -74,7 +75,7 @@ class ExprBase(BaseModel):
         return hash(self) == hash(other)
 
     def to_expr(self) -> CalcExpr:
-        from hex_sl.calc.ast.expr import (
+        from hex_sl_utils.calc.ast.expr import (
             CalcExpr,
             CalcExprUnionTypesSet,
             TaggedCalcExprUnion,
@@ -82,8 +83,8 @@ class ExprBase(BaseModel):
 
         # Check with type(self) in because isinstance is too with so many types
         if type(self) in CalcExprUnionTypesSet:
-            self = cast(TaggedCalcExprUnion, self)
-            return CalcExpr(root=self)
+            expression = cast(TaggedCalcExprUnion, self)
+            return CalcExpr(root=expression)
         else:
             msg = f"Expression is not a valid Calc Expression: {self}"
             raise TypeCheckError(msg)

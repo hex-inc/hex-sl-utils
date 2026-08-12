@@ -1,21 +1,26 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.binary.base import BinaryBase
-from hex_sl.calc.parentheses import parens_if_needed
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.binary.base import BinaryBase
+from hex_sl_utils.calc.compiled import (
+    ExpressionContext,
+    ExpressionKind,
+    TypedSelectExpression,
+)
+from hex_sl_utils.calc.errors import TypeCheckError
+from hex_sl_utils.calc.parentheses import parens_if_needed
+from hex_sl_utils.calc.protocols import CalcDialect
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
     # This import seems to be needed to help mypy follow that the BinaryBase
     # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast import CalcExpr  # noqa: F401
+    from hex_sl_utils.calc.ast import CalcExpr  # noqa: F401
 
 
 class BinaryComparisonBase(BinaryBase):
@@ -26,7 +31,7 @@ class BinaryComparisonBase(BinaryBase):
     def _validate_comparison_operator_arg_types(
         self, left_type: DataType, right_type: DataType
     ) -> None:
-        ts_types = (DataType.TIMESTAMP, DataType.TIMESTAMPTZ, DataType.DATE)
+        ts_types = (DataType.TIMESTAMP_NAIVE, DataType.TIMESTAMP_TZ, DataType.DATE)
         if left_type in ts_types and right_type in ts_types:
             # mixing timestamp, timestamptz, and date is allowed
             return
@@ -42,31 +47,31 @@ class BinaryComparisonBase(BinaryBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         tz: str,
     ) -> tuple[TypedSelectExpression, TypedSelectExpression]:
         # Cast down dates to timestamps/timestamptz
         if left_expr.data_type == DataType.DATE:
-            if right_expr.data_type == DataType.TIMESTAMP:
+            if right_expr.data_type == DataType.TIMESTAMP_NAIVE:
                 left_expr = dialect.cast_date_to_timestamp(left_expr)
-            elif right_expr.data_type == DataType.TIMESTAMPTZ:
+            elif right_expr.data_type == DataType.TIMESTAMP_TZ:
                 left_expr = dialect.cast_date_to_timestamptz(left_expr, tz)
 
         if right_expr.data_type == DataType.DATE:
-            if left_expr.data_type == DataType.TIMESTAMP:
+            if left_expr.data_type == DataType.TIMESTAMP_NAIVE:
                 right_expr = dialect.cast_date_to_timestamp(right_expr)
-            elif left_expr.data_type == DataType.TIMESTAMPTZ:
+            elif left_expr.data_type == DataType.TIMESTAMP_TZ:
                 right_expr = dialect.cast_date_to_timestamptz(right_expr, tz)
 
         # Unify timestamp and timestamptz
         if (
-            left_expr.data_type == DataType.TIMESTAMP
-            and right_expr.data_type == DataType.TIMESTAMPTZ
+            left_expr.data_type == DataType.TIMESTAMP_NAIVE
+            and right_expr.data_type == DataType.TIMESTAMP_TZ
         ):
             left_expr = dialect.at_timezone(left_expr, tz)
         elif (
-            left_expr.data_type == DataType.TIMESTAMPTZ
-            and right_expr.data_type == DataType.TIMESTAMP
+            left_expr.data_type == DataType.TIMESTAMP_TZ
+            and right_expr.data_type == DataType.TIMESTAMP_NAIVE
         ):
             right_expr = dialect.at_timezone(right_expr, tz)
 
@@ -76,7 +81,7 @@ class BinaryComparisonBase(BinaryBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         timezone: str,
     ) -> TypedSelectExpression:
         # For cases like booleans in mssql, we need to wrap the expression as if
@@ -99,7 +104,7 @@ class BinaryComparisonBase(BinaryBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -119,7 +124,7 @@ class BinaryLess(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -146,7 +151,7 @@ class BinaryLessEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -173,7 +178,7 @@ class BinaryGreater(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -200,7 +205,7 @@ class BinaryGreaterEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -227,7 +232,7 @@ class BinaryEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -254,7 +259,7 @@ class BinaryNotEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:

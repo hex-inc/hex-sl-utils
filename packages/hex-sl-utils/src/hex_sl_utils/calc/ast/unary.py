@@ -1,21 +1,22 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Literal, TypeVar, Union
 
 from pydantic import Field, Tag
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.calc.operators import UnaryOp
-from hex_sl.calc.parentheses import parens_if_needed
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import TypedSelectExpression
-from hex_sl.utils import TypeCheckError, UserFacingError
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.compiled import TypedSelectExpression
+from hex_sl_utils.calc.errors import TypeCheckError, UserFacingError
+from hex_sl_utils.calc.operators import UnaryOp
+from hex_sl_utils.calc.parentheses import parens_if_needed
+from hex_sl_utils.calc.protocols import CalcDialect
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast import CalcExpr
-    from hex_sl.calc.visitor import CalcVisitor
+    from hex_sl_utils.calc.ast import CalcExpr
+    from hex_sl_utils.calc.visitor import CalcVisitor
 
 T = TypeVar("T")
 
@@ -36,7 +37,7 @@ class UnaryBase(ExprBase):
         return visitor.visit_unary(self)
 
     def compile(
-        self, arg_expr: TypedSelectExpression, dialect: HexSLDialect
+        self, arg_expr: TypedSelectExpression, dialect: CalcDialect
     ) -> TypedSelectExpression:
         """
         Compiles the unary operation into a TypedSelectExpression.
@@ -55,7 +56,7 @@ class UnaryMinus(UnaryBase):
     )
 
     def compile(
-        self, arg_expr: TypedSelectExpression, dialect: HexSLDialect
+        self, arg_expr: TypedSelectExpression, dialect: CalcDialect
     ) -> TypedSelectExpression:
         if arg_expr.data_type != DataType.NUMBER:
             msg = "Unary minus operation requires a numeric argument."
@@ -79,7 +80,7 @@ class UnaryPlus(UnaryBase):
     )
 
     def compile(
-        self, arg_expr: TypedSelectExpression, dialect: HexSLDialect
+        self, arg_expr: TypedSelectExpression, dialect: CalcDialect
     ) -> TypedSelectExpression:
         if arg_expr.data_type != DataType.NUMBER:
             msg = "Unary plus operation requires a numeric argument."
@@ -96,7 +97,7 @@ class UnaryNot(UnaryBase):
     )
 
     def compile(
-        self, arg_expr: TypedSelectExpression, dialect: HexSLDialect
+        self, arg_expr: TypedSelectExpression, dialect: CalcDialect
     ) -> TypedSelectExpression:
         if arg_expr.data_type != DataType.BOOLEAN:
             msg = "Unary NOT operation requires a boolean argument."

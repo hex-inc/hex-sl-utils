@@ -1,16 +1,17 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 """Internal chart functions for type conversions."""
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.datatype import DataType
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.compiled import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.calc.protocols import CalcDialect
 
 
 class FuncChartToNumber(FuncBase):
@@ -25,11 +26,11 @@ class FuncChartToNumber(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: "HexSLDialect",
+        dialect: "CalcDialect",
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl._vendor.sqlglot import exp
+        from hex_sl_utils._vendor.sqlglot import exp
 
         arg = self._validate_single_arg(arg_exprs)
         arg_type = arg.data_type
@@ -37,7 +38,11 @@ class FuncChartToNumber(FuncBase):
         if arg_type == DataType.STRING:
             # STRING → tonumber
             return dialect.cast_str_to_number(arg)
-        elif arg_type in (DataType.DATE, DataType.TIMESTAMP, DataType.TIMESTAMPTZ):
+        elif arg_type in (
+            DataType.DATE,
+            DataType.TIMESTAMP_NAIVE,
+            DataType.TIMESTAMP_TZ,
+        ):
             # DATE/TIMESTAMP/TIMESTAMPTZ → datetimetoepochms
             return dialect.datetime_to_epoch_ms(arg)
         elif arg_type == DataType.BOOLEAN:
@@ -69,11 +74,11 @@ class FuncChartToDatetime(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: "HexSLDialect",
+        dialect: "CalcDialect",
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl._vendor.sqlglot import exp
+        from hex_sl_utils._vendor.sqlglot import exp
 
         arg = self._validate_single_arg(arg_exprs)
         arg_type = arg.data_type
@@ -90,7 +95,11 @@ class FuncChartToDatetime(FuncBase):
             zero_literal = dialect.compile_literal(0)
             if_expr = dialect.build_ifelse(arg, one_literal, zero_literal)
             return dialect.epoch_ms_to_timestamp(if_expr)
-        elif arg_type in (DataType.TIMESTAMP, DataType.TIMESTAMPTZ, DataType.DATE):
+        elif arg_type in (
+            DataType.TIMESTAMP_NAIVE,
+            DataType.TIMESTAMP_TZ,
+            DataType.DATE,
+        ):
             # DATE/TIMESTAMP/TIMESTAMPTZ → no-op (but convert DATE to TIMESTAMP)
             if arg_type == DataType.DATE:
                 return dialect.cast_date_to_timestamp(arg)
@@ -99,6 +108,6 @@ class FuncChartToDatetime(FuncBase):
             # For OTHER or unknown types, try regular cast to timestamp
             return TypedSelectExpression.from_sqlglot(
                 exp.Cast(this=arg.expression, to=exp.DataType.build("TIMESTAMP")),
-                DataType.TIMESTAMP,
+                DataType.TIMESTAMP_NAIVE,
                 arg.kind,
             )

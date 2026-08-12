@@ -21,8 +21,8 @@ UnaryOp = Literal["-", "+", "!"]
 CalcOp = Union[BinaryOp, UnaryOp]
 
 __all__ = [
-    "OperandType",
     "BinaryOp",
-    "UnaryOp",
     "CalcOp",
+    "OperandType",
+    "UnaryOp",
 ]

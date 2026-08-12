@@ -1,10 +1,11 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 import sys
 from typing import TYPE_CHECKING, Any, Union, get_args
 
 if TYPE_CHECKING:
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.protocols import CalcDialect
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -13,11 +14,11 @@ else:
 
 from pydantic import Discriminator, Field, RootModel
 
-from hex_sl.calc.ast.base import ExprBase, QualifiedColumnRef
-from hex_sl.calc.ast.binary import TaggedBinaryExprUnion, binary_for_name
-from hex_sl.calc.ast.column import Column, TaggedColumnExpr
-from hex_sl.calc.ast.functions import TaggedFuncExprUnion, func_for_name
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils.calc.ast.base import ExprBase, QualifiedColumnRef
+from hex_sl_utils.calc.ast.binary import TaggedBinaryExprUnion, binary_for_name
+from hex_sl_utils.calc.ast.column import Column, TaggedColumnExpr
+from hex_sl_utils.calc.ast.functions import TaggedFuncExprUnion, func_for_name
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -26,20 +27,17 @@ from hex_sl.calc.ast.literals import (
     LiteralTimestamp,
     TaggedLiteralExprUnion,
 )
-from hex_sl.calc.ast.parameter import Parameter, TaggedParameterExpr
-from hex_sl.calc.ast.sql_expression import SqlExpression, TaggedSqlExpression
-from hex_sl.calc.ast.unary import TaggedUnaryExprUnion, unary_for_name
-from hex_sl.calc.visitor import (
+from hex_sl_utils.calc.ast.parameter import Parameter, TaggedParameterExpr
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression, TaggedSqlExpression
+from hex_sl_utils.calc.ast.unary import TaggedUnaryExprUnion, unary_for_name
+from hex_sl_utils.calc.errors import UserFacingError
+from hex_sl_utils.calc.visitor import (
     AnyAggregateFunctionVisitor,
     CollectQualifiedColumnsVisitor,
 )
-from hex_sl.utils import UserFacingError
 
 if TYPE_CHECKING:
-    import polars as pl
-
-    from hex_sl.calc.evaluation import DFCalcResult, ScalarCalcResult
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.protocols import CalcDialect
 
 
 TaggedCalcExprUnion: TypeAlias = Union[
@@ -57,7 +55,7 @@ CalcExprUnionTypes = tuple(arg.__origin__ for arg in get_args(TaggedCalcExprUnio
 CalcExprUnionTypesSet = set(CalcExprUnionTypes)
 
 
-def calc_expr_discriminator(v: Any) -> str:  # noqa: ANN401
+def calc_expr_discriminator(v: Any) -> str:
     if isinstance(v, ExprBase):
         return v.tag().tag
     elif isinstance(v, dict):
@@ -123,41 +121,8 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         result: str = self.root.to_string()
         return result
 
-    def eval(self) -> ScalarCalcResult:
-        """
-        Evaluate the scalar calc expression and return the result.
-
-        Expression may not contain column references.
-
-        Returns:
-            ScalarCalcResult: The result of evaluating the calc expression.
-        """
-        from hex_sl.calc.evaluation import evaluate_scalar_calc
-
-        return evaluate_scalar_calc(self)
-
-    def eval_df(self, df: pl.DataFrame, date_as_object: bool = False) -> DFCalcResult:
-        """
-        Evaluate the calc expression against a pandas DataFrame.
-
-        Column references in the expression are resolved against the provided DataFrame.
-
-        Args:
-            df (pl.DataFrame): The polars DataFrame to use as the schema and data
-                               source.
-            date_as_object (bool): Whether to return dates as objects.
-                                   If False (the default), dates will be returned as
-                                   datetime64[ns] dtype.
-
-        Returns:
-            DFCalcResult: The result of evaluating the calc expression.
-        """
-        from hex_sl.calc.evaluation import evaluate_df_calc
-
-        return evaluate_df_calc(self, df, date_as_object)
-
     def substitute(
-        self, substitutions: dict[str, ExprBase], dialect: HexSLDialect
+        self, substitutions: dict[str, ExprBase], dialect: CalcDialect
     ) -> CalcExpr:
         """
         Substitute column references in the calc expression with the provided
@@ -167,7 +132,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
             substitutions: Mapping of column names to replacement expressions
             dialect: SQL dialect
         """
-        from hex_sl.calc.substitution import ColumnSubstitutionVisitor
+        from hex_sl_utils.calc.substitution import ColumnSubstitutionVisitor
 
         visitor = ColumnSubstitutionVisitor(substitutions, dialect)
         result: ExprBase = self.root.accept(visitor)
@@ -183,13 +148,13 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         Returns:
             A new CalcExpr with unqualified columns qualified to the dataset.
         """
-        from hex_sl.calc.substitution import QualifyColumnsVisitor
+        from hex_sl_utils.calc.substitution import QualifyColumnsVisitor
 
         visitor = QualifyColumnsVisitor(dataset)
         result: ExprBase = self.root.accept(visitor)
         return result.to_expr()
 
-    def get_unqualified_columns(self, dialect: HexSLDialect) -> list[str]:
+    def get_unqualified_columns(self, dialect: CalcDialect) -> list[str]:
         """Get unqualified column names only.
 
         Args:
@@ -217,7 +182,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         # Return only unqualified column names
         return sorted(c for q, c in all_columns if not q)
 
-    def get_all_columns(self, dialect: HexSLDialect) -> list[QualifiedColumnRef]:
+    def get_all_columns(self, dialect: CalcDialect) -> list[QualifiedColumnRef]:
         """Get all column references with qualification info.
 
         Returns:
@@ -231,7 +196,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         result: list[QualifiedColumnRef] = sorted(self.root.accept(visitor))
         return result
 
-    def has_aggregation(self, dialect: HexSLDialect) -> bool:
+    def has_aggregation(self, dialect: CalcDialect) -> bool:
         visitor: AnyAggregateFunctionVisitor = AnyAggregateFunctionVisitor(dialect)
         result: bool = self.root.accept(visitor)
         return result

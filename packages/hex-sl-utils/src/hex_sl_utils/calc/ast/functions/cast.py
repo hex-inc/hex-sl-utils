@@ -1,18 +1,19 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.compiled import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.calc.errors import TypeCheckError
+from hex_sl_utils.calc.protocols import CalcDialect
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
     # This import seems to be needed to help mypy follow that the FuncBase
     # args property is available in child classes
-    from hex_sl.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
 
 
 class FuncToText(FuncBase):
@@ -27,7 +28,7 @@ class FuncToText(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -99,7 +100,7 @@ class FuncToText(FuncBase):
             true_literal = dialect.compile_literal("true")
             false_literal = dialect.compile_literal("false")
             return dialect.build_ifelse(arg, true_literal, false_literal)
-        elif arg.data_type == DataType.TIMESTAMP:
+        elif arg.data_type == DataType.TIMESTAMP_NAIVE:
             # Use dialect-specific timestamp-to-string conversion
             return dialect.cast_timestamp_to_string(arg)
         else:
@@ -119,7 +120,7 @@ class FuncToNumber(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -154,7 +155,7 @@ class FuncToBoolean(FuncBase):
 
     @classmethod
     def _compile_to_boolean(
-        cls, arg: TypedSelectExpression, dialect: HexSLDialect
+        cls, arg: TypedSelectExpression, dialect: CalcDialect
     ) -> TypedSelectExpression:
         if arg.data_type == DataType.BOOLEAN:
             # Already boolean
@@ -220,7 +221,7 @@ class FuncToBoolean(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -243,7 +244,7 @@ class FuncToDatetime(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -295,7 +296,7 @@ class FuncToDatetime(FuncBase):
                 )
             else:
                 timestamp_expr = dialect.cast_str_to_timestamp(arg, tz)
-        elif arg.data_type in (DataType.TIMESTAMP, DataType.TIMESTAMPTZ):
+        elif arg.data_type in (DataType.TIMESTAMP_NAIVE, DataType.TIMESTAMP_TZ):
             # Already timestamp
             timestamp_expr = arg
         elif arg.data_type == DataType.DATE:
@@ -307,10 +308,10 @@ class FuncToDatetime(FuncBase):
             # Regular cast to datetime with TRY_CAST
             timestamp_expr = TypedSelectExpression.from_sqlglot(
                 exp.TryCast(this=arg.expression, to=exp.DataType.build("TIMESTAMP")),
-                DataType.TIMESTAMP,
+                DataType.TIMESTAMP_NAIVE,
                 arg.kind,
             )
-        if expr_tz and timestamp_expr.data_type == DataType.TIMESTAMP:
+        if expr_tz and timestamp_expr.data_type == DataType.TIMESTAMP_NAIVE:
             timestamp_expr = dialect.at_timezone(timestamp_expr, expr_tz)
 
         return timestamp_expr
@@ -328,7 +329,7 @@ class FuncToDate(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -336,9 +337,9 @@ class FuncToDate(FuncBase):
 
         if arg.data_type == DataType.STRING:
             return dialect.cast_str_to_date(arg)
-        elif arg.data_type == DataType.TIMESTAMPTZ:
+        elif arg.data_type == DataType.TIMESTAMP_TZ:
             return dialect.cast_timestamptz_to_date(arg, tz)
-        elif arg.data_type == DataType.TIMESTAMP:
+        elif arg.data_type == DataType.TIMESTAMP_NAIVE:
             return dialect.cast_timestamp_to_date(arg)
         elif arg.data_type == DataType.DATE:
             # Already date

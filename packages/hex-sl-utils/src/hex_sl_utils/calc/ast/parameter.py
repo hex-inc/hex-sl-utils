@@ -1,17 +1,22 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, TypeVar
 
 from pydantic import Field, Tag
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.datatype import DataType, datatype_to_sqlglot
-from hex_sl.expr import ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.compiled import (
+    ExpressionKind,
+    TypedSelectExpression,
+    datatype_to_sqlglot,
+)
+from hex_sl_utils.calc.errors import TypeCheckError
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
-    from hex_sl.calc.visitor import CalcVisitor
+    from hex_sl_utils.calc.visitor import CalcVisitor
 
 T = TypeVar("T")
 

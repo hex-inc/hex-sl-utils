@@ -1,18 +1,19 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl.calc.ast.functions.base import DATETIME_TYPES, FuncBase
-from hex_sl.expr import ExpressionContext
+from hex_sl_utils.calc.ast.functions.base import DATETIME_TYPES, FuncBase
+from hex_sl_utils.calc.compiled import ExpressionContext
 
 if TYPE_CHECKING:
     # This import seems to be needed to help mypy follow that the BinaryBase
     # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
-    from hex_sl.expr import TypedSelectExpression
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.calc.compiled import TypedSelectExpression
+    from hex_sl_utils.calc.protocols import CalcDialect
 
 
 class FuncDateDiffBase(FuncBase):
@@ -28,7 +29,7 @@ class FuncDateDiffBase(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:

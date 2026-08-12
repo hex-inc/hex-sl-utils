@@ -1,6 +1,7 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from typing import Annotated, Union
 
-from hex_sl.utils import UserFacingError
+from hex_sl_utils.calc.errors import UserFacingError
 
 from .base import BinaryBase
 from .comparison import (
@@ -75,24 +76,24 @@ def binary_for_name(name: str) -> type[TaggedBinaryExprUnion]:
 
 
 __all__ = [
-    "TaggedBinaryExprUnion",
+    # BinaryLogical
+    "BinaryAnd",
     # BinaryBase
     "BinaryBase",
-    # BinaryMath
-    "BinaryPlus",
-    "BinaryMinus",
-    "BinaryMultiply",
     "BinaryDivide",
-    "BinaryModulus",
-    "BinaryPower",
     # BinaryComparison
     "BinaryEqual",
-    "BinaryNotEqual",
     "BinaryGreater",
     "BinaryGreaterEqual",
     "BinaryLess",
     "BinaryLessEqual",
-    # BinaryLogical
-    "BinaryAnd",
+    "BinaryMinus",
+    "BinaryModulus",
+    "BinaryMultiply",
+    "BinaryNotEqual",
     "BinaryOr",
+    # BinaryMath
+    "BinaryPlus",
+    "BinaryPower",
+    "TaggedBinaryExprUnion",
 ]

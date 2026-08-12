@@ -1,19 +1,24 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from typing import Literal
 
 from pydantic import Field
 
-from hex_sl.calc.ast.args import Args
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.calc.ast.functions.cast import (
+from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.ast.functions.cast import (
     FuncToBoolean,
     FuncToDate,
     FuncToNumber,
     FuncToText,
 )
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils.calc.compiled import (
+    ExpressionContext,
+    ExpressionKind,
+    TypedSelectExpression,
+)
+from hex_sl_utils.calc.errors import TypeCheckError
+from hex_sl_utils.calc.protocols import CalcDialect
+from hex_sl_utils.types import DataType
 
 _ISONEOF_COERCION_MAP: dict[DataType, type[FuncBase]] = {
     DataType.NUMBER: FuncToNumber,
@@ -35,13 +40,13 @@ class FuncIf(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
         pred, true_expr, false_expr = self._validate_n_args(arg_exprs, 3)
 
-        if not pred.data_type == DataType.BOOLEAN:
+        if pred.data_type != DataType.BOOLEAN:
             msg = (
                 "First argumnet to if function must be a boolean, received: "
                 f"{pred.data_type}"
@@ -75,7 +80,7 @@ class FuncIsNull(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -96,7 +101,7 @@ class FuncCoalesce(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -117,11 +122,11 @@ class FuncIsFinite(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl._vendor.sqlglot import exp
+        from hex_sl_utils._vendor.sqlglot import exp
 
         arg = self._validate_single_arg(arg_exprs)
 
@@ -167,11 +172,11 @@ class FuncIsOneOf(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl._vendor.sqlglot import exp
+        from hex_sl_utils._vendor.sqlglot import exp
 
         if len(arg_exprs) < 1:
             msg = f"Expected at least 1 argument for {self.fun}, got {len(arg_exprs)}"
@@ -235,7 +240,7 @@ class FuncSwitch(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -278,7 +283,7 @@ class FuncSwitch(FuncBase):
                 raise TypeCheckError(msg)
 
         # Build case conditions
-        from hex_sl._vendor.sqlglot import exp
+        from hex_sl_utils._vendor.sqlglot import exp
 
         conditions = []
         for i in range(len(cases)):

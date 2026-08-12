@@ -1,3 +1,4 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -5,7 +6,7 @@ from typing import TYPE_CHECKING
 from pydantic import RootModel
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.expr import CalcExpr
+    from hex_sl_utils.calc.ast.expr import CalcExpr
 
 
 class Args(RootModel[list["CalcExpr"]]):

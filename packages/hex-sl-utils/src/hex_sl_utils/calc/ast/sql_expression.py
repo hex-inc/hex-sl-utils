@@ -1,14 +1,15 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, TypeVar
 
 from pydantic import Field, Tag
 
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.datatype import DataType
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
-    from hex_sl.calc.visitor import CalcVisitor
+    from hex_sl_utils.calc.visitor import CalcVisitor
 
 T = TypeVar("T")
 

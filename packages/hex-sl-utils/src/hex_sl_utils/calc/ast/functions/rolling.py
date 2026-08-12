@@ -1,10 +1,12 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl.calc.ast.functions.aggs import (
+from hex_sl_utils.calc.ast.functions.aggs import (
     FuncAggBase,
     FuncAvg,
     FuncCount,
@@ -19,12 +21,18 @@ from hex_sl.calc.ast.functions.aggs import (
     FuncVariance,
     FuncVariancePop,
 )
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.calc.compiled import ExpressionContext, TypedSelectExpression
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
-    from hex_sl.semantic.measure import MeasureRolling
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.calc.protocols import CalcDialect
+
+
+@dataclass(frozen=True)
+class CalcRollingWindow:
+    """Query-engine-neutral rolling-window metadata from a calc function."""
+
+    trailing: Literal["unbounded"]
 
 
 class FuncRollingBase(FuncAggBase):
@@ -34,7 +42,7 @@ class FuncRollingBase(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -44,18 +52,14 @@ class FuncRollingBase(FuncAggBase):
         msg = "Subclasses must implement this method"
         raise NotImplementedError(msg)
 
-    def build_rolling(self) -> MeasureRolling:
+    def build_rolling(self) -> CalcRollingWindow:
         msg = "Subclasses must implement this method"
         raise NotImplementedError(msg)
 
 
 class FuncCumulativeBase(FuncRollingBase):
-    def build_rolling(self) -> MeasureRolling:
-        from hex_sl.semantic.measure import MeasureRolling
-
-        return MeasureRolling(
-            trailing="unbounded",
-        )
+    def build_rolling(self) -> CalcRollingWindow:
+        return CalcRollingWindow(trailing="unbounded")
 
 
 class FuncCumulativeSum(FuncCumulativeBase):

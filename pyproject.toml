@@ -10,6 +10,7 @@ license-files = ["LICENSE", "VENDORED_LICENSES"]
 [dependency-groups]
 dev = [
   "inline-snapshot>=0.31.1",
+  "lark>=1.3.1,<2; python_version >= '3.14'",
   "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
   "pyright>=1.1.411",
@@ -52,7 +53,7 @@ show_missing = true
 
 [tool.pyright]
 include = ["packages", "scripts", "tests"]
-exclude = ["**/_vendor"]
+exclude = ["**/_vendor", "**/calc/_calc_parser_standalone.py"]
 pythonVersion = "3.14"
 typeCheckingMode = "standard"
 venv = ".venv"
@@ -64,7 +65,7 @@ executionEnvironments = [
 ]
 
 [tool.ruff]
-extend-exclude = ["**/_vendor"]
+extend-exclude = ["**/_vendor", "**/calc/_calc_parser_standalone.py"]
 line-length = 88
 required-version = ">=0.16.1"
 target-version = "py314"

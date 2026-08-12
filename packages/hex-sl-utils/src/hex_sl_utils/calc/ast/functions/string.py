@@ -1,20 +1,24 @@
+# pyright: reportCallIssue=false, reportIncompatibleVariableOverride=false
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.datatype import DataType
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.compiled import (
+    ExpressionContext,
+    ExpressionKind,
+    TypedSelectExpression,
+)
+from hex_sl_utils.types import DataType
 
 if TYPE_CHECKING:
     # This import seems to be needed to help mypy follow that the BinaryBase
     # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
-    from hex_sl.expr import TypedSelectExpression
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.calc.protocols import CalcDialect
 
 
 class FuncConcat(FuncBase):
@@ -29,7 +33,7 @@ class FuncConcat(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -43,11 +47,11 @@ class FuncLeftRightBase(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.utils import TypeCheckError
+        from hex_sl_utils.calc.errors import TypeCheckError
 
         arg0, arg1 = self._validate_n_args(arg_exprs, 2)
 
@@ -126,7 +130,7 @@ class FuncSubstitute(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -158,7 +162,7 @@ class FuncUpper(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -179,7 +183,7 @@ class FuncLower(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -203,7 +207,7 @@ class FuncContains(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -224,7 +228,7 @@ class FuncLength(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -246,7 +250,7 @@ class FuncStartsWith(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -269,7 +273,7 @@ class FuncEndsWith(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -293,7 +297,7 @@ class FuncSplitPart(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: CalcDialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
