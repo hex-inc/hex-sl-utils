@@ -41,13 +41,17 @@ To update a vendored library:
    devbox run build:vendoring
    ```
 
-3. Run tests to ensure everything works:
+3. Copy the upstream license to `VENDORED_LICENSES` at the root of the
+   repository and the root of packages that contain the vendoring. This may
+   already be done.
+
+4. Run tests to ensure everything works:
 
    ```bash
    devbox run test
    ```
 
-4. Commit the changes
+5. Commit the changes
 
 ## Import Convention
 
@@ -77,8 +81,7 @@ standard AST to preserve:
 The rewriter handles these import patterns
 
 - `import sqlglot` → `import hex_sl_utils._vendor.sqlglot as sqlglot`
-- `import sqlglot.expressions` →
-  `import hex_sl_utils._vendor.sqlglot.expressions`
+- `import sqlglot.expressions` → `import hex_sl_utils._vendor.sqlglot.expressions` <!-- rumdl-disable-line line-length -->
 - `from sqlglot import exp` → `from hex_sl_utils._vendor.sqlglot import exp`
 - `from sqlglot.dialects import BigQuery` →
   `from hex_sl_utils._vendor.sqlglot.dialects import BigQuery`

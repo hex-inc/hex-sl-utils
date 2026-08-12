@@ -5,7 +5,7 @@ description = "Development workspace for Hex semantic-layer utility packages"
 requires-python = ">=3.9"
 dependencies = []
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "VENDORED_LICENSES"]
 
 [dependency-groups]
 dev = [

@@ -11,7 +11,7 @@ dependencies = [
   "typing-extensions>=4.12",
 ]
 license = "Apache-2.0"
-license-files = ["LICENSE"]
+license-files = ["LICENSE", "VENDORED_LICENSES"]
 
 [project.urls]
 changelog = "https://github.com/hex-inc/hex-sl-utils/blob/main/packages/hex-sl-utils/CHANGELOG.md"

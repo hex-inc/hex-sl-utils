@@ -483,12 +483,14 @@ def main() -> None:
     print(f"Vendoring sqlglot {SQLGLOT_VERSION} into {VENDOR_DIR}")
     print("Using LibCST to preserve all formatting and comments")
 
-    # Clean or create vendor directory
+    # Download sqlglot before touching the committed vendor directory. This keeps
+    # the existing artifact intact if the network request or archive extraction
+    # fails.
+    sqlglot_source = download_sqlglot(SQLGLOT_VERSION)
+
+    # Clean or create vendor directory only after the download is ready.
     clean_vendor_directory(VENDOR_DIR)
     create_vendor_init_files()
-
-    # Download sqlglot
-    sqlglot_source = download_sqlglot(SQLGLOT_VERSION)
 
     # Copy source code
     copy_sqlglot_source(sqlglot_source, VENDOR_DIR)
