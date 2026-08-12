@@ -40,7 +40,7 @@
         "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
       ],
       "build": ["uv build --all-packages --no-sources"],
-      "verify": ["devbox run verify:schema"],
+      "verify": ["devbox run verify:schema", "devbox run verify:vendoring"],
       "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py \"$@\""],
       "ci": [
         "devbox run check",
@@ -52,6 +52,12 @@
       "build:schema": ["uv run --locked --all-packages python scripts/schema/generate_schema.py"],
       "verify:schema": [
         "uv run --locked --all-packages python scripts/schema/check_generated_schema.py"
+      ],
+      "build:vendoring": [
+        "uv run --locked --all-packages python scripts/vendoring/vendor_sqlglot.py"
+      ],
+      "verify:vendoring": [
+        "uv run --locked --all-packages python scripts/vendoring/check_vendored_sqlglot.py"
       ]
     }
   }

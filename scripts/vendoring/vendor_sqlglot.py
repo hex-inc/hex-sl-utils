@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Vendor sqlglot library into hex_sl._vendor.sqlglot
+Vendor sqlglot library into hex_sl_utils._vendor.sqlglot
 
 This script downloads sqlglot from GitHub, rewrites its internal imports
-to use the vendored namespace, and places it in the hex_sl package.
+to use the vendored namespace, and places it in the hex_sl_utils package.
 
 This version uses LibCST to preserve all formatting, comments, and style.
 """
@@ -14,6 +14,7 @@ import sys
 import tempfile
 import zipfile
 from pathlib import Path
+from typing import cast
 
 try:
     import libcst as cst
@@ -26,9 +27,17 @@ import requests
 # Configuration
 SQLGLOT_VERSION = "v27.8.0"
 SQLGLOT_REPO = "https://github.com/tobymao/sqlglot"
-VENDOR_NAMESPACE = "hex_sl._vendor"
-PROJECT_ROOT = Path(__file__).parent.parent
-VENDOR_DIR = PROJECT_ROOT / "src" / "hex_sl" / "_vendor" / "sqlglot"
+VENDOR_NAMESPACE = "hex_sl_utils._vendor"
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+VENDOR_DIR = (
+    PROJECT_ROOT
+    / "packages"
+    / "hex-sl-utils"
+    / "src"
+    / "hex_sl_utils"
+    / "_vendor"
+    / "sqlglot"
+)
 
 
 class SqlglotImportRewriter(cst.CSTTransformer):
@@ -37,7 +46,7 @@ class SqlglotImportRewriter(cst.CSTTransformer):
     def __init__(self, vendor_namespace: str = VENDOR_NAMESPACE) -> None:
         self.vendor_namespace = vendor_namespace
 
-    def leave_Import(  # noqa: N802
+    def leave_Import(
         self, original_node: cst.Import, updated_node: cst.Import
     ) -> cst.Import:
         """Handle 'import sqlglot' style imports."""
@@ -62,9 +71,10 @@ class SqlglotImportRewriter(cst.CSTTransformer):
                 elif isinstance(name, cst.Name) and name.value == "sqlglot":
                     # Handle import sqlglot
                     if name_item.asname is None:
-                        # import sqlglot -> import hex_sl._vendor.sqlglot as sqlglot
-                        new_name = cst.parse_expression(
-                            f"{self.vendor_namespace}.sqlglot"
+                        # import sqlglot -> import hex_sl_utils._vendor.sqlglot as sqlglot
+                        new_name = cast(
+                            cst.Attribute,
+                            cst.parse_expression(f"{self.vendor_namespace}.sqlglot"),
                         )
                         new_names.append(
                             cst.ImportAlias(
@@ -80,9 +90,10 @@ class SqlglotImportRewriter(cst.CSTTransformer):
                         continue
                     else:
                         # import sqlglot as alias ->
-                        #     import hex_sl._vendor.sqlglot as alias
-                        new_name = cst.parse_expression(
-                            f"{self.vendor_namespace}.sqlglot"
+                        #     import hex_sl_utils._vendor.sqlglot as alias
+                        new_name = cast(
+                            cst.Attribute,
+                            cst.parse_expression(f"{self.vendor_namespace}.sqlglot"),
                         )
                         new_names.append(name_item.with_changes(name=new_name))
                         changed = True
@@ -94,7 +105,7 @@ class SqlglotImportRewriter(cst.CSTTransformer):
             return updated_node.with_changes(names=new_names)
         return updated_node
 
-    def leave_ImportFrom(  # noqa: N802
+    def leave_ImportFrom(
         self, original_node: cst.ImportFrom, updated_node: cst.ImportFrom
     ) -> cst.ImportFrom:
         """Handle 'from sqlglot import ...' style imports."""
@@ -111,7 +122,7 @@ class SqlglotImportRewriter(cst.CSTTransformer):
 
         return updated_node
 
-    def _get_full_name(self, node) -> str:  # noqa: ANN001
+    def _get_full_name(self, node) -> str:
         """Extract the full dotted name from a Name or Attribute node."""
         if isinstance(node, cst.Name):
             return node.value
@@ -120,7 +131,7 @@ class SqlglotImportRewriter(cst.CSTTransformer):
         else:
             return ""
 
-    def _rewrite_attribute(self, node, old_prefix: str, new_prefix: str):  # noqa: ANN001, ANN202
+    def _rewrite_attribute(self, node, old_prefix: str, new_prefix: str):
         """Recursively rewrite an Attribute node to use a new prefix."""
         if isinstance(node, cst.Name):
             if node.value == old_prefix:
@@ -131,9 +142,7 @@ class SqlglotImportRewriter(cst.CSTTransformer):
             return node.with_changes(value=new_value)
         return node
 
-    def leave_Call(  # noqa: N802
-        self, original_node: cst.Call, updated_node: cst.Call
-    ) -> cst.Call:
+    def leave_Call(self, original_node: cst.Call, updated_node: cst.Call) -> cst.Call:
         """Handle function calls that might contain sqlglot module paths in strings."""
         # Check if this is an import_module call
         func_name = None
@@ -237,7 +246,7 @@ def rewrite_imports_in_file(
     try:
         # Parse the source code into CST
         tree = cst.parse_module(source)
-    except Exception as e:
+    except cst.ParserSyntaxError as e:
         print(f"Warning: Error parsing {file_path}: {e}")
         return False
 
@@ -363,13 +372,13 @@ def rewrite_vendored_imports(vendor_dir: Path) -> None:
 
 def create_vendor_init_files() -> None:
     """Create __init__.py files for the vendor namespace."""
-    vendor_root = PROJECT_ROOT / "src" / "hex_sl" / "_vendor"
+    vendor_root = VENDOR_DIR.parent
 
     # Create _vendor/__init__.py if it doesn't exist
     vendor_init = vendor_root / "__init__.py"
     if not vendor_init.exists():
         vendor_init.parent.mkdir(parents=True, exist_ok=True)
-        vendor_init.write_text('"""Vendored dependencies for hex_sl."""\n')
+        vendor_init.write_text('"""Vendored dependencies for hex_sl_utils."""\n')
         print(f"Created {vendor_init}")
 
 
@@ -399,21 +408,22 @@ def add_vendor_readme(vendor_dir: Path, version: str) -> None:
 
 This directory contains a vendored copy of sqlglot version {version}.
 
-Original repository: {SQLGLOT_REPO}
+Original repository: <{SQLGLOT_REPO}>
 
 ## How to update
 
 Run the vendoring script:
 
 ```bash
-pixi run vendor-sqlglot
+devbox run build:vendoring
 ```
 
 This will download sqlglot and update all imports.
 
 ## License
 
-sqlglot is distributed under the MIT license. See LICENSE file in this directory.
+sqlglot is distributed under the MIT license.
+See LICENSE in this directory.
 """
 
     readme_path = vendor_dir / "README_VENDOR.md"
@@ -440,11 +450,11 @@ def copy_license(source_dir: Path, vendor_dir: Path) -> None:
     print("Warning: Could not find sqlglot LICENSE file")
 
 
-PATCHES_DIR = PROJECT_ROOT / "scripts" / "vendor_patches"
+PATCHES_DIR = PROJECT_ROOT / "scripts" / "vendoring" / "patches" / "sqlglot"
 
 
 def apply_vendor_patches() -> None:
-    """Apply local patch files from scripts/vendor_patches/ to the vendored code."""
+    """Apply local patch files from scripts/vendoring/patches/ to the vendored code."""
     if not PATCHES_DIR.exists():
         return
 
@@ -455,11 +465,12 @@ def apply_vendor_patches() -> None:
     print(f"\nApplying {len(patches)} vendor patch(es)...")
     for patch in patches:
         print(f"  Applying: {patch.name}")
-        result = subprocess.run(  # noqa: S603
-            ["git", "apply", str(patch)],  # noqa: S607
+        result = subprocess.run(
+            ["git", "apply", str(patch)],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
+            check=False,
         )
         if result.returncode != 0:
             print(f"  ERROR applying {patch.name}:")

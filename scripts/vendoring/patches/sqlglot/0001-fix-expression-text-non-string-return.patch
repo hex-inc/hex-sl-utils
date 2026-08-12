@@ -1,6 +1,6 @@
-diff --git a/src/hex_sl/_vendor/sqlglot/dialects/dialect.py b/src/hex_sl/_vendor/sqlglot/dialects/dialect.py
---- a/src/hex_sl/_vendor/sqlglot/dialects/dialect.py
-+++ b/src/hex_sl/_vendor/sqlglot/dialects/dialect.py
+diff --git a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
+--- a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
++++ b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
 @@ -1724,7 +1724,9 @@
  
  def map_date_part(part, dialect: DialectType = Dialect):
@@ -12,9 +12,9 @@ diff --git a/src/hex_sl/_vendor/sqlglot/dialects/dialect.py b/src/hex_sl/_vendor
      )
      if mapped:
          return exp.Literal.string(mapped) if part.is_string else exp.var(mapped)
-diff --git a/src/hex_sl/_vendor/sqlglot/expressions.py b/src/hex_sl/_vendor/sqlglot/expressions.py
---- a/src/hex_sl/_vendor/sqlglot/expressions.py
-+++ b/src/hex_sl/_vendor/sqlglot/expressions.py
+diff --git a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
+--- a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
++++ b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
 @@ -163,10 +163,9 @@
          field = self.args.get(key)
          if isinstance(field, str):
