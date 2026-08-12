@@ -13,9 +13,9 @@ devbox run build
 This writes the JSON Schema and TypeScript declarations beneath
 `packages/hex-sl-utils/src/hex_sl_utils/schema_files`.
 
-Regenerate the artifacts and verify that the checked-in copies are current
+Regenerate the artifacts and check that the checked-in copies are current
 with:
 
 ```text
-devbox run verify
+devbox run verify:schema
 ```

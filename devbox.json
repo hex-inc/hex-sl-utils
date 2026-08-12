@@ -39,11 +39,8 @@
       "test-cov": [
         "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
       ],
-      "build": [
-        "uv build --all-packages --no-sources",
-        "uv run --locked --all-packages python scripts/schema/generate_schema.py"
-      ],
-      "verify": ["uv run --locked --all-packages python scripts/check_generated_schema.py"],
+      "build": ["uv build --all-packages --no-sources"],
+      "verify": ["devbox run verify:schema"],
       "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py \"$@\""],
       "ci": [
         "devbox run check",
@@ -51,6 +48,10 @@
         "devbox run verify",
         "devbox run build",
         "devbox run smoke-test"
+      ],
+      "build:schema": ["uv run --locked --all-packages python scripts/schema/generate_schema.py"],
+      "verify:schema": [
+        "uv run --locked --all-packages python scripts/schema/check_generated_schema.py"
       ]
     }
   }

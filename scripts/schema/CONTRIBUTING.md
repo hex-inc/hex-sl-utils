@@ -2,8 +2,8 @@
 
 ## Local environment
 
-The generator uses Python 3.14 and uv to produce JSON Schema, then Node.js 24
-and pnpm 11 to produce TypeScript declarations. The repository's Devbox
+The generation script uses uv and Python to produce a JSON Schema and Node.js
+and pnpm to produce TypeScript declarations. The repository's Devbox
 configuration pins all four tools.
 
 From the repository root:
@@ -16,16 +16,16 @@ devbox shell
 `setup` synchronizes the Python workspace and installs the locked pnpm
 workspace dependencies.
 
-## Generate and verify artifacts
+## Generate and check artifacts
 
 Run the workspace Devbox scripts from the repository root:
 
 ```shell
-devbox run build
-devbox run verify
+devbox run build:schema
+devbox run verify:schema
 ```
 
-`build` builds the Python distributions, then runs
+`build:schema` builds the Python distributions, then runs
 [`generate_schema.py`](generate_schema.py), which performs the following
 steps:
 
@@ -38,15 +38,16 @@ The artifacts are written beneath
 `packages/hex-sl-utils/src/hex_sl_utils/schema_files`. Commit intentional
 artifact changes together with their generator or model changes.
 
-`verify` runs [`check_generated_schema.py`](../check_generated_schema.py),
-regenerates the artifacts, and fails if the result differs from the committed
-files. CI runs this guard on every pull request.
+`verify:schema` runs
+[`check_generated_schema.py`](./check_generated_schema.py), regenerates the
+artifacts, and fails if the result differs from the committed files. CI runs
+this guard on every pull request.
 
 Run the workspace checks after changing the generator or its TypeScript
 transforms:
 
 ```shell
-devbox run check
+devbox run verify:schema
 devbox run format
 ```
 
@@ -79,17 +80,8 @@ Devbox environment as well.
 
 ## Before opening a pull request
 
-Regenerate and verify the schema artifacts, then run the workspace checks and
-tests:
+Verify the schema artifact matches regeneration.
 
 ```shell
-devbox run verify
-devbox run check
-devbox run test
-```
-
-The complete repository check is available as:
-
-```shell
-devbox run ci
+devbox run verify:schema
 ```
