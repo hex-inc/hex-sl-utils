@@ -35,9 +35,9 @@ devbox run format      # apply automatic formatting and fixes
 devbox run test        # run all tests
 devbox run test-cov    # run tests and write coverage reports
 devbox run build       # build every publishable package, artifact
-devbox run verify      # verify build outputs
-devbox run smoke-test  # test built artifacts in isolation
-devbox run ci          # run checks, tests, builds, and smoke tests
+devbox run smoke-test  # test package distributions in isolation
+devbox run verify      # check generated artifacts are up to date
+devbox run ci          # run (almost) all of the above
 ```
 
 Add or update a Devbox script when a command is useful across the workspace.
