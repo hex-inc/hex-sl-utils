@@ -6,16 +6,16 @@ import re
 import sys
 from pathlib import Path
 
-# Find project root (2 levels up from scripts/grammar/)
 project_root = Path(__file__).parent.parent.parent
-grammar_path = project_root / "src/hex_sl/calc/grammar.lark"
-parser_path = project_root / "src/hex_sl/calc/_calc_parser_standalone.py"
+calc_path = project_root / "packages" / "hex-sl-utils" / "src" / "hex_sl_utils" / "calc"
+grammar_path = calc_path / "grammar.lark"
+parser_path = calc_path / "_calc_parser_standalone.py"
 
 # Check if parser file exists
 if not parser_path.exists():
     print(f"ERROR: Standalone parser not found at {parser_path}")
     print("\nTo generate the standalone parser, run:")
-    print("  pixi run generate-standalone-parser")
+    print("  devbox run build:calc")
     sys.exit(1)
 
 # Read and hash the current grammar
@@ -30,7 +30,7 @@ if not hash_match:
     print(f"ERROR: No grammar hash found in {parser_path}")
     print("\nThe standalone parser file is missing the grammar hash in its header.")
     print("To regenerate the standalone parser, run:")
-    print("  pixi run generate-standalone-parser")
+    print("  devbox run build:calc")
     sys.exit(1)
 
 stored_grammar_hash = hash_match.group(1)
@@ -42,7 +42,7 @@ if current_grammar_hash != stored_grammar_hash:
     print(f"  Parser hash:  {stored_grammar_hash}")
     print("\nThe grammar file has changed since the standalone parser was generated.")
     print("To regenerate the standalone parser, run:")
-    print("  pixi run generate-standalone-parser")
+    print("  devbox run build:calc")
     sys.exit(1)
 
 print("✓ Standalone parser is up to date with grammar file")
