@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import hex_sl_utils
+from hex_sl_utils.calc import parse_calc_expression
 from hex_sl_utils.load import load_project
 from hex_sl_utils.schema import (
     resource_json_schema,
@@ -14,6 +15,9 @@ from hex_sl_utils.types import Model
 assert Path(hex_sl_utils.__file__).name == "__init__.py"
 assert resource_json_schema()["title"] == "Resource"
 assert "export type Resource =" in resource_typescript_declarations()
+assert parse_calc_expression("sum(revenue) / count(order_id)").to_string() == (
+    "(sum(revenue) / count(order_id))"
+)
 
 with TemporaryDirectory() as temp_dir:
     project_dir = Path(temp_dir)
