@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 vendor_script = project_root / "scripts" / "vendoring" / "vendor_sqlglot.py"
 vendor_dir = (
     project_root

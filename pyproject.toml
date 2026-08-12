@@ -10,13 +10,13 @@ license-files = ["LICENSE"]
 [dependency-groups]
 dev = [
   "inline-snapshot>=0.31.1",
-  "libcst>=1.8.6,<2",
+  "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
   "pyright>=1.1.411",
   "pytest>=8.4.2",
   "pytest-cov>=7.1.0",
   "pyyaml>=6.0.3",
-  "requests>=2.32.5,<3",
+  "requests>=2.34.2,<3; python_version >= '3.14'",
   "ruff>=0.16.1",
   "rumdl>=0.2.52",
 ]
@@ -52,7 +52,7 @@ show_missing = true
 
 [tool.pyright]
 include = ["packages", "scripts", "tests"]
-exclude = ["**/_vendor/sqlglot"]
+exclude = ["**/_vendor"]
 pythonVersion = "3.14"
 typeCheckingMode = "standard"
 venv = ".venv"
@@ -64,7 +64,7 @@ executionEnvironments = [
 ]
 
 [tool.ruff]
-extend-exclude = ["**/_vendor/sqlglot"]
+extend-exclude = ["**/_vendor"]
 line-length = 88
 required-version = ">=0.16.1"
 target-version = "py314"
@@ -77,6 +77,7 @@ target-version = "py314"
 known-first-party = ["hex_sl_utils"]
 
 [tool.rumdl]
+exclude = ["**/_vendor/**"]
 flavor = "gfm"
 
 [tool.rumdl.MD013]

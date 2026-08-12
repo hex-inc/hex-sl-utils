@@ -25,15 +25,15 @@ jobs:
           enable-cache: "true"
       - name: Sync workspace
         run: devbox run setup
-      - name: Run checks
+      - name: Check packages
         run: devbox run check
       - name: Run workspace tests
         run: devbox run test
       - name: Check generated artifacts
         run: devbox run verify
-      - name: Build distributions
+      - name: Build package distributions
         run: devbox run build
-      - name: Smoke-test distributions
+      - name: Smoke-test package distributions
         run: devbox run smoke-test
 
   test:
