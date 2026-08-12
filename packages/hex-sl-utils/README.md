@@ -9,6 +9,7 @@ APIs may change until the first stable release.
 
 - Pydantic models for semantic-layer projects, models, views, dimensions,
   measures, and relations.
+- Hex calc-language parsing, serializable AST models, and SQL compilation.
 - Project loading from YAML files with structured validation problems.
 - Support for multiple SQL dialects.
 - Generated JSON Schema and TypeScript declarations.
@@ -72,6 +73,26 @@ model = Model.model_validate(
     }
 )
 ```
+
+Calc formulas can be parsed without a Hex-SL project:
+
+```python
+from hex_sl_utils.calc import parse_calc_expression
+
+calc = parse_calc_expression("sum(revenue) / count(order_id)")
+print(calc.to_string())
+```
+
+Compilation is exposed through `CalcExpr.compile()` and
+`compile_calc_expression()`. It accepts a `CalcDialect` adapter, a mapping of
+column names to `DataType`, parameter types, and an expression context, and
+returns a `TypedSelectExpression` containing the SQLGlot expression, result
+type, and scalar/column/aggregation/window kind.
+
+The adapter boundary is intentional: this package owns the calc language and
+compiler, while an embedding query engine owns dialect-specific SQL behavior.
+It lets Hex-SL supply its existing dialect implementation without introducing
+a dependency from `hex-sl-utils` back to `hex-sl`.
 
 The generated schema artifacts are included in the distribution and can be
 read without relying on a checkout path:
