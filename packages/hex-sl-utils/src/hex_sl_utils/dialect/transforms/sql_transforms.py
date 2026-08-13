@@ -1,7 +1,7 @@
 from functools import reduce
 
-from hex_sl._vendor.sqlglot import exp, generator
-from hex_sl._vendor.sqlglot.helper import find_new_name
+from hex_sl_utils._vendor.sqlglot import exp, generator
+from hex_sl_utils._vendor.sqlglot.helper import find_new_name
 
 
 def values_as_union_with_consistent_names_sql(

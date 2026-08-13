@@ -1,21 +1,17 @@
 from __future__ import annotations
 
+import datetime
 import math
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import Any, ClassVar, Literal
 
-# Re-export DialectName and TruncUnit from hex_sl_common for backward compatibility
-from hex_sl_common import DialectName as DialectName
-from hex_sl_common import TruncUnit as TruncUnit
-from hex_sl_common import normalize_dialect_name
-
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.datatype import DataType, datatype_to_sqlglot
-from hex_sl.expr import ExpressionKind
-from hex_sl.utils import UnsupportedByDialectError, assert_unreachable
-
-if TYPE_CHECKING:
-    from hex_sl.expr import ExpressionContext, TypedSelectExpression
-    from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
+from hex_sl_utils.dialect.dialect_name import DialectName, normalize_dialect_name
+from hex_sl_utils.exception import UnsupportedByDialectError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.expr.expr_substitution import _needs_parens_for_substitution
+from hex_sl_utils.time import TimeTruncUnit
+from hex_sl_utils.utils import assert_unreachable
 
 # Time part units for the time_part function
 TimePartUnit = Literal["hour", "minute", "second", "millisecond"]
@@ -91,7 +87,6 @@ class HexSLDialect:
         Returns:
             str: The quoted identifier
         """
-        from hex_sl._vendor.sqlglot import exp
 
         # Create an identifier expression and convert to SQL for this dialect
         id_expr = exp.to_identifier(identifier, quoted=True)
@@ -198,7 +193,6 @@ class HexSLDialect:
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast to int first if needed
         int_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("BIGINT"))
@@ -217,8 +211,6 @@ class HexSLDialect:
         """
         Build expression to convert a timestamp to epoch milliseconds.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -239,7 +231,7 @@ class HexSLDialect:
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
         """
@@ -260,7 +252,6 @@ class HexSLDialect:
         only supports parsing string to timezone aware timestamps, then the
         provided timezone should be used.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         try_cast_expr = exp.TryCast(
             this=arg.expression, to=exp.DataType.build("TIMESTAMP")
@@ -282,7 +273,6 @@ class HexSLDialect:
         Build expression to cast string to date, or null if the string is
         not a date
         """
-        from hex_sl.expr import TypedSelectExpression
 
         try_cast_expr = exp.TryCast(this=arg.expression, to=exp.DataType.build("DATE"))
         return TypedSelectExpression.from_sqlglot(
@@ -296,7 +286,6 @@ class HexSLDialect:
         Build expression to cast timestamptz to date, or null if the timestamptz is
         not a date
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Convert to target timezone first
         tz_arg = self.at_timezone(arg, tz)
@@ -310,7 +299,6 @@ class HexSLDialect:
         Build expression to cast timestamp to date, or null if the timestamp is
         not a date
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("DATE"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.DATE, arg.kind)
@@ -321,7 +309,6 @@ class HexSLDialect:
         """
         Build expression to cast a date to a naive timestamp
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("TIMESTAMP"))
         return TypedSelectExpression.from_sqlglot(
@@ -341,7 +328,6 @@ class HexSLDialect:
         Build expression to cast string to number, or null if the string is
         not a number
         """
-        from hex_sl.expr import TypedSelectExpression
 
         try_cast_expr = exp.TryCast(
             this=arg.expression, to=exp.DataType.build("DOUBLE")
@@ -356,7 +342,6 @@ class HexSLDialect:
 
         Can be overridden by dialects that need special handling (e.g., ClickHouse).
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("DOUBLE"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.NUMBER, arg.kind)
@@ -367,7 +352,6 @@ class HexSLDialect:
 
         Can be overridden by dialects that need special handling (e.g., ClickHouse).
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("INT"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.NUMBER, arg.kind)
@@ -378,7 +362,6 @@ class HexSLDialect:
 
         Can be overridden by dialects that need special handling (e.g., ClickHouse).
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("VARCHAR"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.STRING, arg.kind)
@@ -404,8 +387,6 @@ class HexSLDialect:
         """
         Build expression to extract a date part from a timestamp.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -426,9 +407,6 @@ class HexSLDialect:
         arg: TypedSelectExpression,
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
 
@@ -450,9 +428,6 @@ class HexSLDialect:
         unit: TimePartUnit,
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -508,7 +483,6 @@ class HexSLDialect:
         """
         Build expression to calculate the difference between two dates.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         epoch0 = self.datetime_to_epoch_ms(arg0)
         epoch1 = self.datetime_to_epoch_ms(arg1)
@@ -527,7 +501,7 @@ class HexSLDialect:
         elif diff_fn == "diffmilliseconds":
             unit_millis = 1
         else:
-            assert_unreachable()
+            assert_unreachable(diff_fn)
 
         # Calculate (epoch1 - epoch0) / unit_millis
         diff_expr = exp.Sub(this=epoch1.expression, expression=epoch0.expression)
@@ -543,8 +517,6 @@ class HexSLDialect:
         Defaults to sqlglot's CurrentTimestamp function, and returns
         a timestamp with timezone.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.CurrentTimestamp(),
@@ -559,8 +531,6 @@ class HexSLDialect:
         Defaults to sqlglot's CurrentDate function, and returns
         a date.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.CurrentDate(),
@@ -577,7 +547,6 @@ class HexSLDialect:
         Default implementation uses STRPOS/POSITION which is available in most dialects.
         Dialects can override this for dialect-specific implementations.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
@@ -596,7 +565,6 @@ class HexSLDialect:
         Uses LEFT(string, LENGTH(prefix)) = prefix approach which is safe
         for column references and doesn't require escaping special characters.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
 
@@ -616,7 +584,6 @@ class HexSLDialect:
         Uses RIGHT(string, LENGTH(suffix)) = suffix approach which is safe
         for column references and doesn't require escaping special characters.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
 
@@ -633,7 +600,6 @@ class HexSLDialect:
 
         Uses standard LENGTH function. Dialects can override for special handling.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = string.kind
         length_expr = exp.Length(this=string.expression)
@@ -655,7 +621,6 @@ class HexSLDialect:
         Defaults to using SPLIT combined with array indexing,
         which will work if the DB supports arrays.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [
@@ -696,7 +661,7 @@ class HexSLDialect:
 
         return TypedSelectExpression.from_sqlglot(result_expr, DataType.STRING, kind)
 
-    def timestamp_subsecond_suffix(self) -> Optional[str]:
+    def timestamp_subsecond_suffix(self) -> str | None:
         """
         Returns the suffix the dialect appends when converting timestamps to
         strings that have no fractional component. Most dialects don't add
@@ -715,7 +680,6 @@ class HexSLDialect:
         handling (e.g., ClickHouse can cast to DateTime first) or just override
         timestamp_subsecond_suffix() to specify the suffix to remove.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # First cast to VARCHAR
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("VARCHAR"))
@@ -755,7 +719,6 @@ class HexSLDialect:
         """
         Build the join ON condition that matches nulls.
         """
-        from hex_sl.expr import _needs_parens_for_substitution
 
         # Wrap expressions in parentheses if needed for IS NULL checks
         # to ensure proper operator precedence (e.g., for concatenation)
@@ -782,7 +745,6 @@ class HexSLDialect:
         This ensures consistent behavior across all dialects where NULLs are
         converted to empty strings in concat operations.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -809,9 +771,9 @@ class HexSLDialect:
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal value to the dialect's representation.
@@ -828,12 +790,10 @@ class HexSLDialect:
         Returns:
             TypedSelectExpression: The compiled typed select expression.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         def _compile_literal_inner(
-            literal: Any,  # noqa: ANN401
-            data_type: Optional[DataType],
+            literal: Any,
+            data_type: DataType | None,
         ) -> TypedSelectExpression:
             """Inner function that compiles literals without context wrapping."""
             # Handle None/NULL
@@ -920,7 +880,6 @@ class HexSLDialect:
                 )
 
             # Handle date objects
-            import datetime
 
             if isinstance(literal, datetime.date) and not isinstance(
                 literal, datetime.datetime
@@ -1006,11 +965,11 @@ class HexSLDialect:
         """
         return False
 
-    def func(self, name: str, *args: Any) -> exp.Func:  # noqa: ANN401 (it's the API)
+    def func(self, name: str, *args: Any) -> exp.Func:
         return exp.func(name, *args, dialect=self.sqlglot_dialect())
 
     # Expression building methods
-    def build_null(self, data_type: Optional[DataType] = None) -> TypedSelectExpression:
+    def build_null(self, data_type: DataType | None = None) -> TypedSelectExpression:
         """
         Build a NULL literal expression.
 
@@ -1045,7 +1004,7 @@ class HexSLDialect:
     def build_case(
         self,
         ifs: list[tuple[TypedSelectExpression, TypedSelectExpression]],
-        default: Optional[TypedSelectExpression] = None,
+        default: TypedSelectExpression | None = None,
     ) -> TypedSelectExpression:
         """
         Build a CASE statement with multiple conditions.
@@ -1057,7 +1016,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the CASE statement
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Build list of IF expressions
         if_exprs = [
@@ -1095,7 +1053,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the COALESCE
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if not args:
             msg = "COALESCE requires at least one argument"
@@ -1123,7 +1080,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the GREATEST
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if not args:
             msg = "GREATEST requires at least one argument"
@@ -1151,7 +1107,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the LEAST
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if not args:
             msg = "LEAST requires at least one argument"
@@ -1179,7 +1134,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the IS NULL test
         """
-        from hex_sl.expr import TypedSelectExpression
 
         is_null_expr = exp.Is(this=arg.expression, expression=exp.Null())
 
@@ -1197,7 +1151,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the IS NAN test
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if not self.supports_non_finite_floats():
             # Return false for dialects that don't support NaN
@@ -1220,7 +1173,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the IS INFINITE test
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if not self.supports_non_finite_floats():
             # Return false for dialects that don't support infinity
@@ -1253,7 +1205,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the ROUND operation
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Default implementation uses single-argument ROUND
         round_expr = exp.Round(this=arg.expression)
@@ -1270,7 +1221,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the MEDIAN operation
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Default implementation uses native MEDIAN function
         # Cast to float using dialect method
@@ -1296,7 +1246,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the division
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Wrap left operand in parentheses if it's a binary op with lower precedence
         # This handles cases like (a - b) / c vs a - b / c
@@ -1329,7 +1278,6 @@ class HexSLDialect:
         Returns:
             A TypedSelectExpression representing the interval
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Map unit names to sqlglot interval units
         unit_map = {
@@ -1384,7 +1332,7 @@ class HexSLDialect:
         return non_null_types[0]
 
     # List of canonical dialect names
-    all_dialects = [
+    all_dialects: ClassVar[list[str]] = [
         "bigquery",
         "clickhouse",
         "duckdb",
@@ -1416,43 +1364,43 @@ class HexSLDialect:
         canonical_name = normalize_dialect_name(name)
 
         if canonical_name == "trino":
-            from .trino import HexSLTrino
+            from hex_sl_utils.dialect.trino import HexSLTrino
 
             return HexSLTrino()
         elif canonical_name == "bigquery":
-            from .bigquery import HexSLBigQuery
+            from hex_sl_utils.dialect.bigquery import HexSLBigQuery
 
             return HexSLBigQuery()
         elif canonical_name == "clickhouse":
-            from .clickhouse import HexSLClickHouse
+            from hex_sl_utils.dialect.clickhouse import HexSLClickHouse
 
             return HexSLClickHouse()
         elif canonical_name == "spark":
-            from .spark import HexSLSpark
+            from hex_sl_utils.dialect.spark import HexSLSpark
 
             return HexSLSpark()
         elif canonical_name in ("duckdb", "motherduck"):
-            from .duckdb import HexSLDuckDB
+            from hex_sl_utils.dialect.duckdb import HexSLDuckDB
 
             return HexSLDuckDB()
         elif canonical_name == "mssql":
-            from .mssql import HexSLMSSQL
+            from hex_sl_utils.dialect.mssql import HexSLMSSQL
 
             return HexSLMSSQL()
         elif canonical_name == "mysql":
-            from .mysql import HexSLMySQL
+            from hex_sl_utils.dialect.mysql import HexSLMySQL
 
             return HexSLMySQL()
         elif canonical_name == "postgres":
-            from .postgres import HexSLPostgres
+            from hex_sl_utils.dialect.postgres import HexSLPostgres
 
             return HexSLPostgres()
         elif canonical_name == "redshift":
-            from .redshift import HexSLRedshift
+            from hex_sl_utils.dialect.redshift import HexSLRedshift
 
             return HexSLRedshift()
         elif canonical_name == "snowflake":
-            from .snowflake import HexSLSnowflake
+            from hex_sl_utils.dialect.snowflake import HexSLSnowflake
 
             return HexSLSnowflake()
         else:

@@ -31,4 +31,4 @@ def assert_unreachable(arg: NoReturn) -> NoReturn:
     The arg shouldn't be passed, it's there to trigger a type signature error when
     the calling path is, in fact, reachable.
     """
-    raise AssertionError("Unreachable code reached")  # noqa: EM101
+    raise AssertionError("Unreachable code reached")
