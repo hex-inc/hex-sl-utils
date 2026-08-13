@@ -7,13 +7,11 @@ from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-# Re-export PlaceholderStyle from hex_sl_common for backward compatibility
-from hex_sl_common import PlaceholderStyle
-from hex_sl_common.exceptions import UserFacingError
-
-from hex_sl._vendor.sqlglot import Generator, Parser, exp
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType, datatype_to_sqlglot
+from hex_sl_utils._vendor.sqlglot import Generator, Parser, exp
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
+from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
+from hex_sl_utils.exception import UserFacingError
 
 # Constant for semantic placeholder kind (${...} style)
 PLACEHOLDER_KIND_SEMANTIC = "semantic"
@@ -229,14 +227,22 @@ def placeholder_parser_mapping(
 ) -> dict[TokenType, Callable[[Parser], exp.Expression | None]]:
     return {
         **base_parsers,
-        TokenType.PLACEHOLDER: lambda parser: parse_qmark_placeholder(parser)
-        or _parse_base_placeholder(parser, base_parsers, TokenType.PLACEHOLDER),
-        TokenType.COLON: lambda parser: parse_colon_placeholder(parser)
-        or _parse_base_placeholder(parser, base_parsers, TokenType.COLON),
-        TokenType.MOD: lambda parser: parse_mod_placeholder(parser)
-        or _parse_base_placeholder(parser, base_parsers, TokenType.MOD),
-        TokenType.L_BRACE: lambda parser: parse_brace_placeholder(parser)
-        or _parse_base_placeholder(parser, base_parsers, TokenType.L_BRACE),
+        TokenType.PLACEHOLDER: lambda parser: (
+            parse_qmark_placeholder(parser)
+            or _parse_base_placeholder(parser, base_parsers, TokenType.PLACEHOLDER)
+        ),
+        TokenType.COLON: lambda parser: (
+            parse_colon_placeholder(parser)
+            or _parse_base_placeholder(parser, base_parsers, TokenType.COLON)
+        ),
+        TokenType.MOD: lambda parser: (
+            parse_mod_placeholder(parser)
+            or _parse_base_placeholder(parser, base_parsers, TokenType.MOD)
+        ),
+        TokenType.L_BRACE: lambda parser: (
+            parse_brace_placeholder(parser)
+            or _parse_base_placeholder(parser, base_parsers, TokenType.L_BRACE)
+        ),
         TokenType.PARAMETER: lambda parser: parse_parameter_placeholder(
             parser,
             parameter_fallback=parameter_fallback,
@@ -284,7 +290,7 @@ def parse_parameter_placeholder(
 ) -> exp.Expression | None:
     token_text = _prev_text(parser)
 
-    if token_text == "$":  # noqa: S105
+    if token_text == "$":
         semantic_placeholder = parse_dollar_brace_after_match(parser)
         if semantic_placeholder is not None:
             return semantic_placeholder
@@ -305,7 +311,7 @@ def parse_parameter_placeholder(
 
         return parameter_fallback(parser) if parameter_fallback is not None else None
 
-    if token_text == "@":  # noqa: S105
+    if token_text == "@":
         config = get_placeholder_config()
         if config is not None and config.mode == PlaceholderStyle.AT_NAMED:
             if parser._match_set(parser.ID_VAR_TOKENS):

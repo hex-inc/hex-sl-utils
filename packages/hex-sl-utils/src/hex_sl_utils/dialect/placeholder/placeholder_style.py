@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import auto
 
-from hex_sl_common.utils import AutoName
+from hex_sl_utils.utils import AutoName
 
 
 class PlaceholderStyle(AutoName):

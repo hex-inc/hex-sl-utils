@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from hex_sl_common.exceptions import UserFacingError
+from hex_sl_utils.exception import UserFacingError
 
 # List of all valid dialect names that can be passed to from_name()
 DialectName = Literal[
@@ -74,8 +74,7 @@ def normalize_dialect_name(name: str) -> str:
     name = name.lower()
 
     # Strip hex-sl- prefix if present
-    if name.startswith("hex-sl-"):
-        name = name[7:]
+    name = name.removeprefix("hex-sl-")
 
     # Apply alias mapping
     canonical_name = DIALECT_ALIASES.get(name, name)
