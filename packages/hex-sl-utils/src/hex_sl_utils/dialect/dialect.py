@@ -939,6 +939,94 @@ class Dialect:
 
         return result
 
+    def compile_expression(
+        self,
+        expr: CalcExpr,
+        context: ExpressionContext,
+        schema: Schema,
+        timezone: str,
+        parameters: Optional[dict[str, DataType]],
+        substitutions: Optional[dict[str, TypedSelectExpression]] = None,
+        wrap_for_context: bool = True,
+        skip_mangle: Union[bool, list[str], None] = None,
+    ) -> TypedSelectExpression:
+        """
+        Compile a Calc expression into a TypedSelectExpression within an
+        expression context and schema.
+
+        Args:
+            expr: The Calc expression to compile.
+            context: The context of the expression.
+            schema: The schema context for the compilation.
+                    If None, a schema with no columns is assumed.
+            timezone: The local timezone to use for the compilation.
+            parameters: A dictionary of parameter names to data types.
+            substitutions: A dictionary of column names to expressions to substitute
+                           for in the expression.
+            wrap_for_context: Whether to wrap the resulting expression for the context.
+            skip_mangle: Whether to skip mangling the column names. If a list of column
+                         names is provided, then only the provided column names are
+                         mangled. If True, then all column names are mangled.
+                         If False or None, then column names are mangled according to
+                         the dialect.
+
+        Returns:
+            TypedSelectExpression: The compiled typed select expression.
+        """
+        from hex_sl.calc.compiler import CalcToTypedSelectVisitor
+
+        visitor = CalcToTypedSelectVisitor(
+            self, context, schema, timezone, parameters, substitutions, skip_mangle
+        )
+        compiled: TypedSelectExpression = expr.root.accept(visitor)
+        if wrap_for_context:
+            compiled = self.wrap_expression_for_context(compiled, context)
+        return compiled
+
+    def resolve_hexsl_calc_placeholders(
+        self,
+        sqlglot_expr: exp.Expression,
+        schema: Schema,
+        timezone: str,
+        context: ExpressionContext,
+        parameters: Optional[dict[str, DataType]] = None,
+        substitutions: Optional[dict[str, TypedSelectExpression]] = None,
+    ) -> exp.Expression:
+        """
+        Resolve _hexsl_calc() placeholder functions by compiling the embedded
+        calc expressions with full context.
+        """
+        from hex_sl.calc.ast.expr import CalcExpr
+        from hex_sl.expr import _needs_parens_for_substitution
+
+        def transform(node: exp.Expression) -> exp.Expression:
+            from hex_sl.calc.visitor import _extract_hexsl_calc_string
+
+            if calc_str := _extract_hexsl_calc_string(node):
+                # Parse the calc expression from JSON
+                calc_expr = CalcExpr.model_validate_json(calc_str)
+
+                # Compile it with full context
+                typed_expr = self.compile_expression(
+                    calc_expr,
+                    context=context,
+                    schema=schema,
+                    timezone=timezone,
+                    parameters=parameters or {},
+                    substitutions=substitutions or {},
+                    wrap_for_context=False,
+                )
+
+                # Wrap in parens if needed
+                result_expr = typed_expr.expression
+                if _needs_parens_for_substitution(result_expr):
+                    result_expr = exp.Paren(this=result_expr)
+
+                return result_expr
+            return node
+
+        return sqlglot_expr.transform(transform)
+
     def wrap_expression_for_context(
         self, expr: TypedSelectExpression, context: ExpressionContext
     ) -> TypedSelectExpression:
