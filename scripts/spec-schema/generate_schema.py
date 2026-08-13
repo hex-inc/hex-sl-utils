@@ -109,7 +109,13 @@ def export_json_schemas() -> None:
 
     subprocess.run(["pnpm", "install", "--frozen-lockfile"], check=True, cwd=root)
     subprocess.run(
-        ["pnpm", "--filter", "@hex/sl-utils-scripts-schema", "run", "build"],
+        [
+            "pnpm",
+            "--filter",
+            "@hex/sl-utils-scripts-spec-schema",
+            "run",
+            "build",
+        ],
         check=True,
         cwd=root,
     )

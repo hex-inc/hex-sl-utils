@@ -55,7 +55,7 @@ To invoke only the TypeScript stage while iterating on its transforms, first
 generate or update the JSON Schema, then run:
 
 ```shell
-devbox run -- pnpm --filter @hex/sl-utils-scripts-schema run build
+devbox run -- pnpm --filter @hex/sl-utils-scripts-spec-schema run build
 ```
 
 Use this focused command only when the JSON Schema input is already current;
@@ -68,11 +68,11 @@ Add or update JavaScript dependencies through the workspace from the
 repository root. For example:
 
 ```shell
-devbox run -- pnpm --filter @hex/sl-utils-scripts-schema add --save-dev <package>
+devbox run -- pnpm --filter @hex/sl-utils-scripts-spec-schema add --save-dev <package>
 ```
 
-Commit both `scripts/schema/package.json` and `pnpm-lock.yaml`. Do not create a
-package-local lockfile or restore `package-lock.json`.
+Commit both `scripts/spec-schema/package.json` and `pnpm-lock.yaml`. Do not
+create a package-local lockfile or restore `package-lock.json`.
 
 Python development dependencies belong in the root `pyproject.toml` and are
 locked in `uv.lock`. Make intentional Python dependency changes through the
