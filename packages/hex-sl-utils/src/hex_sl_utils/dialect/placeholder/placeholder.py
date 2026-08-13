@@ -1,4 +1,3 @@
-# mypy: disable-error-code="no-untyped-call"
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
@@ -12,6 +11,7 @@ from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
 from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
 from hex_sl_utils.exception import UserFacingError
+from hex_sl_utils.utils import assert_unreachable
 
 # Constant for semantic placeholder kind (${...} style)
 PLACEHOLDER_KIND_SEMANTIC = "semantic"
@@ -180,8 +180,7 @@ def placeholder_sql(generator: Generator, expression: exp.Placeholder) -> str:
             target_type = generator.sql(datatype_to_sqlglot(dtype))
             return f"{{{expression.name}: {target_type}}}"
         else:
-            # mypy doesn't allow assert_unreachable here, but we've covereted
-            # every case so this should never happen
+            assert_unreachable(mode)
             msg = f"Unsupported placeholder style: {mode}"
             raise ValueError(msg)
 
