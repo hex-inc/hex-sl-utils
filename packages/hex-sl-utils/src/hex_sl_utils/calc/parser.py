@@ -2,13 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from functools import lru_cache
-from typing import Any, Union, cast
+from typing import Any, cast
 
-from lark import Token, Transformer
-
-from hex_sl.calc.ast import CalcExpr
-from hex_sl.calc.ast.args import Args
-from hex_sl.calc.ast.binary import (
+from hex_sl_utils.calc._calc_parser_standalone import (
+    Lark_StandAlone,
+    Token,
+    Transformer,
+    UnexpectedCharacters,
+    UnexpectedEOF,
+    UnexpectedToken,
+)
+from hex_sl_utils.calc.ast import CalcExpr
+from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.binary import (
     BinaryAnd,
     BinaryDivide,
     BinaryEqual,
@@ -24,9 +30,9 @@ from hex_sl.calc.ast.binary import (
     BinaryPlus,
     BinaryPower,
 )
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.functions import FuncConcat, func_for_name
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions import FuncConcat, func_for_name
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -34,17 +40,9 @@ from hex_sl.calc.ast.literals import (
     LiteralString,
     LiteralTimestamp,
 )
-from hex_sl.calc.ast.parameter import Parameter
-from hex_sl.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
-from hex_sl.utils import UserFacingError
-
-# Use the pre-compiled standalone parser (no grammar parsing at runtime)
-from ._calc_parser_standalone import (
-    Lark_StandAlone,
-    UnexpectedCharacters,
-    UnexpectedEOF,
-    UnexpectedToken,
-)
+from hex_sl_utils.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
+from hex_sl_utils.exception import UserFacingError
 
 
 class ASTTransformer(Transformer[Token, CalcExpr]):
@@ -146,7 +144,7 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         """
         return CalcExpr(root=BinaryOr(lhs=items[0], rhs=items[1]))
 
-    def binary_or_keyword(self, items: list[Union[CalcExpr, Token]]) -> CalcExpr:
+    def binary_or_keyword(self, items: list[CalcExpr | Token]) -> CalcExpr:
         """
         Handles the logical OR operation using the `or` keyword.
 
@@ -176,7 +174,7 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         """
         return CalcExpr(root=BinaryAnd(lhs=items[0], rhs=items[1]))
 
-    def binary_and_keyword(self, items: list[Union[CalcExpr, Token]]) -> CalcExpr:
+    def binary_and_keyword(self, items: list[CalcExpr | Token]) -> CalcExpr:
         """
         Handles the logical AND operation using the `and` keyword.
 
@@ -316,7 +314,7 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         """
         return CalcExpr(root=UnaryNot(arg=items[0]))
 
-    def unary_not_keyword(self, items: list[Union[Token, CalcExpr]]) -> CalcExpr:
+    def unary_not_keyword(self, items: list[Token | CalcExpr]) -> CalcExpr:
         """
         Handles the unary NOT operation using the 'NOT' keyword.
 
@@ -374,7 +372,9 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         """
         date_str = items[0][2:-1]  # Remove the d" and " parts
         return CalcExpr(
-            root=LiteralDate(date=datetime.strptime(date_str, "%Y-%m-%d").date())
+            root=LiteralDate(
+                date=datetime.strptime(date_str, "%Y-%m-%d").date()  # noqa: DTZ007
+            )
         )
 
     def literal_timestamp(self, items: list[Token]) -> CalcExpr:
@@ -390,10 +390,14 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         timestamp_str = items[0][2:-1]  # Remove the t" and " parts
         try:
             # Try parsing with milliseconds
-            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S.%f")
+            timestamp = datetime.strptime(  # noqa: DTZ007
+                timestamp_str, "%Y-%m-%dT%H:%M:%S.%f"
+            )
         except ValueError:
             # If that fails, try without milliseconds
-            timestamp = datetime.strptime(timestamp_str, "%Y-%m-%dT%H:%M:%S")
+            timestamp = datetime.strptime(  # noqa: DTZ007
+                timestamp_str, "%Y-%m-%dT%H:%M:%S"
+            )
         return CalcExpr(root=LiteralTimestamp(timestamp=timestamp))
 
     def literal_bool(self, items: list[Token]) -> CalcExpr:
@@ -499,7 +503,7 @@ class ASTTransformer(Transformer[Token, CalcExpr]):
         param_name = items[0][2:-2].strip()
         return CalcExpr(root=Parameter(parameter=param_name))
 
-    def function_call(self, items: list[Union[Token, CalcExpr]]) -> CalcExpr:
+    def function_call(self, items: list[Token | CalcExpr]) -> CalcExpr:
         """
         Handles the function call.
 

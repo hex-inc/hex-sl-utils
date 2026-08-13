@@ -10,8 +10,8 @@ dependencies = [
   "rapidyaml>=0.15.2,<0.16",
   "typing-extensions>=4.12",
 ]
-license = "Apache-2.0"
-license-files = ["LICENSE", "VENDORED_LICENSES"]
+license = "Apache-2.0 AND MPL-2.0"
+license-files = ["LICENSE", "licenses/MPL-2.0.txt", "VENDORED_LICENSES"]
 
 [project.urls]
 changelog = "https://github.com/hex-inc/hex-sl-utils/blob/main/packages/hex-sl-utils/CHANGELOG.md"

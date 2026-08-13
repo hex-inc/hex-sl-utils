@@ -5,17 +5,24 @@ These tests verify that the calc parser correctly handles qualified column synta
 (dataset.column) including both valid and invalid forms.
 """
 
+from typing import cast
+
 import pytest
-from hex_sl.calc.parser import parse_calc_expression, ParseError
+
+from hex_sl_utils.calc.ast.binary import BinaryBase
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions import FuncBase
+from hex_sl_utils.calc.parser import ParseError, parse_calc_expression
 
 
 def test_parse_simple_qualified_identifier():
     """Test parsing simple qualified identifier."""
     expr = parse_calc_expression("carriers.Name")
+    column = cast(Column, expr.root)
 
     # Verify the AST structure
-    assert expr.root.name == "Name"
-    assert expr.root.qualifiers == ("carriers",)
+    assert column.name == "Name"
+    assert column.qualifiers == ("carriers",)
 
     # Verify string representation
     assert expr.to_string() == "carriers.Name"
@@ -24,10 +31,11 @@ def test_parse_simple_qualified_identifier():
 def test_parse_unqualified_identifier():
     """Test parsing unqualified identifier (no dataset prefix)."""
     expr = parse_calc_expression("Name")
+    column = cast(Column, expr.root)
 
     # Verify the AST structure
-    assert expr.root.name == "Name"
-    assert expr.root.qualifiers == ()
+    assert column.name == "Name"
+    assert column.qualifiers == ()
 
     # Verify string representation
     assert expr.to_string() == "Name"
@@ -36,10 +44,11 @@ def test_parse_unqualified_identifier():
 def test_parse_qualified_identifier_with_backticks():
     """Test parsing qualified identifier with backtick-quoted parts."""
     expr = parse_calc_expression("`dataset name`.`column name`")
+    column = cast(Column, expr.root)
 
     # Verify the AST structure
-    assert expr.root.name == "column name"
-    assert expr.root.qualifiers == ("dataset name",)
+    assert column.name == "column name"
+    assert column.qualifiers == ("dataset name",)
 
     # Verify string representation
     assert expr.to_string() == "`dataset name`.`column name`"
@@ -50,11 +59,12 @@ def test_parse_multiple_qualifiers():
     # This tests the parser's ability to handle multiple dots
     # even though in practice we only use one level (dataset.column)
     expr = parse_calc_expression("a.b.c")
+    column = cast(Column, expr.root)
 
     # The parser should treat this as dataset "a.b" and column "c"
     # based on the grammar rules
-    assert expr.root.name == "c"
-    assert expr.root.qualifiers == ("a", "b")
+    assert column.name == "c"
+    assert column.qualifiers == ("a", "b")
 
     # Verify string representation
     assert expr.to_string() == "a.b.c"
@@ -63,31 +73,35 @@ def test_parse_multiple_qualifiers():
 def test_parse_qualified_in_expression():
     """Test parsing qualified identifiers within larger expressions."""
     expr = parse_calc_expression("carriers.Name + ' - ' + Origin")
+    binary = cast(BinaryBase, expr.root)
 
     # Verify the expression is a binary operation
-    assert expr.root.binary == "+"
+    assert binary.binary == "+"
 
     # Check the left side (another binary operation)
-    left = expr.root.lhs.root
+    left = cast(BinaryBase, binary.lhs.root)
+    left_column = cast(Column, left.lhs.root)
     assert left.binary == "+"
-    assert left.lhs.root.name == "Name"
-    assert left.lhs.root.qualifiers == ("carriers",)
+    assert left_column.name == "Name"
+    assert left_column.qualifiers == ("carriers",)
 
     # Check the right side
-    assert expr.root.rhs.root.name == "Origin"
-    assert expr.root.rhs.root.qualifiers == ()
+    right_column = cast(Column, binary.rhs.root)
+    assert right_column.name == "Origin"
+    assert right_column.qualifiers == ()
 
 
 def test_parse_qualified_in_function():
     """Test parsing qualified identifiers as function arguments."""
     expr = parse_calc_expression("upper(carriers.Name)")
+    function = cast(FuncBase, expr.root)
 
     # Verify function structure
-    assert expr.root.fun == "upper"
-    assert len(expr.root.args.root) == 1
+    assert function.fun == "upper"
+    assert len(function.args.root) == 1
 
     # Check the argument
-    arg = expr.root.args.root[0].root
+    arg = cast(Column, function.args.root[0].root)
     assert arg.name == "Name"
     assert arg.qualifiers == ("carriers",)
 
@@ -96,13 +110,15 @@ def test_parse_reserved_words_as_identifiers():
     """Test that reserved words can be used as identifiers when quoted."""
     # 'true' is a reserved word, but can be used as identifier with backticks
     expr = parse_calc_expression("`true`")
-    assert expr.root.name == "true"
-    assert expr.root.qualifiers == ()
+    column = cast(Column, expr.root)
+    assert column.name == "true"
+    assert column.qualifiers == ()
 
     # Same for qualified identifiers
     expr = parse_calc_expression("dataset.`false`")
-    assert expr.root.name == "false"
-    assert expr.root.qualifiers == ("dataset",)
+    column = cast(Column, expr.root)
+    assert column.name == "false"
+    assert column.qualifiers == ("dataset",)
 
 
 def test_malformed_qualified_identifier_starts_with_dot():

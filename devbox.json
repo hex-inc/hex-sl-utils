@@ -43,7 +43,8 @@
       "verify": [
         "devbox run verify:schema",
         "devbox run verify:timezones",
-        "devbox run verify:vendoring"
+        "devbox run verify:vendoring",
+        "devbox run verify:calc-parser"
       ],
       "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py \"$@\""],
       "ci": [
@@ -70,6 +71,12 @@
       ],
       "verify:vendoring": [
         "uv run --locked --all-packages python scripts/vendoring/check_vendored_sqlglot.py"
+      ],
+      "build:calc-parser": [
+        "uv run --locked --all-packages python scripts/calc-parser/generate_standalone_parser.py"
+      ],
+      "verify:calc-parser": [
+        "uv run --locked --all-packages python scripts/calc-parser/check_standalone_parser.py"
       ]
     }
   }
