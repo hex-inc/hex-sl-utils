@@ -1,23 +1,20 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Annotated, Optional, TypeVar, Union
+from typing import Annotated, TypeVar, Union
 
 from pydantic import Field, Tag
 
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.calc.visitor import CalcVisitor
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import TypedSelectExpression
-
-if TYPE_CHECKING:
-    pass
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.visitor import CalcVisitor
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.expr import TypedSelectExpression
 
 T = TypeVar("T")
 
 
 class LiteralNumber(ExprBase):
-    number_value: Union[int, float] = Field(
+    number_value: int | float = Field(
         description="Number literal, as in 22 or 10.5", alias="number"
     )
 
@@ -28,7 +25,7 @@ class LiteralNumber(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_number(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(self.number_value)
 
 
@@ -42,7 +39,7 @@ class LiteralString(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_string(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(self.str_value)
 
 
@@ -58,7 +55,7 @@ class LiteralBool(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_bool(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(self.bool_value)
 
 
@@ -74,7 +71,7 @@ class LiteralTimestamp(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_timestamp(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(self.timestamp_value)
 
 
@@ -88,13 +85,13 @@ class LiteralDate(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_date(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(self.date_value)
 
 
 class LiteralNull(ExprBase):
     null_value: None = Field(default=None, description="Null literal", alias="null")
-    position: Optional[int] = Field(
+    position: int | None = Field(
         default=None, description="Position of the null literal in calc expression"
     )
 
@@ -105,7 +102,7 @@ class LiteralNull(ExprBase):
     def accept(self, visitor: CalcVisitor[T]) -> T:
         return visitor.visit_literal_null(self)
 
-    def compile(self, dialect: HexSLDialect) -> TypedSelectExpression:
+    def compile(self, dialect: Dialect) -> TypedSelectExpression:
         return dialect.compile_literal(None)
 
 

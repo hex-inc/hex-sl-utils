@@ -1,18 +1,15 @@
-from typing import TYPE_CHECKING, Literal
+# pyright: reportIncompatibleVariableOverride=false
+
+from typing import Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
-
-if TYPE_CHECKING:
-    # This import seems to be needed to help mypy follow that the FuncBase
-    # args property is available in child classes
-    from hex_sl.calc.ast.args import Args  # noqa: F401
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr import ExpressionContext, TypedSelectExpression
 
 
 class FuncToText(FuncBase):
@@ -27,7 +24,7 @@ class FuncToText(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -119,7 +116,7 @@ class FuncToNumber(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -154,7 +151,7 @@ class FuncToBoolean(FuncBase):
 
     @classmethod
     def _compile_to_boolean(
-        cls, arg: TypedSelectExpression, dialect: HexSLDialect
+        cls, arg: TypedSelectExpression, dialect: Dialect
     ) -> TypedSelectExpression:
         if arg.data_type == DataType.BOOLEAN:
             # Already boolean
@@ -220,7 +217,7 @@ class FuncToBoolean(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -243,7 +240,7 @@ class FuncToDatetime(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -328,7 +325,7 @@ class FuncToDate(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:

@@ -1,13 +1,15 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.datatype import DataType
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.expr import ExpressionContext, TypedSelectExpression
 
 # Union type for all unary math function names - helps ensure func_map completeness
 UnaryMathFunction = Literal[
@@ -15,11 +17,7 @@ UnaryMathFunction = Literal[
 ]
 
 if TYPE_CHECKING:
-    # This import seems to be needed to help mypy follow that the BinaryBase
-    # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
-    from hex_sl.expr import TypedSelectExpression
+    from hex_sl_utils.dialect.dialect import Dialect
 
 
 class FuncUnaryMathBase(FuncBase):
@@ -33,7 +31,7 @@ class FuncUnaryMathBase(FuncBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -98,7 +96,7 @@ class FuncRound(FuncUnaryMathBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -185,7 +183,7 @@ class FuncCot(FuncUnaryMathBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:

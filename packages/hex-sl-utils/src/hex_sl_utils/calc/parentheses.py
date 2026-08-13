@@ -10,8 +10,8 @@ from __future__ import annotations
 
 from typing import get_args
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.operators import CalcOp, OperandType, UnaryOp
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.operators import CalcOp, OperandType, UnaryOp
 
 # Define operator precedence (higher number = higher precedence)
 # Based on the calc grammar.lark file

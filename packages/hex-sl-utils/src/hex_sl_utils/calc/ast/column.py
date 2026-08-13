@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, TypeVar, Union
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Annotated, TypeVar
 
-from hex_sl_common.exceptions import SemanticItemNotFoundError
 from pydantic import Field, Tag
 
-import hex_sl._vendor.sqlglot.expressions as exp
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
+import hex_sl_utils._vendor.sqlglot.expressions as exp
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.exception import ColumnNotFoundError, TypeCheckError
+from hex_sl_utils.expr import ExpressionKind, TypedSelectExpression
 
 if TYPE_CHECKING:
-    from hex_sl.calc.visitor import CalcVisitor
-    from hex_sl.schema import Schema
+    from hex_sl_utils.calc.visitor import CalcVisitor
 
 T = TypeVar("T")
 
@@ -44,10 +44,10 @@ class Column(ExprBase):
 
     def compile(
         self,
-        schema: Schema,
-        dialect: HexSLDialect,
+        schema: Mapping[str, DataType],
+        dialect: Dialect,
         substitutions: dict[str, TypedSelectExpression],
-        skip_mangle: Union[bool, list[str], None] = None,
+        skip_mangle: bool | list[str] | None = None,
     ) -> TypedSelectExpression:
         """
         Compile the column to a sqlglot expression.
@@ -61,7 +61,7 @@ class Column(ExprBase):
             TypedSelectExpression: The typed select expression
 
         Raises:
-            SemanticItemNotFoundError: If an unqualified column is not found.
+            ColumnNotFoundError: If an unqualified column is not found.
             TypeCheckError: If a qualified cross-dataset reference is not found.
         """
 
@@ -100,11 +100,10 @@ class Column(ExprBase):
             else:
                 available = {*substitutions.keys(), *schema.keys()}
                 msg = f"Column {self.name} not found in schema"
-                raise SemanticItemNotFoundError(
+                raise ColumnNotFoundError(
                     msg,
-                    item_name=self.name,
-                    item_type="dimension",
-                    case_insensitive_matches=SemanticItemNotFoundError.find_case_insensitive_matches(
+                    column_name=self.name,
+                    case_insensitive_matches=ColumnNotFoundError.find_case_insensitive_matches(
                         self.name, available
                     ),
                 )

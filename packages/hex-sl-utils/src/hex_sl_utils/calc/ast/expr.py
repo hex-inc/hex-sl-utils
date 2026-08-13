@@ -4,7 +4,7 @@ import sys
 from typing import TYPE_CHECKING, Any, Union, get_args
 
 if TYPE_CHECKING:
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.dialect.dialect import Dialect
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -13,11 +13,11 @@ else:
 
 from pydantic import Discriminator, Field, RootModel
 
-from hex_sl.calc.ast.base import ExprBase, QualifiedColumnRef
-from hex_sl.calc.ast.binary import TaggedBinaryExprUnion, binary_for_name
-from hex_sl.calc.ast.column import Column, TaggedColumnExpr
-from hex_sl.calc.ast.functions import TaggedFuncExprUnion, func_for_name
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils.calc.ast.base import ExprBase, QualifiedColumnRef
+from hex_sl_utils.calc.ast.binary import TaggedBinaryExprUnion, binary_for_name
+from hex_sl_utils.calc.ast.column import Column, TaggedColumnExpr
+from hex_sl_utils.calc.ast.functions import TaggedFuncExprUnion, func_for_name
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -26,14 +26,18 @@ from hex_sl.calc.ast.literals import (
     LiteralTimestamp,
     TaggedLiteralExprUnion,
 )
-from hex_sl.calc.ast.parameter import Parameter, TaggedParameterExpr
-from hex_sl.calc.ast.sql_expression import SqlExpression, TaggedSqlExpression
-from hex_sl.calc.ast.unary import TaggedUnaryExprUnion, unary_for_name
-from hex_sl.calc.visitor import (
+from hex_sl_utils.calc.ast.parameter import Parameter, TaggedParameterExpr
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression, TaggedSqlExpression
+from hex_sl_utils.calc.ast.unary import TaggedUnaryExprUnion, unary_for_name
+from hex_sl_utils.calc.substitution import (
+    ColumnSubstitutionVisitor,
+    QualifyColumnsVisitor,
+)
+from hex_sl_utils.calc.visitor import (
     AnyAggregateFunctionVisitor,
     CollectQualifiedColumnsVisitor,
 )
-from hex_sl.utils import UserFacingError
+from hex_sl_utils.exception import UserFacingError
 
 TaggedCalcExprUnion: TypeAlias = Union[
     TaggedBinaryExprUnion,
@@ -50,7 +54,7 @@ CalcExprUnionTypes = tuple(arg.__origin__ for arg in get_args(TaggedCalcExprUnio
 CalcExprUnionTypesSet = set(CalcExprUnionTypes)
 
 
-def calc_expr_discriminator(v: Any) -> str:  # noqa: ANN401
+def calc_expr_discriminator(v: Any) -> str:
     if isinstance(v, ExprBase):
         return v.tag().tag
     elif isinstance(v, dict):
@@ -117,7 +121,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         return result
 
     def substitute(
-        self, substitutions: dict[str, ExprBase], dialect: HexSLDialect
+        self, substitutions: dict[str, ExprBase], dialect: Dialect
     ) -> CalcExpr:
         """
         Substitute column references in the calc expression with the provided
@@ -127,8 +131,6 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
             substitutions: Mapping of column names to replacement expressions
             dialect: SQL dialect
         """
-        from hex_sl.calc.substitution import ColumnSubstitutionVisitor
-
         visitor = ColumnSubstitutionVisitor(substitutions, dialect)
         result: ExprBase = self.root.accept(visitor)
         return result.to_expr()
@@ -143,13 +145,11 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         Returns:
             A new CalcExpr with unqualified columns qualified to the dataset.
         """
-        from hex_sl.calc.substitution import QualifyColumnsVisitor
-
         visitor = QualifyColumnsVisitor(dataset)
         result: ExprBase = self.root.accept(visitor)
         return result.to_expr()
 
-    def get_unqualified_columns(self, dialect: HexSLDialect) -> list[str]:
+    def get_unqualified_columns(self, dialect: Dialect) -> list[str]:
         """Get unqualified column names only.
 
         Args:
@@ -177,7 +177,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         # Return only unqualified column names
         return sorted(c for q, c in all_columns if not q)
 
-    def get_all_columns(self, dialect: HexSLDialect) -> list[QualifiedColumnRef]:
+    def get_all_columns(self, dialect: Dialect) -> list[QualifiedColumnRef]:
         """Get all column references with qualification info.
 
         Returns:
@@ -191,7 +191,7 @@ class CalcExpr(RootModel[TaggedCalcExprUnion]):
         result: list[QualifiedColumnRef] = sorted(self.root.accept(visitor))
         return result
 
-    def has_aggregation(self, dialect: HexSLDialect) -> bool:
+    def has_aggregation(self, dialect: Dialect) -> bool:
         visitor: AnyAggregateFunctionVisitor = AnyAggregateFunctionVisitor(dialect)
         result: bool = self.root.accept(visitor)
         return result

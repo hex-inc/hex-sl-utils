@@ -1,10 +1,13 @@
 """Tests for the unified parentheses system for calc language binary and unary expressions."""
 
+from typing import cast
+
 import pytest
 from inline_snapshot import snapshot
-from hex_sl._vendor.sqlglot import exp
 
-from hex_sl.calc.parentheses import (
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.operators import CalcOp
+from hex_sl_utils.calc.parentheses import (
     OPERATOR_PRECEDENCE,
     parens_if_needed,
 )
@@ -66,7 +69,7 @@ def test_no_wrapping_for_non_binary():
 
     for expr in [literal, column]:
         for op in OPERATOR_PRECEDENCE:
-            result = parens_if_needed(expr, op, operand_type="left")
+            result = parens_if_needed(expr, cast(CalcOp, op), operand_type="left")
             assert result is expr
             assert not isinstance(result, exp.Paren)
 

@@ -1,21 +1,18 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.binary.base import BinaryBase
-from hex_sl.calc.parentheses import parens_if_needed
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
-
-if TYPE_CHECKING:
-    # This import seems to be needed to help mypy follow that the BinaryBase
-    # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast import CalcExpr  # noqa: F401
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.binary.base import BinaryBase
+from hex_sl_utils.calc.parentheses import parens_if_needed
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 
 
 class BinaryComparisonBase(BinaryBase):
@@ -42,7 +39,7 @@ class BinaryComparisonBase(BinaryBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         tz: str,
     ) -> tuple[TypedSelectExpression, TypedSelectExpression]:
         # Cast down dates to timestamps/timestamptz
@@ -76,7 +73,7 @@ class BinaryComparisonBase(BinaryBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         # For cases like booleans in mssql, we need to wrap the expression as if
@@ -99,7 +96,7 @@ class BinaryComparisonBase(BinaryBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -119,7 +116,7 @@ class BinaryLess(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -146,7 +143,7 @@ class BinaryLessEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -173,7 +170,7 @@ class BinaryGreater(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -200,7 +197,7 @@ class BinaryGreaterEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -227,7 +224,7 @@ class BinaryEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:
@@ -254,7 +251,7 @@ class BinaryNotEqual(BinaryComparisonBase):
         cls,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         kind: ExpressionKind,
         timezone: str,
     ) -> TypedSelectExpression:

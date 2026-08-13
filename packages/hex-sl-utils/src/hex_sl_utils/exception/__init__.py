@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Iterable
-from typing import Literal
 
 
 class UserFacingError(Exception):
@@ -58,25 +57,19 @@ class UnsupportedByDialectError(UserFacingError):
     """Feature not supported by the target SQL dialect."""
 
 
-class SemanticItemNotFoundError(UserFacingError):
-    """A semantic item (dimension, measure, segment) was not found by name."""
-
-    item_type: Literal["dimension", "measure", "segment"] | None
+class ColumnNotFoundError(UserFacingError):
+    """A column required to compile an expression was not found."""
 
     def __init__(
         self,
         message: str = "",
         *,
-        item_name: str | None = None,
-        dataset: str | None = None,
-        item_type: Literal["dimension", "measure", "segment"] | None = None,
+        column_name: str | None = None,
         case_insensitive_matches: list[str] | None = None,
         details: str | None = None,
     ) -> None:
         super().__init__(message, details=details)
-        self.item_name = item_name
-        self.dataset = dataset
-        self.item_type = item_type
+        self.column_name = column_name
         self.case_insensitive_matches = case_insensitive_matches
 
     @staticmethod

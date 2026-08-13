@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import Tag
 
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.calc.operators import BinaryOp
-from hex_sl.calc.visitor import CalcVisitor
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.operators import BinaryOp
+from hex_sl_utils.calc.visitor import CalcVisitor
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.expr import TypedSelectExpression
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast import CalcExpr
+    from hex_sl_utils.calc.ast import CalcExpr
 
 T = TypeVar("T")
 
@@ -36,7 +36,7 @@ class BinaryBase(ExprBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         """

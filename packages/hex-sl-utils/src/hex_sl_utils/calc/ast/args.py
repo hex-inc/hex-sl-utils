@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pydantic import RootModel
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.expr import CalcExpr
+    from hex_sl_utils.calc.ast.expr import CalcExpr
 
 
 class Args(RootModel[list["CalcExpr"]]):
@@ -22,5 +22,4 @@ class Args(RootModel[list["CalcExpr"]]):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Args):
             return False
-        # mypy doesn't believe that this returns a boolean
-        return bool(self.model_dump() == other.model_dump())
+        return self.model_dump() == other.model_dump()

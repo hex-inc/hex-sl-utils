@@ -1,26 +1,21 @@
 from __future__ import annotations
 
-import sys
 from typing import TYPE_CHECKING, cast
-
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-else:
-    from typing_extensions import TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Tag
 
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr.expr_references import QualifiedReference
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.expr import CalcExpr
-    from hex_sl.calc.visitor import CalcVisitor, T
+    from hex_sl_utils.calc.ast.expr import CalcExpr
+    from hex_sl_utils.calc.visitor import CalcVisitor, T
 
-# Type alias for qualified column references
-# Format: (qualifiers, column_name) where qualifiers is a tuple of dataset path
-# components. Examples: ((), "col") for unqualified, (("dataset",), "col") for
-# dataset.col
-QualifiedColumnRef: TypeAlias = tuple[tuple[str, ...], str]
+# Type alias for a qualified reference that addresses a column
+# Format: (qualifiers, column_name) where qualifiers is a tuple of resource path
+# components.
+# Example: ((), "col") for unqualified; (("resource",), "col") for qualified.
+QualifiedColumnRef = QualifiedReference
 
 
 class ExprBase(BaseModel):
@@ -58,7 +53,7 @@ class ExprBase(BaseModel):
         raise NotImplementedError(msg)
 
     def to_string(self) -> str:
-        from hex_sl.calc.visitor import CalcToStringVisitor
+        from hex_sl_utils.calc.visitor import CalcToStringVisitor
 
         visitor = CalcToStringVisitor()
         return self.accept(visitor)
@@ -74,7 +69,7 @@ class ExprBase(BaseModel):
         return hash(self) == hash(other)
 
     def to_expr(self) -> CalcExpr:
-        from hex_sl.calc.ast.expr import (
+        from hex_sl_utils.calc.ast.expr import (
             CalcExpr,
             CalcExprUnionTypesSet,
             TaggedCalcExprUnion,
@@ -82,8 +77,8 @@ class ExprBase(BaseModel):
 
         # Check with type(self) in because isinstance is too with so many types
         if type(self) in CalcExprUnionTypesSet:
-            self = cast(TaggedCalcExprUnion, self)
-            return CalcExpr(root=self)
+            expr = cast(TaggedCalcExprUnion, self)
+            return CalcExpr(root=expr)
         else:
             msg = f"Expression is not a valid Calc Expression: {self}"
             raise TypeCheckError(msg)

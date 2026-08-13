@@ -1,10 +1,12 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field
 
-from hex_sl.calc.ast.functions.aggs import (
+from hex_sl_utils.calc.ast.functions.aggs import (
     FuncAggBase,
     FuncAvg,
     FuncCount,
@@ -19,11 +21,11 @@ from hex_sl.calc.ast.functions.aggs import (
     FuncVariance,
     FuncVariancePop,
 )
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.expr import ExpressionContext, TypedSelectExpression
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.dialect.dialect import Dialect
 
 
 class FuncRollingBase(FuncAggBase):
@@ -33,7 +35,7 @@ class FuncRollingBase(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -42,6 +44,7 @@ class FuncRollingBase(FuncAggBase):
     def build_agg(self) -> FuncAggBase:
         msg = "Subclasses must implement this method"
         raise NotImplementedError(msg)
+
 
 class FuncCumulativeBase(FuncRollingBase):
     pass

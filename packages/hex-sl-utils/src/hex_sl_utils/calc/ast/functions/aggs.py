@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar, Literal
@@ -5,16 +7,16 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from pydantic import Field
 from typing_extensions import override
 
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.calc.ast.functions.cast import FuncToBoolean
-from hex_sl.datatype import DataType
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError, UnsupportedByDialectError
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.ast.functions.cast import FuncToBoolean
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.exception import TypeCheckError, UnsupportedByDialectError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.args import Args  # noqa: F401
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.ast.args import Args  # noqa: F401
+    from hex_sl_utils.dialect.dialect import Dialect
 
 
 class FuncAggBase(FuncBase):
@@ -81,7 +83,7 @@ class FuncMin(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -104,7 +106,7 @@ class FuncMax(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -127,7 +129,7 @@ class FuncAvg(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -153,7 +155,7 @@ class FuncCount(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -193,7 +195,7 @@ class FuncSum(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -216,7 +218,7 @@ class FuncSumBoolean(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -244,7 +246,7 @@ class FuncStddev(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -272,7 +274,7 @@ class FuncStddevPop(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -300,7 +302,7 @@ class FuncVariance(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -326,7 +328,7 @@ class FuncVariancePop(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -352,7 +354,7 @@ class FuncMedian(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -417,7 +419,7 @@ class FuncPercentile(FuncPercentileBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -451,7 +453,7 @@ class FuncPercentileApprox(FuncPercentileBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -483,7 +485,7 @@ class FuncCountDistinct(FuncAggBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:

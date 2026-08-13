@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, TypeVar
 
 from pydantic import Tag
 
-from hex_sl.calc.ast.args import Args
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext
-from hex_sl.utils import TypeCheckError
+from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr import ExpressionContext
 
 DATETIME_TYPES: set[DataType] = {
     DataType.DATE,
@@ -18,8 +18,8 @@ DATETIME_TYPES: set[DataType] = {
 }
 
 if TYPE_CHECKING:
-    from hex_sl.calc.visitor import CalcVisitor
-    from hex_sl.expr import TypedSelectExpression
+    from hex_sl_utils.calc.visitor import CalcVisitor
+    from hex_sl_utils.expr import TypedSelectExpression
 
 T = TypeVar("T")
 
@@ -57,7 +57,7 @@ class FuncBase(ExprBase):
     def compile(
         self,
         arg_exprs: list[TypedSelectExpression],
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
         tz: str,
     ) -> TypedSelectExpression:
@@ -73,7 +73,7 @@ class FuncBase(ExprBase):
         self,
         arg: TypedSelectExpression,
         expected: set[DataType],
-        position: Optional[int] = None,
+        position: int | None = None,
     ) -> None:
         """Raise TypeCheckError if arg's type is not in expected."""
         if arg.data_type not in expected:
@@ -93,7 +93,7 @@ class FuncBase(ExprBase):
     def _validate_single_arg(
         self,
         arg_exprs: list[TypedSelectExpression],
-        data_type: Optional[Union[DataType, set[DataType]]] = None,
+        data_type: DataType | set[DataType] | None = None,
     ) -> TypedSelectExpression:
         if len(arg_exprs) != 1:
             msg = f"Expected a single argument for {self.fun}"
@@ -106,9 +106,9 @@ class FuncBase(ExprBase):
     def _validate_variadic_with_type(
         self,
         arg_exprs: list[TypedSelectExpression],
-        data_types: Union[DataType, set[DataType]],
+        data_types: DataType | set[DataType],
         allow_empty: bool = True,
-        max_args: Optional[int] = None,
+        max_args: int | None = None,
     ) -> None:
         if isinstance(data_types, DataType):
             data_types = {data_types}
@@ -126,7 +126,7 @@ class FuncBase(ExprBase):
         self,
         arg_exprs: list[TypedSelectExpression],
         allow_empty: bool = True,
-        max_args: Optional[int] = None,
+        max_args: int | None = None,
     ) -> None:
         if len(arg_exprs) == 0 and not allow_empty:
             msg = f"Expected at least one argument for {self.fun}"

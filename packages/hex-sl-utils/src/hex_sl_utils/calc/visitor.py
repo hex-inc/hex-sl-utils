@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Generic, Optional, TypeVar
+from typing import TYPE_CHECKING, Generic, TypeVar
 
-from hex_sl.calc.ast.base import QualifiedColumnRef
-from hex_sl.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.base import QualifiedColumnRef
+from hex_sl_utils.calc.ast.parameter import Parameter
 
 if TYPE_CHECKING:
-    from hex_sl.calc.ast.base import ExprBase
-    from hex_sl.calc.ast.binary import BinaryBase
-    from hex_sl.calc.ast.column import Column
-    from hex_sl.calc.ast.functions import FuncBase
-    from hex_sl.calc.ast.literals import (
+    from hex_sl_utils.calc.ast.binary import BinaryBase
+    from hex_sl_utils.calc.ast.column import Column
+    from hex_sl_utils.calc.ast.functions import FuncBase
+    from hex_sl_utils.calc.ast.literals import (
         LiteralBool,
         LiteralDate,
         LiteralNull,
@@ -19,9 +18,9 @@ if TYPE_CHECKING:
         LiteralString,
         LiteralTimestamp,
     )
-    from hex_sl.calc.ast.sql_expression import SqlExpression
-    from hex_sl.calc.ast.unary import UnaryBase
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.calc.ast.sql_expression import SqlExpression
+    from hex_sl_utils.calc.ast.unary import UnaryBase
+    from hex_sl_utils.dialect.dialect import Dialect
 
 # Define a type variable for the return type of the visitor methods
 T = TypeVar("T")
@@ -30,7 +29,7 @@ T = TypeVar("T")
 HEXSL_CALC_FN_NAME = "_HEXSL_CALC"
 
 
-def _extract_hexsl_calc_string(node: object) -> Optional[str]:
+def _extract_hexsl_calc_string(node: object) -> str | None:
     """Extract the calc expression string from a node if it's a _hexsl_calc function.
 
     Args:
@@ -43,7 +42,7 @@ def _extract_hexsl_calc_string(node: object) -> Optional[str]:
         ValueError: If the node is _hexsl_calc but doesn't have exactly one string
             literal argument
     """
-    from hex_sl._vendor.sqlglot import exp
+    from hex_sl_utils._vendor.sqlglot import exp
 
     if not (
         isinstance(node, exp.Anonymous) and node.this.upper() == HEXSL_CALC_FN_NAME
@@ -62,7 +61,7 @@ def _extract_hexsl_calc_string(node: object) -> Optional[str]:
             f"{HEXSL_CALC_FN_NAME}() requires a string literal argument. "
             f"Got {type(arg).__name__}: {arg}"
         )
-        raise ValueError(msg)
+        raise ValueError(msg)  # noqa: TRY004
 
 
 class CalcVisitor(ABC, Generic[T]):
@@ -122,37 +121,6 @@ class CalcVisitor(ABC, Generic[T]):
     @abstractmethod
     def visit_sql_expression(self, sql_expr: SqlExpression) -> T:
         pass
-
-    def visit(self, expr: ExprBase) -> T:
-        from hex_sl.calc.ast.sql_expression import SqlExpression
-
-        if isinstance(expr, LiteralNumber):
-            return self.visit_literal_number(expr)
-        elif isinstance(expr, LiteralString):
-            return self.visit_literal_string(expr)
-        elif isinstance(expr, LiteralBool):
-            return self.visit_literal_bool(expr)
-        elif isinstance(expr, LiteralTimestamp):
-            return self.visit_literal_timestamp(expr)
-        elif isinstance(expr, LiteralDate):
-            return self.visit_literal_date(expr)
-        elif isinstance(expr, LiteralNull):
-            return self.visit_literal_null(expr)
-        elif isinstance(expr, Column):
-            return self.visit_column(expr)
-        elif isinstance(expr, Parameter):
-            return self.visit_parameter(expr)
-        elif isinstance(expr, BinaryBase):
-            return self.visit_binary(expr)
-        elif isinstance(expr, UnaryBase):
-            return self.visit_unary(expr)
-        elif isinstance(expr, FuncBase):
-            return self.visit_func(expr)
-        elif isinstance(expr, SqlExpression):
-            return self.visit_sql_expression(expr)
-        else:
-            msg = f"Visit method for {type(expr).__name__} is not implemented."
-            raise NotImplementedError(msg)
 
 
 class CalcToStringVisitor(CalcVisitor[str]):
@@ -234,7 +202,7 @@ class CalcToStringVisitor(CalcVisitor[str]):
 
 
 class CollectColumnsVisitor(CalcVisitor[set[str]]):
-    def __init__(self, dialect: HexSLDialect) -> None:
+    def __init__(self, dialect: Dialect) -> None:
         self.dialect = dialect
 
     def visit_literal_string(self, literal: LiteralString) -> set[str]:
@@ -268,9 +236,7 @@ class CollectColumnsVisitor(CalcVisitor[set[str]]):
     def visit_func(self, func: FuncBase) -> set[str]:
         cols = set()
         for arg in func.args.root:
-            # I haven't been able to figure out why mypy
-            # is unhappy with this
-            col_set: set[str] = arg.root.accept(self)
+            col_set = arg.root.accept(self)
             cols.update(col_set)
         return cols
 
@@ -281,7 +247,7 @@ class CollectColumnsVisitor(CalcVisitor[set[str]]):
         return set()
 
     def visit_sql_expression(self, sql_expr: SqlExpression) -> set[str]:
-        from hex_sl._vendor.sqlglot import exp, parse_one
+        from hex_sl_utils._vendor.sqlglot import exp, parse_one
 
         # Use the dialect provided to the visitor
         sqlglot_expr = parse_one(sql_expr.sql, dialect=self.dialect.sqlglot_dialect())
@@ -290,7 +256,7 @@ class CollectColumnsVisitor(CalcVisitor[set[str]]):
 
         for node in sqlglot_expr.walk():
             if calc_str := _extract_hexsl_calc_string(node):
-                from hex_sl.calc.ast.expr import CalcExpr
+                from hex_sl_utils.calc.ast.expr import CalcExpr
 
                 calc_expr = CalcExpr.model_validate_json(calc_str)
                 # Get columns from the calc expression
@@ -304,7 +270,7 @@ class CollectColumnsVisitor(CalcVisitor[set[str]]):
 class CollectQualifiedColumnsVisitor(CalcVisitor[set[QualifiedColumnRef]]):
     """Visitor that collects (qualifiers, column_name) tuples from calc expressions."""
 
-    def __init__(self, dialect: HexSLDialect) -> None:
+    def __init__(self, dialect: Dialect) -> None:
         self.dialect = dialect
 
     def visit_literal_string(self, literal: LiteralString) -> set[QualifiedColumnRef]:
@@ -351,7 +317,7 @@ class CollectQualifiedColumnsVisitor(CalcVisitor[set[QualifiedColumnRef]]):
         return set()
 
     def visit_sql_expression(self, sql_expr: SqlExpression) -> set[QualifiedColumnRef]:
-        from hex_sl._vendor.sqlglot import exp, parse_one
+        from hex_sl_utils._vendor.sqlglot import exp, parse_one
 
         # Use the dialect provided to the visitor
         sqlglot_expr = parse_one(sql_expr.sql, dialect=self.dialect.sqlglot_dialect())
@@ -360,7 +326,7 @@ class CollectQualifiedColumnsVisitor(CalcVisitor[set[QualifiedColumnRef]]):
 
         for node in sqlglot_expr.walk():
             if calc_str := _extract_hexsl_calc_string(node):
-                from hex_sl.calc.ast.expr import CalcExpr
+                from hex_sl_utils.calc.ast.expr import CalcExpr
 
                 calc_expr = CalcExpr.model_validate_json(calc_str)
                 # Get all columns (qualified and unqualified) from the calc expression
@@ -377,7 +343,7 @@ class CollectQualifiedColumnsVisitor(CalcVisitor[set[QualifiedColumnRef]]):
 
 
 class AnyAggregateFunctionVisitor(CalcVisitor[bool]):
-    def __init__(self, dialect: HexSLDialect) -> None:
+    def __init__(self, dialect: Dialect) -> None:
         """Initialize with the SQL dialect for parsing SQL expressions."""
         self.dialect = dialect
 
@@ -422,8 +388,8 @@ class AnyAggregateFunctionVisitor(CalcVisitor[bool]):
         return False
 
     def visit_sql_expression(self, sql_expr: SqlExpression) -> bool:
-        from hex_sl._vendor.sqlglot import parse_one
-        from hex_sl.expr import has_aggregate_function
+        from hex_sl_utils._vendor.sqlglot import parse_one
+        from hex_sl_utils.expr import has_aggregate_function
 
         # Use the dialect provided to the visitor
         sqlglot_expr = parse_one(sql_expr.sql, dialect=self.dialect.sqlglot_dialect())
@@ -435,7 +401,7 @@ class AnyAggregateFunctionVisitor(CalcVisitor[bool]):
         # Also check inside _hexsl_calc placeholders
         for node in sqlglot_expr.walk():
             if calc_str := _extract_hexsl_calc_string(node):
-                from hex_sl.calc.ast.expr import CalcExpr
+                from hex_sl_utils.calc.ast.expr import CalcExpr
 
                 calc_expr = CalcExpr.model_validate_json(calc_str)
                 # Check if the calc expression has aggregates

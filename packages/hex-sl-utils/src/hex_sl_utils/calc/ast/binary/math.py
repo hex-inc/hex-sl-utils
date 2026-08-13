@@ -1,21 +1,18 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from pydantic import Field
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.calc.ast.binary.base import BinaryBase
-from hex_sl.calc.parentheses import parens_if_needed
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionKind, TypedSelectExpression
-from hex_sl.utils import TypeCheckError
-
-if TYPE_CHECKING:
-    # This import seems to be needed to help mypy follow that the BinaryBase
-    # lhs/rhs CalcExpr properties are available in child classes
-    from hex_sl.calc.ast import CalcExpr  # noqa: F401
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.binary.base import BinaryBase
+from hex_sl_utils.calc.parentheses import parens_if_needed
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr import ExpressionKind, TypedSelectExpression
 
 
 class BinaryMathBase(BinaryBase):
@@ -31,7 +28,7 @@ class BinaryMathBase(BinaryBase):
                 f"Unsupported binary operator {self.get_op()} for data types "
                 f"{left_type} and {right_type}"
             )
-            raise TypeCheckError(msg)  # noqa: F821
+            raise TypeCheckError(msg)
 
 
 class BinaryPlus(BinaryMathBase):
@@ -45,7 +42,7 @@ class BinaryPlus(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(
@@ -73,7 +70,7 @@ class BinaryMinus(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(
@@ -101,7 +98,7 @@ class BinaryMultiply(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(
@@ -129,7 +126,7 @@ class BinaryDivide(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(
@@ -171,7 +168,7 @@ class BinaryPower(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(
@@ -199,7 +196,7 @@ class BinaryModulus(BinaryMathBase):
         self,
         left_expr: TypedSelectExpression,
         right_expr: TypedSelectExpression,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
         self._validate_math_operator_arg_types(

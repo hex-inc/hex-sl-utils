@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl.calc.ast.args import Args
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.calc.ast.binary.base import BinaryBase
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.ast.binary.base import BinaryBase
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -16,20 +16,20 @@ from hex_sl.calc.ast.literals import (
     LiteralString,
     LiteralTimestamp,
 )
-from hex_sl.calc.ast.parameter import Parameter
-from hex_sl.calc.ast.sql_expression import SqlExpression
-from hex_sl.calc.ast.unary import UnaryBase
-from hex_sl.calc.visitor import CalcVisitor
+from hex_sl_utils.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression
+from hex_sl_utils.calc.ast.unary import UnaryBase
+from hex_sl_utils.calc.visitor import CalcVisitor
 
 if TYPE_CHECKING:
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.dialect.dialect import Dialect
 
 
 class ColumnSubstitutionVisitor(CalcVisitor[ExprBase]):
     def __init__(
         self,
         column_mapping: dict[str, ExprBase],
-        dialect: Optional[HexSLDialect] = None,
+        dialect: Dialect | None = None,
     ) -> None:
         self.column_mapping = column_mapping
         self.dialect = dialect
@@ -92,7 +92,7 @@ class ColumnSubstitutionVisitor(CalcVisitor[ExprBase]):
 
         # Transform column nodes and existing _hexsl_calc placeholders
         def transform_nodes(node: exp.Expression) -> exp.Expression:
-            from hex_sl.calc.visitor import (
+            from hex_sl_utils.calc.visitor import (
                 HEXSL_CALC_FN_NAME,
                 _extract_hexsl_calc_string,
             )
@@ -100,7 +100,7 @@ class ColumnSubstitutionVisitor(CalcVisitor[ExprBase]):
             # Handle existing _hexsl_calc placeholders
             if calc_str := _extract_hexsl_calc_string(node):
                 # Parse the calc expression from JSON
-                from hex_sl.calc.ast.expr import CalcExpr
+                from hex_sl_utils.calc.ast.expr import CalcExpr
 
                 calc_expr = CalcExpr.model_validate_json(calc_str)
 

@@ -3,16 +3,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from hex_sl.dialect.base import HexSLDialect
+    from hex_sl_utils.dialect.dialect import Dialect
 
-from hex_sl.calc.ast.args import Args
-from hex_sl.calc.ast.base import ExprBase
-from hex_sl.calc.ast.binary.base import BinaryBase
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.expr import CalcExpr
-from hex_sl.calc.ast.functions.aggs import FuncAggBase
-from hex_sl.calc.ast.functions.base import FuncBase
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.ast.binary.base import BinaryBase
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.expr import CalcExpr
+from hex_sl_utils.calc.ast.functions.aggs import FuncAggBase
+from hex_sl_utils.calc.ast.functions.base import FuncBase
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -20,10 +20,10 @@ from hex_sl.calc.ast.literals import (
     LiteralString,
     LiteralTimestamp,
 )
-from hex_sl.calc.ast.parameter import Parameter
-from hex_sl.calc.ast.sql_expression import SqlExpression
-from hex_sl.calc.ast.unary import UnaryBase
-from hex_sl.calc.visitor import CalcVisitor
+from hex_sl_utils.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression
+from hex_sl_utils.calc.ast.unary import UnaryBase
+from hex_sl_utils.calc.visitor import CalcVisitor
 
 PRIVATE_AGG_PREFIX = "_agg_"
 
@@ -41,7 +41,7 @@ class AggregateExtractionVisitor(CalcVisitor[tuple[ExprBase, dict[str, AggExpr]]
     names to the original aggregate expressions.
     """
 
-    def __init__(self, dialect: HexSLDialect) -> None:
+    def __init__(self, dialect: Dialect) -> None:
         """
         Initialize the visitor.
 
@@ -152,8 +152,8 @@ class AggregateExtractionVisitor(CalcVisitor[tuple[ExprBase, dict[str, AggExpr]]
         self, sql_expr: SqlExpression
     ) -> tuple[ExprBase, dict[str, AggExpr]]:
         # Check if the SQL expression contains aggregate functions
-        from hex_sl._vendor.sqlglot import parse_one
-        from hex_sl.expr import has_aggregate_function
+        from hex_sl_utils._vendor.sqlglot import parse_one
+        from hex_sl_utils.expr import has_aggregate_function
 
         sqlglot_expr = parse_one(sql_expr.sql, dialect=self.dialect.sqlglot_dialect())
 
