@@ -1,6 +1,6 @@
 """Tests for Trino dialect SQL parsing edge cases."""
 
-from hex_sl._vendor.sqlglot import exp, parse_one
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
 
 
 def test_trino_cast_qdigest_parameterized_type():

@@ -1,6 +1,7 @@
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl._vendor.sqlglot.dialects.dialect import map_date_part
 from inline_snapshot import snapshot
+
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import map_date_part
 
 
 class TestNova4471UnquotedDateParts:

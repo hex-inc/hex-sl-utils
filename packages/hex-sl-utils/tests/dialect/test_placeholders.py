@@ -1,9 +1,14 @@
 import pytest
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl.datatype import DataType, datatype_to_sqlglot
-from hex_sl.dialect import PlaceholderConfig, PlaceholderStyle, set_placeholder_style
-from hex_sl.dialect.base import HexSLDialect
 from inline_snapshot import snapshot
+
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
+from hex_sl_utils.dialect import (
+    HexSLDialect,
+    PlaceholderConfig,
+    PlaceholderStyle,
+    set_placeholder_style,
+)
 
 
 @pytest.fixture

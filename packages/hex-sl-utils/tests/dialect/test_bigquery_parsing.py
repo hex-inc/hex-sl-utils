@@ -1,7 +1,8 @@
 """Tests for BigQuery dialect SQL parsing and round-trip."""
 
-from hex_sl._vendor.sqlglot import exp, parse_one
 from inline_snapshot import snapshot
+
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
 
 
 def test_bigquery_extract_format_parse_roundtrip():

@@ -1,9 +1,10 @@
 import pytest
-from hex_sl.dialect.snowflake import HexSLSnowflake
-from hex_sl.expr import TypedSelectExpression
-from hex_sl.datatype import DataType
-from hex_sl._vendor.sqlglot import exp
 from inline_snapshot import snapshot
+
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.snowflake import HexSLSnowflake
+from hex_sl_utils.expr import ExpressionKind, TypedSelectExpression
 
 
 class TestSnowflakeTimestampParsing:
@@ -22,7 +23,7 @@ class TestSnowflakeTimestampParsing:
             requires_string=True,
         )
         ts_expr = TypedSelectExpression.from_sqlglot(
-            try_cast_expr, DataType.TIMESTAMP, "scalar"
+            try_cast_expr, DataType.TIMESTAMP, ExpressionKind.SCALAR
         )
 
         result = dialect.at_timezone(ts_expr, "America/New_York")
@@ -40,7 +41,7 @@ class TestSnowflakeTimestampParsing:
             requires_string=True,
         )
         ts_expr = TypedSelectExpression.from_sqlglot(
-            try_cast_expr, DataType.TIMESTAMP, "scalar"
+            try_cast_expr, DataType.TIMESTAMP, ExpressionKind.SCALAR
         )
 
         result = dialect.at_timezone(ts_expr, "UTC")
@@ -56,7 +57,7 @@ class TestSnowflakeTimestampParsing:
             requires_string=True,
         )
         ts_expr = TypedSelectExpression.from_sqlglot(
-            try_cast_expr, DataType.TIMESTAMP, "scalar"
+            try_cast_expr, DataType.TIMESTAMP, ExpressionKind.SCALAR
         )
 
         result = dialect.at_timezone(ts_expr, "Europe/London")
@@ -74,7 +75,7 @@ class TestSnowflakeTimestampParsing:
             requires_string=True,
         )
         ts_expr = TypedSelectExpression.from_sqlglot(
-            try_cast_expr, DataType.TIMESTAMP, "scalar"
+            try_cast_expr, DataType.TIMESTAMP, ExpressionKind.SCALAR
         )
 
         result = dialect.at_timezone(ts_expr, "Asia/Tokyo")
@@ -93,7 +94,7 @@ class TestSnowflakeTimestampParsing:
             requires_string=True,
         )
         ts_expr = TypedSelectExpression.from_sqlglot(
-            try_cast_expr, DataType.TIMESTAMP, "scalar"
+            try_cast_expr, DataType.TIMESTAMP, ExpressionKind.SCALAR
         )
 
         result = dialect.at_timezone(ts_expr, "UTC")
