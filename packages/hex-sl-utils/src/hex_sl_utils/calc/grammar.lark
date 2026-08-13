@@ -1,0 +1,105 @@
+%import common.CNAME
+%import common.NUMBER
+%import common.ESCAPED_STRING
+%import common.WS
+%ignore WS
+
+// The starting rule of the grammar
+?start: expr
+
+// Concatenation (lowest precedence)
+?expr: expr "&" logical_or -> binary_concat
+     | logical_or
+
+// Logical OR
+?logical_or: logical_or "||" logical_and -> binary_or
+           | logical_or OR logical_and -> binary_or_keyword
+           | logical_and
+
+// Logical AND
+?logical_and: logical_and "&&" equality -> binary_and
+            | logical_and AND equality -> binary_and_keyword
+            | equality
+
+// Equality comparisons
+?equality: equality ( "=" | "==" ) relational -> binary_equal
+         | equality ( "!=" | "<>" ) relational -> binary_not_equal
+         | relational
+
+// Relational comparisons
+?relational: relational "<" additive -> binary_less
+           | relational "<=" additive -> binary_less_equal
+           | relational ">" additive -> binary_greater
+           | relational ">=" additive -> binary_greater_equal
+           | additive
+
+// Addition and subtraction
+?additive: additive "+" multiplicative -> binary_plus
+         | additive "-" multiplicative -> binary_minus
+         | multiplicative
+
+// Multiplication, division, and modulus
+?multiplicative: multiplicative "*" power -> binary_multiply
+               | multiplicative "/" power -> binary_divide
+               | multiplicative "%" power -> binary_modulus
+               | power
+
+// Exponentiation
+?power: unary ("^" | "**") power -> binary_power
+      | unary
+
+// Unary operations
+?unary: "-" unary -> unary_minus
+      | "+" unary -> unary_plus
+      | "!" unary -> unary_not
+      | NOT unary -> unary_not_keyword
+      | primary
+
+// Primary expressions: literals, columns, identifiers, function calls, and grouped expressions
+// Highest precedence
+?primary: NUMBER           -> literal_number
+        | ESCAPED_STRING   -> literal_string
+        | SINGLE_QUOTED_STRING -> literal_string
+        | DATE             -> literal_date
+        | TIMESTAMP        -> literal_timestamp
+        | TRUE             -> literal_bool
+        | FALSE            -> literal_bool
+        | NULL             -> literal_null
+        | qualified_identifier -> qualified_column
+        | COLUMN           -> column
+        | IDENTIFIER       -> identifier
+        | PARAMETER        -> parameter
+        | function_call
+        | "(" expr ")"
+
+// Function call expressions
+?function_call: IDENTIFIER "(" [expr ("," expr)*] ")" -> function_call
+
+// Qualified identifiers: dataset.column or `dataset`.`column` etc.
+qualified_identifier: (IDENTIFIER | COLUMN) ("." (IDENTIFIER | COLUMN))+
+
+// Case-insensitive keywords with high priority, matching whole words only
+OR.2: /\bOR\b/i
+AND.2: /\bAND\b/i
+NOT.2: /\bNOT\b/i
+TRUE.2: /\bTRUE\b/i
+FALSE.2: /\bFALSE\b/i
+NULL.2: /\bNULL\b/i
+
+// Single-quoted string literals
+SINGLE_QUOTED_STRING: /'([^'\\]|\\.)*'/
+
+// Date literals in the format d"YYYY-MM-DD"
+DATE.2: /d"\d{4}-\d{2}-\d{2}"/
+
+// Timestamp literals in the format t"YYYY-MM-DDTHH:MM:SS" or t"YYYY-MM-DDTHH:MM:SS.mmm"
+TIMESTAMP.2: /t"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?"/
+
+// Column identifiers enclosed in backticks
+COLUMN: /`[^`]+`/
+
+// Regular identifier rule
+IDENTIFIER: /[a-zA-Z_][a-zA-Z0-9_]*/
+
+// Parameter rule
+PARAMETER: /\{\{\s*[a-zA-Z_][a-zA-Z0-9_]*\s*\}\}/
