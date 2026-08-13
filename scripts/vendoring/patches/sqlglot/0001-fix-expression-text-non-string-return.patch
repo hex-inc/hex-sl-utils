@@ -1,0 +1,40 @@
+diff --git a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
+--- a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
++++ b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/dialects/dialect.py
+@@ -1724,7 +1724,9 @@
+ 
+ def map_date_part(part, dialect: DialectType = Dialect):
+     mapped = (
+-        Dialect.get_or_raise(dialect).DATE_PART_MAPPING.get(part.name.upper()) if part else None
++        Dialect.get_or_raise(dialect).DATE_PART_MAPPING.get(part.name.upper())
++        if part and not (isinstance(part, exp.Column) and len(part.parts) != 1)
++        else None
+     )
+     if mapped:
+         return exp.Literal.string(mapped) if part.is_string else exp.var(mapped)
+diff --git a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
+--- a/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
++++ b/packages/hex-sl-utils/src/hex_sl_utils/_vendor/sqlglot/expressions.py
+@@ -163,10 +163,9 @@
+         field = self.args.get(key)
+         if isinstance(field, str):
+             return field
+-        if isinstance(field, (Identifier, Literal, Var)):
+-            return field.this
+-        if isinstance(field, (Star, Null)):
+-            return field.name
++        if isinstance(field, Expression):
++            result = field.name
++            return result if isinstance(result, str) else ""
+         return ""
+ 
+     @property
+@@ -4485,7 +4484,7 @@
+ 
+     @property
+     def name(self) -> str:
+-        return self.this or "?"
++        return self.text("this") or "?"
+ 
+ 
+ class Null(Condition):
