@@ -49,7 +49,9 @@
         "devbox run build",
         "devbox run smoke-test"
       ],
-      "build:schema": ["uv run --locked --all-packages python scripts/spec-schema/generate_schema.py"],
+      "build:schema": [
+        "uv run --locked --all-packages python scripts/spec-schema/generate_schema.py"
+      ],
       "verify:schema": [
         "uv run --locked --all-packages python scripts/spec-schema/check_generated_schema.py"
       ],
