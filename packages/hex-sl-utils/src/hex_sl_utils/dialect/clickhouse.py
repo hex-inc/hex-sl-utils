@@ -1,24 +1,26 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+import datetime
+from typing import Any, ClassVar
 
-from hex_sl._vendor.sqlglot import exp, tokens
-from hex_sl._vendor.sqlglot.dialects.clickhouse import ClickHouse
-from hex_sl._vendor.sqlglot.dialects.dialect import NormalizationStrategy, rename_func
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import DialectName, HexSLDialect, TruncUnit
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, tokens
+from hex_sl_utils._vendor.sqlglot.dialects.clickhouse import ClickHouse
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import (
+    NormalizationStrategy,
+    rename_func,
+)
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLClickHouse(HexSLDialect):
@@ -53,7 +55,6 @@ class HexSLClickHouse(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ParameterizedAgg(
@@ -70,7 +71,6 @@ class HexSLClickHouse(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ParameterizedAgg(
@@ -92,7 +92,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build an IS NAN check using ClickHouse's native isNaN function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use ClickHouse's native isNaN function
         cast_arg = self.cast_to_float(arg)
@@ -108,7 +107,6 @@ class HexSLClickHouse(HexSLDialect):
 
         ClickHouse uses lowercase 'median' function which is an alias for quantile(0.5).
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast to float using dialect method
         cast_typed = self.cast_to_float(arg)
@@ -141,7 +139,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # toDateTime64(arg / 1000, 3, 'UTC')
         return TypedSelectExpression.from_sqlglot(
@@ -164,7 +161,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build expression to convert a timestamp to epoch milliseconds.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         expr_arg: exp.Expression
         if arg.data_type == DataType.DATE:
@@ -193,7 +189,6 @@ class HexSLClickHouse(HexSLDialect):
     def cast_str_to_timestamp(
         self, arg: TypedSelectExpression, tz: str, force_tz: bool = False
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             self.func(
@@ -211,7 +206,6 @@ class HexSLClickHouse(HexSLDialect):
         Build expression to cast string to number, or null if the string is
         not a number
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use accurateCastOrNull for ClickHouse
         cast_expr = exp.Anonymous(
@@ -225,7 +219,6 @@ class HexSLClickHouse(HexSLDialect):
         Build expression to cast string to date, or null if the string is
         not a date
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use accurateCastOrNull for ClickHouse
         cast_expr = exp.Anonymous(
@@ -240,7 +233,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build expression to cast timestamptz to date with ClickHouse nullable handling.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Convert to target timezone first
         tz_arg = self.at_timezone(arg, tz)
@@ -255,7 +247,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build expression to cast timestamp to date with ClickHouse nullable handling.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # ClickHouse needs Nullable type for cast
         nullable_date = exp.DataType(this=exp.DataType.Type.DATE, nullable=True)
@@ -266,7 +257,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Cast to float always uses Nullable(Float64) in ClickHouse.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Always use Nullable(Float64) for ClickHouse
         # Create a DataType node with nested structure for Nullable(Float64)
@@ -279,7 +269,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Cast to int always uses Nullable(Int32) in ClickHouse.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Always use Nullable(Int32) for ClickHouse
         # Create a DataType node with nested structure for Nullable(Int32)
@@ -292,7 +281,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Cast to string always uses Nullable(String) in ClickHouse.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Always use Nullable(String) for ClickHouse
         # Create a DataType node with nested structure for Nullable(String)
@@ -303,9 +291,9 @@ class HexSLClickHouse(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,  # noqa: ANN401
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with proper type handling for ClickHouse.
@@ -313,9 +301,6 @@ class HexSLClickHouse(HexSLDialect):
         ClickHouse uses parseDateTimeBestEffort for timestamps.
         """
         # Handle datetime objects with ClickHouse-specific functions
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         if isinstance(literal, datetime.datetime):
             # Check if datetime has timezone info
@@ -370,10 +355,9 @@ class HexSLClickHouse(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
@@ -410,8 +394,8 @@ class HexSLClickHouse(HexSLDialect):
     def _trunc_general(
         self,
         expr: exp.Expression,
-        unit: TruncUnit,
-        convert_tz: Optional[str],
+        unit: TimeTruncUnit,
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements general date truncation for ClickHouse.
@@ -441,7 +425,7 @@ class HexSLClickHouse(HexSLDialect):
     def _trunc_week(
         self,
         expr: exp.Expression,
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements week truncation for ClickHouse, always truncating to Sunday.
@@ -493,7 +477,6 @@ class HexSLClickHouse(HexSLDialect):
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
         # Clickhouse uses toTimeZone(arg, tz), which returns a timestamp with timezone
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.Anonymous(
@@ -514,7 +497,6 @@ class HexSLClickHouse(HexSLDialect):
         Build expression to cast a date to a naive timestamp.
         Use toDateTime64 to handle NULLs properly in ClickHouse.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.Anonymous(
@@ -528,7 +510,6 @@ class HexSLClickHouse(HexSLDialect):
     def cast_date_to_timestamptz(
         self, arg: TypedSelectExpression, tz: str
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.Anonymous(
@@ -554,8 +535,6 @@ class HexSLClickHouse(HexSLDialect):
         ClickHouse's toDayOfWeek with mode 3 returns Sunday=1, Saturday=7
         which matches our expected format.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -571,7 +550,6 @@ class HexSLClickHouse(HexSLDialect):
         """
         Build expression to check if a string contains a substring using position.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
@@ -588,7 +566,6 @@ class HexSLClickHouse(HexSLDialect):
         Build expression to check if a string starts with a substring using
         ClickHouse's startsWith.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
 
@@ -606,7 +583,6 @@ class HexSLClickHouse(HexSLDialect):
         Build expression to check if a string ends with a substring using
         ClickHouse's endsWith.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
 
@@ -622,7 +598,6 @@ class HexSLClickHouse(HexSLDialect):
         ClickHouse's concat returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -656,7 +631,6 @@ class HexSLClickHouse(HexSLDialect):
         ClickHouse uses toDateTime() to remove fractional seconds before casting.
         This ensures timestamp-to-string conversion doesn't include fractional seconds.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use toDateTime() to remove fractional seconds, then cast to String
         datetime_expr = self.func("toDateTime", arg.expression)
@@ -681,7 +655,6 @@ class HexSLClickHouse(HexSLDialect):
         a placeholder value, and then split the string on that. We then
         normalize edge cases with nulls and out of bounds indexes.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [
@@ -731,67 +704,6 @@ class HexSLClickHouse(HexSLDialect):
             kind,
         )
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        date_range = exp.select(
-            exp.Min(
-                this=exp.Cast(
-                    this=min_bound_expr.expression,
-                    to=exp.DataType.build("DATE"),
-                )
-            ).as_("min_date", quoted=True),
-            # Calculate days difference between min and max dates
-            self.func(
-                "date_diff",
-                exp.Literal.string(interval_unit.to_interval_name()),
-                exp.Min(this=min_bound_expr.expression),
-                exp.Max(this=max_bound_expr.expression),
-            ).as_("day_diff", quoted=True),
-        ).from_(from_)
-
-        return (
-            exp.select(
-                exp.Cast(
-                    this=self.func(
-                        "date_add",
-                        exp.Literal.string(interval_unit.to_interval_name()),
-                        exp.column("n", quoted=True),
-                        exp.column("min_date", quoted=True),
-                    ),
-                    to=exp.DataType.build("DATE"),
-                ).as_("date", quoted=True)
-            )
-            .from_(
-                exp.Subquery(
-                    this=exp.select(
-                        exp.column("min_date", quoted=True),
-                        self.func(
-                            "arrayJoin",
-                            self.func(
-                                "range",
-                                exp.Literal.number(0),
-                                exp.Add(
-                                    this=exp.column("day_diff", quoted=True),
-                                    expression=exp.Literal.number(1),
-                                ),
-                            ),
-                        ).as_("n", quoted=True),
-                    ).from_(exp.to_identifier("date_range", quoted=True))
-                ),
-                alias=exp.to_identifier("t", quoted=True),
-            )
-            .with_("date_range", date_range)
-        )
-
 
 class HexSlClickHouseSqlGlotDialect(ClickHouse):
     @classmethod
@@ -827,10 +739,10 @@ class HexSlClickHouseSqlGlotDialect(ClickHouse):
 
     class Tokenizer(ClickHouse.Tokenizer):
         # Remove $ from heredoc strings to allow ${...} placeholders
-        HEREDOC_STRINGS: list[str | tuple[str, str]] = []
+        HEREDOC_STRINGS: ClassVar[list[str | tuple[str, str]]] = []
 
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS = {
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

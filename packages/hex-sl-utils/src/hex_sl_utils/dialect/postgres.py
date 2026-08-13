@@ -1,29 +1,24 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Optional
+import datetime
+from typing import Any, Literal
 
-from hex_sl._vendor.sqlglot import exp, transforms
-from hex_sl._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl._vendor.sqlglot.dialects.postgres import Postgres
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    HexSLDialect,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-)
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
+from hex_sl_utils._vendor.sqlglot.dialects.postgres import Postgres
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLPostgres(HexSLDialect):
@@ -60,7 +55,6 @@ class HexSLPostgres(HexSLDialect):
         PostgreSQL: NaN = NaN returns true, but NaN != NaN returns false.
         So we check: arg = 'NaN'::DOUBLE PRECISION
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast argument to double precision
         cast_arg = self.cast_to_float(arg)
@@ -79,7 +73,6 @@ class HexSLPostgres(HexSLDialect):
         """
         Build a MEDIAN expression using PERCENTILE_CONT for Postgres.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast to float using dialect method
         cast_typed = self.cast_to_float(arg)
@@ -103,7 +96,6 @@ class HexSLPostgres(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_anon = exp.Anonymous(
@@ -120,9 +112,9 @@ class HexSLPostgres(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with Postgres-specific date and datetime handling.
@@ -130,9 +122,6 @@ class HexSLPostgres(HexSLDialect):
         Postgres uses MAKE_DATE(year, month, day) for date literals and
         CAST('string' AS TIMESTAMP/TIMESTAMPTZ) for datetime literals.
         """
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         # Handle datetime objects with Postgres-specific CAST functions
         if isinstance(literal, datetime.datetime):
@@ -188,7 +177,6 @@ class HexSLPostgres(HexSLDialect):
         """
         Build expression to cast string to date, or null if the string is not a date
         """
-        from hex_sl.expr import TypedSelectExpression
 
         str_as_date = (
             exp.Case()
@@ -211,7 +199,6 @@ class HexSLPostgres(HexSLDialect):
         """
         Build expression to cast string to number, or null if the string is not a number
         """
-        from hex_sl.expr import TypedSelectExpression
 
         str_as_number = (
             exp.Case()
@@ -236,7 +223,6 @@ class HexSLPostgres(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # TO_TIMESTAMP(arg / 1000)
         return TypedSelectExpression.from_sqlglot(
@@ -259,8 +245,6 @@ class HexSLPostgres(HexSLDialect):
 
         Postgres uses EXTRACT('epoch' FROM ...) to get epoch seconds.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -284,10 +268,9 @@ class HexSLPostgres(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit.lower() == "week":
@@ -310,7 +293,7 @@ class HexSLPostgres(HexSLDialect):
     def _trunc_week(
         self,
         expr: exp.Expression,
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements week truncation for Postgres, always truncating to Sunday.
@@ -366,8 +349,8 @@ class HexSLPostgres(HexSLDialect):
     def _trunc_general(
         self,
         expr: exp.Expression,
-        unit: TruncUnit,
-        convert_tz: Optional[str],
+        unit: TimeTruncUnit,
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements general date truncation for Postgres
@@ -401,7 +384,6 @@ class HexSLPostgres(HexSLDialect):
         return result_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         # In Postgres, the `AT TIME ZONE` clause returns a timestamp without timezone
         # (unlike Athena and BigQuery, which returns a timestamp with timezone).
@@ -428,7 +410,6 @@ class HexSLPostgres(HexSLDialect):
             #
             # The cast to int needs to happen before the mod operation, like this:
             #   CAST(FLOOR(EXTRACT('millisecond' FROM "ts")) AS INT) % 1000
-            from hex_sl.expr import TypedSelectExpression
 
             return TypedSelectExpression.from_sqlglot(
                 exp.Mod(
@@ -449,7 +430,6 @@ class HexSLPostgres(HexSLDialect):
         elif unit == "second" and arg.data_type != DataType.DATE:
             # Postgres EXTRACT returns fractional seconds, so we need to floor them
             # to match expected behavior (truncate, not round)
-            from hex_sl.expr import TypedSelectExpression
 
             if arg.data_type == DataType.TIMESTAMPTZ:
                 arg = self.at_timezone(arg, timezone)
@@ -481,7 +461,6 @@ class HexSLPostgres(HexSLDialect):
         Uses PostgreSQL's native SPLIT_PART function which returns empty string for
         out-of-bounds indices and handles null strings by returning null.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [string.kind, delimiter.kind, part_number.kind]
@@ -499,69 +478,6 @@ class HexSLPostgres(HexSLDialect):
             split_part_expr, DataType.STRING, kind
         )
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on the range extent of a column using
-        Postgres's generate_series function. For OffsetTimeUnit instances, the
-        timespine is generated with dates aligned to the offset boundaries.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        min_date = exp.Subquery(
-            this=exp.select(
-                exp.Min(
-                    this=exp.Cast(
-                        this=min_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-        max_date = exp.Subquery(
-            this=exp.select(
-                exp.Max(
-                    this=exp.Cast(
-                        this=max_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-
-        step = (
-            exp.Interval(  # type: ignore[no-untyped-call]
-                this=exp.Literal.number(3),
-                unit="MONTH",
-            )
-            if interval_unit == StandardTimeUnit.QUARTER
-            else exp.Interval(  # type: ignore[no-untyped-call]
-                this=exp.Literal.number(1),
-                unit=interval_unit.to_interval_name(),
-            )
-        )
-        return exp.select(
-            exp.alias_(
-                exp.cast(
-                    exp.GenerateSeries(
-                        start=min_date,
-                        end=max_date,
-                        step=step,
-                    ),
-                    "DATE",
-                ),
-                alias="date",
-                quoted=True,
-            )
-        )
-
     def concat(self, *args: TypedSelectExpression) -> TypedSelectExpression:
         """
         Build a CONCAT expression for PostgreSQL.
@@ -571,7 +487,6 @@ class HexSLPostgres(HexSLDialect):
         - Single NULL arguments are converted to empty strings
         No COALESCE wrapping is needed.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -588,7 +503,6 @@ class HexSLPostgres(HexSLDialect):
         """
         PostgreSQL-specific startswith implementation using native STARTS_WITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTS_WITH", string.expression, prefix.expression)

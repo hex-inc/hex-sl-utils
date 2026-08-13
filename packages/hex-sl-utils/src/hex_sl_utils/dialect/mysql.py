@@ -1,35 +1,30 @@
 from __future__ import annotations
 
+import datetime
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import Any, ClassVar, Literal
 
-from hex_sl._vendor.sqlglot import Generator, exp, tokens, transforms
-from hex_sl._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl._vendor.sqlglot.dialects.mysql import MySQL
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    HexSLDialect,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-)
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import Generator, exp, tokens, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
+from hex_sl_utils._vendor.sqlglot.dialects.mysql import MySQL
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-from hex_sl.utils import UnsupportedByDialectError
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.exception import UnsupportedByDialectError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLMySQL(HexSLDialect):
-    _TRUNC_FORMATS: dict[str, tuple[str, str]] = {
+    _TRUNC_FORMATS: ClassVar[dict[str, tuple[str, str]]] = {
         "year": ("%Y-01-01", "DATE"),
         "month": ("%Y-%m-01", "DATE"),
         "day": ("%Y-%m-%d", "DATE"),
@@ -74,7 +69,6 @@ class HexSLMySQL(HexSLDialect):
         """
         Build expression to cast string to number, or null if the string is not a number
         """
-        from hex_sl.expr import TypedSelectExpression
 
         str_as_number = (
             exp.Case()
@@ -96,8 +90,6 @@ class HexSLMySQL(HexSLDialect):
     def cast_str_to_timestamp(
         self, arg: TypedSelectExpression, tz: str, force_tz: bool = False
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         ts_expr = TypedSelectExpression.from_sqlglot(
             exp.cast(arg.expression, to=exp.DataType.build("DATETIME(3)")),
@@ -112,9 +104,9 @@ class HexSLMySQL(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with MySQL-specific date handling.
@@ -122,9 +114,6 @@ class HexSLMySQL(HexSLDialect):
         MySQL uses DATE('YYYY-MM-DD') for date literals and TIMESTAMP('string')
         for timestamp literals.
         """
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         # Handle datetime objects with MySQL-specific TIMESTAMP function
         if isinstance(literal, datetime.datetime):
@@ -176,7 +165,6 @@ class HexSLMySQL(HexSLDialect):
         from other databases. We use CONCAT_WS with empty separator to get
         consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -205,7 +193,6 @@ class HexSLMySQL(HexSLDialect):
         """
         Build expression to check if a string contains a substring using LOCATE.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
         return TypedSelectExpression.from_sqlglot(
@@ -220,11 +207,9 @@ class HexSLMySQL(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
@@ -266,7 +251,7 @@ class HexSLMySQL(HexSLDialect):
         expr: exp.Expression,
         format_string: str,
         cast_type: str,
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         if convert_tz:
             expr = self.func(
@@ -284,7 +269,7 @@ class HexSLMySQL(HexSLDialect):
         return result
 
     def _trunc_quarter(
-        self, expr: exp.Expression, convert_tz: Optional[str]
+        self, expr: exp.Expression, convert_tz: str | None
     ) -> exp.Expression:
         """
         Implements quarter truncation for MySQL.
@@ -364,7 +349,7 @@ class HexSLMySQL(HexSLDialect):
         self,
         expr: exp.Expression,
         unit: Literal["week", "weekmonday"],
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements week truncation for MySQL, returning a timestamp.
@@ -457,8 +442,6 @@ class HexSLMySQL(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # from_unixtime(arg / 1000)
         return TypedSelectExpression.from_sqlglot(
@@ -486,8 +469,6 @@ class HexSLMySQL(HexSLDialect):
         MySQL uses DAYOFWEEK(date) which returns Sunday=1, Saturday=7.
         This already matches our expected format, so no adjustment needed.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -503,8 +484,6 @@ class HexSLMySQL(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
@@ -545,8 +524,6 @@ class HexSLMySQL(HexSLDialect):
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
         # Clickhouse uses toTimeZone(arg, tz), which returns a timestamp with timezone
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
@@ -589,8 +566,6 @@ class HexSLMySQL(HexSLDialect):
         indexed with both positive and negative values) to slice around the
         portion we want to extract.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [string.kind, delimiter.kind, part_number.kind]
@@ -615,130 +590,6 @@ class HexSLMySQL(HexSLDialect):
             ),
             DataType.STRING,
             kind,
-        )
-
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on a time unit and the range extent of a
-        column using MySQL's INFORMATION_SCHEMA approach for better performance. For
-        OffsetTimeUnit instances, the timespine is generated with dates aligned to the
-        offset boundaries.
-
-        This implementation uses INFORMATION_SCHEMA.COLUMNS (cross-joined with
-        itself) to generate up to ~100,000 sequential numbers efficiently.
-        This is much more efficient that cross joining inline VALUES for mysql.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        diff_col = f"num_{interval_unit.to_interval_name().lower()}s"
-
-        date_range = exp.Subquery(
-            this=exp.select(
-                self.func(
-                    "timestampdiff",
-                    exp.Literal.string(interval_unit.to_interval_name()),
-                    exp.Min(this=min_bound_expr.expression),
-                    exp.Max(this=max_bound_expr.expression),
-                ).as_(diff_col, quoted=True),
-            ).from_(from_),
-            alias=exp.to_identifier("date_range", quoted=True),
-        )
-
-        # Use INFORMATION_SCHEMA.COLUMNS for both sides of cross join
-        # This gives us 316² = 99,856 combinations (almost exactly 100k)
-        # COLUMNS table is longer than TABLES (3420 vs 313 rows) so more efficient
-
-        # Limit for each side of cross join to generate ~100k row combinations
-        cross_join_limit = 316
-
-        info_schema_cols = exp.Table(
-            this=exp.to_identifier("COLUMNS"),
-            db=exp.to_identifier("INFORMATION_SCHEMA"),
-        )
-
-        # Build the row number generation query using INFORMATION_SCHEMA.COLUMNS
-        # Cross join COLUMNS with itself (limited to 316 each) for ~100k combinations
-        cols_subquery_1 = exp.Subquery(
-            this=exp.select(exp.Literal.number(1).as_("dummy"))
-            .from_(info_schema_cols)
-            .limit(cross_join_limit),
-            alias=exp.to_identifier("c1", quoted=True),
-        )
-
-        cols_subquery_2 = exp.Subquery(
-            this=exp.select(exp.Literal.number(1).as_("dummy"))
-            .from_(info_schema_cols)
-            .limit(cross_join_limit),
-            alias=exp.to_identifier("c2", quoted=True),
-        )
-
-        numbers_query = (
-            exp.select(
-                exp.alias_(
-                    exp.Window(this=self.func("ROW_NUMBER"), order=None),
-                    alias="row_num",
-                    quoted=True,
-                )
-            )
-            .from_(cols_subquery_1)
-            .join(cols_subquery_2, join_type="CROSS")
-        )
-
-        return (
-            exp.select(
-                exp.alias_(
-                    exp.cast(
-                        self.func(
-                            "DATE_ADD",
-                            exp.Subquery(
-                                this=exp.select(
-                                    exp.Min(
-                                        this=exp.Cast(
-                                            this=min_bound_expr.expression,
-                                            to=exp.DataType.build("DATE"),
-                                        )
-                                    )
-                                ).from_(from_)
-                            ),
-                            exp.Interval(  # type: ignore[no-untyped-call]
-                                this=exp.Sub(
-                                    this=exp.column("row_num", quoted=True),
-                                    expression=exp.Literal.number(1),
-                                ),
-                                unit=exp.TimeUnit(  # type: ignore[no-untyped-call]
-                                    this=interval_unit.to_interval_name()
-                                ),
-                            ),
-                        ),
-                        to=exp.DataType.build("DATE"),
-                    ),
-                    alias="date",
-                )
-            )
-            .from_(
-                exp.Subquery(
-                    this=numbers_query,
-                    alias=exp.to_identifier("numbered_rows", quoted=True),
-                )
-            )
-            .join(date_range, join_type="CROSS")
-            .where(
-                exp.LTE(
-                    this=exp.Sub(
-                        this=exp.column("row_num", quoted=True),
-                        expression=exp.Literal.number(1),
-                    ),
-                    expression=exp.column(diff_col, quoted=True),
-                )
-            )
         )
 
 
@@ -776,7 +627,7 @@ class HexSlMySQLSqlGlotDialect(MySQL):
 
     class Tokenizer(MySQL.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS = {
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

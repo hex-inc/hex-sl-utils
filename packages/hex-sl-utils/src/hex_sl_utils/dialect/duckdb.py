@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Optional
+import datetime
+from typing import Any, Literal
 
-from hex_sl._vendor.sqlglot import exp, generator
-from hex_sl._vendor.sqlglot.dialects.duckdb import DuckDB
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import DialectName, HexSLDialect, TruncUnit
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, generator
+from hex_sl_utils._vendor.sqlglot.dialects.duckdb import DuckDB
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:  # noqa: F821
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLDuckDB(HexSLDialect):
@@ -52,7 +51,6 @@ class HexSLDuckDB(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
@@ -68,7 +66,6 @@ class HexSLDuckDB(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
@@ -86,7 +83,6 @@ class HexSLDuckDB(HexSLDialect):
         """
         Build an IS NAN check using DuckDB's native ISNAN function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Only cast if not already a float type
         if arg.data_type == DataType.NUMBER:
@@ -105,7 +101,6 @@ class HexSLDuckDB(HexSLDialect):
         """
         Build an IS INFINITE check using DuckDB's native ISINF function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Only cast if not already a float type
         if arg.data_type == DataType.NUMBER:
@@ -127,7 +122,6 @@ class HexSLDuckDB(HexSLDialect):
         DuckDB's CONCAT function automatically skips NULL values in multi-argument
         calls and converts single NULL arguments to empty strings.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -141,11 +135,9 @@ class HexSLDuckDB(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit.lower() == "week":
@@ -168,7 +160,7 @@ class HexSLDuckDB(HexSLDialect):
     def _trunc_week(
         self,
         expr: exp.Expression,
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements week truncation for DuckDB, always truncating to Sunday.
@@ -224,8 +216,8 @@ class HexSLDuckDB(HexSLDialect):
     def _trunc_general(
         self,
         expr: exp.Expression,
-        unit: TruncUnit,
-        convert_tz: Optional[str],
+        unit: TimeTruncUnit,
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements general date truncation for DuckDB
@@ -259,8 +251,6 @@ class HexSLDuckDB(HexSLDialect):
         return result_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # In DuckDB, the `AT TIME ZONE` clause returns a timestamp without timezone
         # (unlike Athena and BigQuery, which returns a timestamp with timezone).
@@ -281,7 +271,6 @@ class HexSLDuckDB(HexSLDialect):
 
         DuckDB uses the epoch_ms() function for this conversion.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast to int first if needed
         int_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("BIGINT"))
@@ -300,8 +289,6 @@ class HexSLDuckDB(HexSLDialect):
 
         DuckDB uses the epoch_ms() function for this conversion.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -398,79 +385,6 @@ class HexSLDuckDB(HexSLDialect):
         else:
             return try_cast_expr
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on a time unit and the range extent
-        of a column using DuckDB's generate_series and UNNEST functions. For
-        OffsetTimeUnit instances, the timespine is generated with dates aligned
-        to the offset boundaries.
-        """
-        name = "unnest_spine"
-
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        interval_unit_name = interval_unit.to_interval_name()
-
-        return exp.select(
-            exp.alias_(
-                exp.Cast(
-                    this=exp.column("date", table=name, quoted=True),
-                    to=exp.DataType.build("DATE"),
-                ),
-                alias="date",
-                quoted=True,
-            )
-        ).from_(
-            exp.Unnest(
-                expressions=[
-                    self.func(
-                        "generate_series",
-                        exp.Cast(
-                            this=exp.Subquery(
-                                this=exp.select(
-                                    exp.Min(
-                                        this=exp.Cast(
-                                            this=min_bound_expr.expression,
-                                            to=exp.DataType.build("DATE"),
-                                        )
-                                    )
-                                ).from_(from_)
-                            ),
-                            to=exp.DataType.build("DATE"),
-                        ),
-                        exp.Cast(
-                            this=exp.Subquery(
-                                this=exp.select(
-                                    exp.Max(
-                                        this=exp.Cast(
-                                            this=max_bound_expr.expression,
-                                            to=exp.DataType.build("DATE"),
-                                        )
-                                    )
-                                ).from_(from_)
-                            ),
-                            to=exp.DataType.build("DATE"),
-                        ),
-                        exp.Interval(  # type: ignore[no-untyped-call]
-                            this=exp.Literal.number(1),
-                            unit=interval_unit_name,
-                        ),
-                    )
-                ],
-                alias=exp.TableAlias(
-                    this=name, columns=[exp.to_identifier("date", quoted=True)]
-                ),
-            )
-        )
-
     def should_cast_dimension_type_by_default(self, dtype: DataType) -> bool:
         # In duckdb it's safe to always cast to timestamptz, and
         # this handles the scenario where the true column type is timestamp.
@@ -478,16 +392,15 @@ class HexSLDuckDB(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with DuckDB-specific date handling.
 
         DuckDB uses MAKE_DATE for date literals.
         """
-        import datetime
 
         # Handle datetime objects with DuckDB-specific MAKE_TIMESTAMP function
         if isinstance(literal, datetime.datetime):
@@ -563,8 +476,6 @@ class HexSLDuckDB(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
@@ -606,7 +517,6 @@ class HexSLDuckDB(HexSLDialect):
         """
         DuckDB-specific startswith implementation using native STARTS_WITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTS_WITH", string.expression, prefix.expression)
@@ -620,7 +530,6 @@ class HexSLDuckDB(HexSLDialect):
         """
         DuckDB-specific endswith implementation using native SUFFIX function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         # DuckDB uses SUFFIX function for endswith
@@ -633,7 +542,6 @@ class HexSLDuckDB(HexSLDialect):
         """
         Build expression to check if a string contains a substring using CONTAINS.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
@@ -654,7 +562,6 @@ class HexSLDuckDB(HexSLDialect):
         Uses DuckDB's native SPLIT_PART function which returns empty string for
         out-of-bounds indices and handles null strings by returning null.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [string.kind, delimiter.kind, part_number.kind]

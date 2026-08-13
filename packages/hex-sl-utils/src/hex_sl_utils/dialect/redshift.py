@@ -1,30 +1,27 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING, Any, Optional
+from typing import Any
 
-from hex_sl._vendor.sqlglot import exp, transforms
-from hex_sl._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl._vendor.sqlglot.dialects.redshift import Redshift
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-    values_as_union_with_consistent_names_sql,
-)
-from hex_sl.dialect.postgres import HexSLPostgres
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
+from hex_sl_utils._vendor.sqlglot.dialects.redshift import Redshift
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
-
-if TYPE_CHECKING:
-    from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
+from hex_sl_utils.dialect.postgres import HexSLPostgres
+from hex_sl_utils.dialect.transforms import (
+    hex_sl_eliminate_qualify,
+    values_as_union_with_consistent_names_sql,
+)
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLRedshift(HexSLPostgres):
@@ -62,12 +59,10 @@ class HexSLRedshift(HexSLPostgres):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if isinstance(literal, datetime.datetime):
             # Handle datetime objects with Redshift-specific CAST functions
@@ -125,7 +120,6 @@ class HexSLRedshift(HexSLPostgres):
         """
         Build expression to convert a timestamp to epoch milliseconds.
         """
-        from hex_sl.datatype import DataType
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -166,8 +160,6 @@ class HexSLRedshift(HexSLPostgres):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # (TIMESTAMP 'epoch' + ((arg_expression / 1000) * INTERVAL '1 second'))
         return TypedSelectExpression.from_sqlglot(
@@ -200,11 +192,9 @@ class HexSLRedshift(HexSLPostgres):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
@@ -256,18 +246,6 @@ class HexSLRedshift(HexSLPostgres):
             kind=arg.kind,
         )
 
-    def datetime_sub(
-        self,
-        arg: TypedSelectExpression,
-        unit: StandardTimeUnit,
-        count: int,
-    ) -> TypedSelectExpression:
-        return TypedSelectExpression.from_sqlglot(
-            self.func("dateadd", str(unit), exp.Literal.number(-count), arg.expression),
-            arg.data_type,
-            kind=arg.kind,
-        )
-
     def splitpart(
         self,
         string: TypedSelectExpression,
@@ -275,8 +253,6 @@ class HexSLRedshift(HexSLPostgres):
         part_number: TypedSelectExpression,
     ) -> TypedSelectExpression:
         """Redshift has a built-in SPLIT_PART function."""
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind
 
         kind = ExpressionKind._validate_infer_kind(
             [string.kind, delimiter.kind, part_number.kind]
@@ -300,7 +276,6 @@ class HexSLRedshift(HexSLPostgres):
         """
         Redshift-specific startswith implementation using LEFT/LENGTH approach.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         prefix_length = exp.Length(this=prefix.expression)
@@ -314,7 +289,6 @@ class HexSLRedshift(HexSLPostgres):
         """
         Redshift-specific endswith implementation using RIGHT/LENGTH approach.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         suffix_length = exp.Length(this=suffix.expression)
@@ -329,7 +303,6 @@ class HexSLRedshift(HexSLPostgres):
         Redshift's || operator returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -356,136 +329,6 @@ class HexSLRedshift(HexSLPostgres):
             return TypedSelectExpression.from_sqlglot(
                 concat_expr, DataType.STRING, kind
             )
-
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on the range extent of a column. For
-        OffsetTimeUnit instances, the timespine is generated with dates aligned to the
-        offset boundaries.
-
-        This implementation generates a sequence of numbers using arithmetic expressions
-        on cross joined digit tables to create numbers from 0-99999, similar to the
-        approach used in MSSQL and MySQL dialects.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        min_date = exp.Subquery(
-            this=exp.select(
-                exp.Min(
-                    this=exp.Cast(
-                        this=min_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-
-        digits = exp.select("*").from_(
-            exp.Values(
-                expressions=[
-                    exp.Tuple(expressions=[exp.Literal.number(i)]) for i in range(10)
-                ],
-                alias=exp.TableAlias(
-                    this=exp.to_identifier("t", quoted=True),
-                    columns=[exp.to_identifier("d", quoted=True)],
-                ),
-            )
-        )
-
-        diff_col = f"num_{interval_unit.to_interval_name().lower()}s"
-
-        date_range = exp.Subquery(
-            this=exp.select(
-                self.func(
-                    "datediff",
-                    exp.Literal.string(interval_unit.to_interval_name()),
-                    exp.Min(this=min_bound_expr.expression),
-                    exp.Max(this=max_bound_expr.expression),
-                ).as_(diff_col, quoted=True),
-            ).from_(from_),
-            alias=exp.to_identifier("day_diff_tbl", quoted=True),
-        )
-
-        # Create numbers CTE by cross joining digits with itself multiple times
-        sqlglot_dialect = self.sqlglot_dialect()
-        numbers = (
-            exp.select(
-                (
-                    '"ones"."d" + 10 * "tens"."d" + 100 * "hundreds"."d" + '
-                    '1000 * "thousands"."d" + 10000 * "ten_thousands"."d" AS n'
-                ),
-                exp.alias_(
-                    expression=exp.column(
-                        col=diff_col, table="day_diff_tbl", quoted=True
-                    ),
-                    alias=diff_col,
-                    quoted=True,
-                ),
-                dialect=sqlglot_dialect,
-            )
-            .from_(date_range)
-            .join(
-                '"_timespine_digits"',
-                join_type="CROSS",
-                join_alias=exp.to_identifier("ones", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                '"_timespine_digits"',
-                join_type="CROSS",
-                join_alias=exp.to_identifier("tens", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                '"_timespine_digits"',
-                join_type="CROSS",
-                join_alias=exp.to_identifier("hundreds", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                '"_timespine_digits"',
-                join_type="CROSS",
-                join_alias=exp.to_identifier("thousands", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                '"_timespine_digits"',
-                join_type="CROSS",
-                join_alias=exp.to_identifier("ten_thousands", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-        )
-
-        return (
-            exp.select(
-                exp.Cast(
-                    this=exp.func(
-                        "DATEADD",
-                        exp.Literal.string(interval_unit.to_interval_name()),
-                        exp.column("n"),
-                        min_date,
-                    ),
-                    to=exp.DataType.build("DATE"),
-                ).as_("date")
-            )
-            .with_(exp.to_identifier("_timespine_digits", quoted=True), digits)
-            .with_(exp.to_identifier("_timespine_numbers", quoted=True), numbers)
-            .from_(exp.to_identifier("_timespine_numbers", quoted=True))
-            .where(
-                exp.LTE(
-                    this=exp.column("n", quoted=True),
-                    expression=exp.column(diff_col, quoted=True),
-                )
-            )
-        )
 
 
 class HexSlRedshiftSqlGlotDialect(Redshift):

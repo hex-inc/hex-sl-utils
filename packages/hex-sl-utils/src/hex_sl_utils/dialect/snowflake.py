@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import datetime
-from typing import TYPE_CHECKING, Any, Literal, Optional
+import re
+from typing import Any, Literal
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl._vendor.sqlglot.dialects.snowflake import Snowflake
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import DialectName, HexSLDialect, TruncUnit
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import map_date_part, rename_func
+from hex_sl_utils._vendor.sqlglot.dialects.snowflake import Snowflake
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLSnowflake(HexSLDialect):
@@ -59,7 +58,6 @@ class HexSLSnowflake(HexSLDialect):
         Snowflake: Similar to Postgres, NaN = NaN returns true.
         So we check: arg = 'NaN'::DOUBLE
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast argument to double
         cast_arg = self.cast_to_float(arg)
@@ -79,7 +77,6 @@ class HexSLSnowflake(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_anon = exp.Anonymous(
@@ -99,7 +96,6 @@ class HexSLSnowflake(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
@@ -112,14 +108,13 @@ class HexSLSnowflake(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with Snowflake-specific date handling.
         """
-        import datetime
 
         if isinstance(literal, datetime.datetime):
             if literal.tzinfo is not None:
@@ -187,7 +182,7 @@ class HexSLSnowflake(HexSLDialect):
             "TO_VARCHAR", expr, exp.Literal.string("YYYY-MM-DD HH24:MI:SS.FF6")
         )
 
-    def timestamp_subsecond_suffix(self) -> Optional[str]:
+    def timestamp_subsecond_suffix(self) -> str | None:
         return ".000"
 
     def epoch_ms_to_timestamp(
@@ -196,8 +191,6 @@ class HexSLSnowflake(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # TO_TIMESTAMP_TZ(arg, 3)
         return TypedSelectExpression.from_sqlglot(
@@ -290,7 +283,6 @@ class HexSLSnowflake(HexSLDialect):
             Tuple of (year, month, day, hour, minute, second, microseconds) or None
             if parsing fails.
         """
-        import re
 
         # Capture 1–6 fractional digits and pad/truncate to 6
         pattern = (
@@ -324,13 +316,14 @@ class HexSLSnowflake(HexSLDialect):
 
         Normalizes to UTC to avoid partition-pruning issues and keeps literals compact.
         """
-        import datetime as _dt
 
         if dt.tzinfo is None:
             msg = "Expected tz-aware datetime"
             raise ValueError(msg)
 
-        iso_utc = dt.astimezone(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+        iso_utc = (
+            dt.astimezone(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
+        )
         return self.func("TO_TIMESTAMP_TZ", exp.Literal.string(iso_utc))
 
     def _replace_timezone(
@@ -340,8 +333,6 @@ class HexSLSnowflake(HexSLDialect):
         Helper to replace the timezone of a timestamp in place (without shifting the
         time)
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # Special case for TRY_CAST([timestamp literal] AS timestamp)
         if isinstance(ts.expression, exp.TryCast):
@@ -432,7 +423,6 @@ class HexSLSnowflake(HexSLDialect):
         )
 
     def datetime_to_epoch_ms(self, arg: TypedSelectExpression) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -460,11 +450,9 @@ class HexSLSnowflake(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit == "week" or unit == "weekmonday":
@@ -483,8 +471,8 @@ class HexSLSnowflake(HexSLDialect):
     def _trunc_date_general(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
-        convert_tz: Optional[str],
+        unit: TimeTruncUnit,
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements general date truncation for Snowflake for all units except 'week'.
@@ -534,7 +522,7 @@ class HexSLSnowflake(HexSLDialect):
         return date_trunc_expr
 
     def _trunc_time_general(
-        self, arg: TypedSelectExpression, unit: TruncUnit
+        self, arg: TypedSelectExpression, unit: TimeTruncUnit
     ) -> exp.Expression:
         """
         Implements general time truncation for Snowflake.
@@ -563,7 +551,7 @@ class HexSLSnowflake(HexSLDialect):
         self,
         arg: TypedSelectExpression,
         unit: Literal["week", "weekmonday"],
-        convert_tz: Optional[str],
+        convert_tz: str | None,
     ) -> exp.Expression:
         """
         Implements week truncation for Snowflake, truncating to Sunday or Monday
@@ -680,8 +668,6 @@ class HexSLSnowflake(HexSLDialect):
         return week_trunc_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMP:
             return self._replace_timezone(arg, tz)
@@ -705,8 +691,6 @@ class HexSLSnowflake(HexSLDialect):
         Snowflake has a built-in SPLIT_PART function, with slightly
         different semantics about out of bounds indexes.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind
 
         kind = ExpressionKind._validate_infer_kind(
             [
@@ -734,7 +718,6 @@ class HexSLSnowflake(HexSLDialect):
         """
         Snowflake-specific startswith implementation using native STARTSWITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTSWITH", string.expression, prefix.expression)
@@ -748,7 +731,6 @@ class HexSLSnowflake(HexSLDialect):
         """
         Snowflake-specific endswith implementation using native ENDSWITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         endswith_expr = self.func("ENDSWITH", string.expression, suffix.expression)
@@ -761,7 +743,6 @@ class HexSLSnowflake(HexSLDialect):
         Snowflake's CONCAT returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -792,7 +773,6 @@ class HexSLSnowflake(HexSLDialect):
         """
         Build expression to check if a string contains a substring using CONTAINS.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
@@ -807,8 +787,6 @@ class HexSLSnowflake(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
@@ -845,96 +823,12 @@ class HexSLSnowflake(HexSLDialect):
             extract_expr, DataType.NUMBER, arg.kind
         )
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on the range extent of a column using
-        Snowflake's seq4() function with a generator and WHERE clause. For
-        OffsetTimeUnit instances, the timespine is generated with dates aligned to the
-        offset boundaries.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        min_date = exp.Subquery(
-            this=exp.select(
-                exp.Min(
-                    this=exp.Cast(
-                        this=min_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-        max_date = exp.Subquery(
-            this=exp.select(
-                exp.Max(
-                    this=exp.Cast(
-                        this=max_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-
-        days_diff = self.func(
-            "DATEDIFF",
-            exp.Literal.string(interval_unit.to_interval_name()),
-            min_date,
-            max_date,
-        )
-
-        # Table function in snowflake like GENERATOR only support constant arguments.
-        # Use a value of several millennia and use WHERE clause to limit the range.
-        seq_subquery = exp.Subquery(
-            this=exp.select(self.func("seq4").as_("n", quoted=True))
-            .from_(
-                exp.Table(
-                    this=self.func(
-                        "TABLE",
-                        self.func(
-                            "GENERATOR",
-                            exp.Kwarg(
-                                this=exp.to_identifier("ROWCOUNT"),
-                                expression=exp.Literal.number(1000000),
-                            ),
-                        ),
-                    )
-                )
-            )
-            .where(
-                exp.LTE(
-                    this=self.func("seq4"),
-                    expression=days_diff,
-                )
-            )
-        )
-
-        return exp.select(
-            exp.Cast(
-                this=self.func(
-                    "DATEADD",
-                    exp.Literal.string(interval_unit.to_interval_name()),
-                    exp.column("n", quoted=True),
-                    min_date,
-                ),
-                to=exp.DataType.build("DATE"),
-            ).as_(exp.to_identifier("date", quoted=True))
-        ).from_(seq_subquery)
-
     def cast_str_to_number(self, arg: TypedSelectExpression) -> TypedSelectExpression:
         """
         Build expression to cast string to number for Snowflake.
         Use TRY_CAST with requires_string=True to ensure it generates TRY_CAST
         instead of falling back to CAST.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         try_cast_expr = exp.TryCast(
             this=arg.expression, to=exp.DataType.build("DOUBLE"), requires_string=True
@@ -949,7 +843,6 @@ class HexSLSnowflake(HexSLDialect):
         Use TRY_CAST with requires_string=True to ensure it generates TRY_CAST
         instead of falling back to CAST.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         try_cast_expr = exp.TryCast(
             this=arg.expression, to=exp.DataType.build("DATE"), requires_string=True
@@ -1017,7 +910,6 @@ class HexSlSnowflakeSqlGlotDialect(Snowflake):
             expression = self._parse_bitwise()
 
             # Map date part abbreviations (Y -> YEAR, etc.)
-            from hex_sl._vendor.sqlglot.dialects.dialect import map_date_part
 
             mapped_this = map_date_part(this)
 

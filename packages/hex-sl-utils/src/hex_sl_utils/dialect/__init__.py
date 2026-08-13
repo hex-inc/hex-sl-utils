@@ -1,3 +1,4 @@
+import hex_sl_utils.dialect.registration  # noqa: F401
 from hex_sl_utils.dialect.dialect import HexSLDialect
 from hex_sl_utils.dialect.dialect_name import (
     DIALECT_ALIASES,

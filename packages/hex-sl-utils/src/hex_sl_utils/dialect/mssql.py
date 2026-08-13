@@ -1,33 +1,28 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+import datetime
+from typing import Any, ClassVar
 
-from hex_sl._vendor.sqlglot import exp, tokens, transforms
-from hex_sl._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl._vendor.sqlglot.dialects.tsql import TSQL
-from hex_sl._vendor.sqlglot.helper import flatten, seq_get
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    HexSLDialect,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-)
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, tokens, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
+from hex_sl_utils._vendor.sqlglot.dialects.tsql import TSQL
+from hex_sl_utils._vendor.sqlglot.helper import flatten, seq_get
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.mssql_utils import extract_static_sqlglot_constant
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.query.expr import extract_static_sqlglot_constant
-from hex_sl.timezones import get_windows_zone
-from hex_sl.utils import UnsupportedByDialectError
-
-if TYPE_CHECKING:
-    from hex_sl.expr import ExpressionContext, TypedSelectExpression
-    from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.exception import UnsupportedByDialectError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
+from hex_sl_utils.timezone import iana_to_windows
 
 
 class HexSLMSSQL(HexSLDialect):
@@ -64,7 +59,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL requires a precision argument for the ROUND function.
         For rounding to the nearest integer, we use precision 0.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # MSSQL ROUND(number, precision) - use 0 for rounding to nearest integer
         round_expr = self.func("ROUND", arg.expression, exp.Literal.number(0))
@@ -120,8 +114,6 @@ class HexSLMSSQL(HexSLDialect):
             WHERE or HAVING context, we convert it to a boolean expression by
             checking whether it is not equal to 0.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionContext
 
         # mssql doesn't have a boolean type, so boolean expressions need to be
         # replaced by ints. The cast to boolean converts the int to the most
@@ -147,9 +139,9 @@ class HexSLMSSQL(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with MSSQL-specific date and datetime handling.
@@ -157,7 +149,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL uses DATEFROMPARTS(year, month, day) for date literals and
         DATETIMEOFFSETFROMPARTS/DATETIME2FROMPARTS for datetime literals.
         """
-        import datetime
 
         # Handle boolean literals with PROJECTION context - compile directly to 1 or 0
         if isinstance(literal, bool) and context == ExpressionContext.PROJECTION:
@@ -280,7 +271,6 @@ class HexSLMSSQL(HexSLDialect):
         return self.at_timezone(naive_ts, "UTC")
 
     def datetime_to_epoch_ms(self, arg: TypedSelectExpression) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -326,7 +316,6 @@ class HexSLMSSQL(HexSLDialect):
         arg: TypedSelectExpression,
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -345,17 +334,15 @@ class HexSLMSSQL(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
         # SQL Server 2022 supports DATE_TRUNC, but 2018 does not.
         # Our current minimum version is 2018, but this can be simplified if
         # we raise that to 2022 in the future.
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = (
-            get_windows_zone(tz)
+            iana_to_windows(tz)
             if tz and arg.data_type == DataType.TIMESTAMPTZ
             else None
         )
@@ -555,27 +542,13 @@ class HexSLMSSQL(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
-        windows_tz = get_windows_zone(tz)
+        windows_tz = iana_to_windows(tz)
         # SQL Server's AT TIME ZONE always returns a datetimeoffset
         # (timestamp with time zone)
         return TypedSelectExpression.from_sqlglot(
             exp.AtTimeZone(this=arg.expression, zone=exp.Literal.string(windows_tz)),
             DataType.TIMESTAMPTZ,
-            kind=arg.kind,
-        )
-
-    def datetime_sub(
-        self,
-        arg: TypedSelectExpression,
-        unit: StandardTimeUnit,
-        count: int,
-    ) -> TypedSelectExpression:
-        return TypedSelectExpression.from_sqlglot(
-            self.func("dateadd", str(unit), exp.Literal.number(-count), arg.expression),
-            arg.data_type,
             kind=arg.kind,
         )
 
@@ -588,8 +561,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL implementation uses LEFT(string, LEN(prefix)) = prefix.
         wrap_expression_for_context will handle IIF wrapping when needed.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         eq_expr = exp.EQ(
             this=self.func(
@@ -613,8 +584,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL implementation uses RIGHT(string, LEN(suffix)) = suffix.
         wrap_expression_for_context will handle IIF wrapping when needed.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         eq_expr = exp.EQ(
             this=self.func(
@@ -630,8 +599,6 @@ class HexSLMSSQL(HexSLDialect):
         )
 
     def today(self, timezone: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         return TypedSelectExpression.from_sqlglot(
             exp.Cast(this=exp.CurrentDate(), to=exp.DataType.build("DATE")),
@@ -639,7 +606,7 @@ class HexSLMSSQL(HexSLDialect):
             kind=ExpressionKind.SCALAR,
         )
 
-    def timestamp_subsecond_suffix(self) -> Optional[str]:
+    def timestamp_subsecond_suffix(self) -> str | None:
         # MSSQL uses 6 decimal places for DATETIME2
         return ".000000"
 
@@ -668,8 +635,6 @@ class HexSLMSSQL(HexSLDialect):
         the minimum version to 2022, we would still only fall back to this past
         the N manually enumerated cases.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # LEN does not include space characters, so we need to use DATALENGTH
         delimiter_length = exp.Anonymous(
@@ -792,7 +757,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL's LEN function doesn't count trailing/leading whitespace, so we use
         LEN(CONCAT('A', string, 'Z')) - 2 to get the true length including whitespace.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = string.kind
 
@@ -817,7 +781,6 @@ class HexSLMSSQL(HexSLDialect):
         MSSQL requires VARCHAR(MAX) for large string values, otherwise VARCHAR
         defaults to a very small size (typically 30 characters).
         """
-        from hex_sl.expr import TypedSelectExpression
 
         cast_expr = exp.Cast(this=arg.expression, to=exp.DataType.build("VARCHAR(MAX)"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.STRING, arg.kind)
@@ -829,7 +792,6 @@ class HexSLMSSQL(HexSLDialect):
         Build expression to check if a string contains a substring using CHARINDEX.
         wrap_expression_for_context will handle IIF wrapping when needed.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
@@ -847,7 +809,6 @@ class HexSLMSSQL(HexSLDialect):
         calls and converts single NULL arguments to empty strings
         (by wrapping in COALESCE).
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -870,135 +831,6 @@ class HexSLMSSQL(HexSLDialect):
             return TypedSelectExpression.from_sqlglot(
                 concat_expr, DataType.STRING, kind
             )
-
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on the range extent of a column. For
-        OffsetTimeUnit instances, the timespine is generated with dates aligned to the
-        offset boundaries.
-
-        This implementation generates a sequence of numbers using arithmetic expressions
-        on cross joined digit tables to create numbers from 0-99999.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        diff_col = f"num_{interval_unit.to_interval_name().lower()}s"
-        date_range = exp.Subquery(
-            this=exp.select(
-                self.func(
-                    "datediff",
-                    exp.Literal.string(interval_unit.to_interval_name()),
-                    exp.Min(this=min_bound_expr.expression),
-                    exp.Max(this=max_bound_expr.expression),
-                ).as_(diff_col, quoted=True),
-            ).from_(from_),
-            alias=exp.to_identifier("day_diff_tbl", quoted=True),
-        )
-
-        min_date = exp.Subquery(
-            this=exp.select(
-                exp.Min(
-                    this=exp.Cast(
-                        this=min_bound_expr.expression,
-                        to=exp.DataType.build("DATE"),
-                    )
-                )
-            ).from_(from_)
-        )
-
-        # Create digits CTE with values 0-9
-        digits = exp.select("*").from_(
-            exp.Values(
-                expressions=[
-                    exp.Tuple(expressions=[exp.Literal.number(i)]) for i in range(10)
-                ],
-                alias=exp.TableAlias(
-                    this=exp.to_identifier("t", quoted=True),
-                    columns=[exp.to_identifier("d", quoted=True)],
-                ),
-            )
-        )
-
-        # Create numbers CTE by cross joining digits with itself multiple times
-        sqlglot_dialect = self.sqlglot_dialect()
-        numbers = (
-            exp.select(
-                (
-                    "[ones].[d] + 10 * [tens].[d] + 100 * [hundreds].[d] + "
-                    "1000 * [thousands].[d] + 10000 * [ten_thousands].[d] AS [n]"
-                ),
-                exp.alias_(
-                    expression=exp.column(
-                        col=diff_col, table="day_diff_tbl", quoted=True
-                    ),
-                    alias=diff_col,
-                    quoted=True,
-                ),
-                dialect=sqlglot_dialect,
-            )
-            .from_(date_range)
-            .join(
-                "[_timespine_digits]",
-                join_type="CROSS",
-                join_alias=exp.to_identifier("ones", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                "[_timespine_digits]",
-                join_type="CROSS",
-                join_alias=exp.to_identifier("tens", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                "[_timespine_digits]",
-                join_type="CROSS",
-                join_alias=exp.to_identifier("hundreds", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                "[_timespine_digits]",
-                join_type="CROSS",
-                join_alias=exp.to_identifier("thousands", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-            .join(
-                "[_timespine_digits]",
-                join_type="CROSS",
-                join_alias=exp.to_identifier("ten_thousands", quoted=True),
-                dialect=sqlglot_dialect,
-            )
-        )
-
-        # Final query to generate dates using DATEADD
-        return (
-            exp.select(
-                exp.Cast(
-                    this=exp.DateAdd(  # type: ignore[no-untyped-call]
-                        this=min_date,
-                        unit=exp.Literal.string(interval_unit.to_interval_name()),
-                        expression=exp.column("n"),
-                    ),
-                    to=exp.DataType.build("DATE"),
-                ).as_("date")
-            )
-            .with_(exp.to_identifier("_timespine_digits", quoted=True), digits)
-            .with_(exp.to_identifier("_timespine_numbers", quoted=True), numbers)
-            .from_(exp.to_identifier("_timespine_numbers", quoted=True))
-            .where(
-                exp.LTE(
-                    this=exp.column("n", quoted=True),
-                    expression=exp.column(diff_col, quoted=True),
-                )
-            )
-        )
 
 
 def _build_datepart(args: list[exp.Expression]) -> exp.Anonymous:
@@ -1057,10 +889,10 @@ class HexSlMSSQLSqlGlotDialect(TSQL):
 
     class Tokenizer(TSQL.Tokenizer):
         # Override VAR_SINGLE_TOKENS to remove $ - we handle it as PARAMETER instead
-        VAR_SINGLE_TOKENS = {"@", "#"}
+        VAR_SINGLE_TOKENS: ClassVar[set[str]] = {"@", "#"}
 
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS = {
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

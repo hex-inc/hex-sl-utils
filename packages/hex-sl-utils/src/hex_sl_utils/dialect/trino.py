@@ -1,28 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+import datetime
+from typing import Any, ClassVar
 
-from hex_sl._vendor.sqlglot import exp, tokens, transforms
-from hex_sl._vendor.sqlglot.dialects.trino import Trino
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    HexSLDialect,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-)
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, tokens, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.trino import Trino
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLTrino(HexSLDialect):
@@ -54,7 +49,6 @@ class HexSLTrino(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ApproxQuantile(
@@ -72,7 +66,6 @@ class HexSLTrino(HexSLDialect):
         """
         Build an IS NAN check using Trino's native is_nan function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use Trino's native is_nan function
         cast_arg = self.cast_to_float(arg)
@@ -100,7 +93,6 @@ class HexSLTrino(HexSLDialect):
         self,
         arg: TypedSelectExpression,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         # port of prior ibis logic, in which we first calculate at a
         # second-level precision, and then add the milliseconds back separately
@@ -145,8 +137,6 @@ class HexSLTrino(HexSLDialect):
 
         Trino uses TO_UNIXTIME() to get epoch seconds.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
@@ -167,11 +157,9 @@ class HexSLTrino(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
@@ -211,7 +199,7 @@ class HexSLTrino(HexSLDialect):
             expression, arg.data_type, kind=arg.kind
         )
 
-    def timestamp_subsecond_suffix(self) -> Optional[str]:
+    def timestamp_subsecond_suffix(self) -> str | None:
         return ".000"
 
     def day_of_week_part(
@@ -226,8 +214,6 @@ class HexSLTrino(HexSLDialect):
         We need to adjust this to get Sunday=1, Saturday=7.
         Formula: CASE WHEN DAY_OF_WEEK(date) = 7 THEN 1 ELSE DAY_OF_WEEK(date) + 1 END
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -245,8 +231,6 @@ class HexSLTrino(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
@@ -261,86 +245,12 @@ class HexSLTrino(HexSLDialect):
                 kind=arg.kind,
             )
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        """
-        Create an inline timespine query based on the range extent of a column using
-        Trino's SEQUENCE function with UNNEST to generate a sequence of integers,
-        then converting them to dates using date_add. For OffsetTimeUnit instances,
-        the timespine is generated with dates aligned to the offset boundaries.
-        """
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        # Create a CTE for date range calculation
-        date_range = exp.select(
-            exp.Min(
-                this=exp.Cast(
-                    this=min_bound_expr.expression,
-                    to=exp.DataType.build("DATE"),
-                )
-            ).as_("min_date", quoted=True),
-            self.func(
-                "date_diff",
-                exp.Literal.string(interval_unit.to_interval_name()),
-                exp.Min(this=min_bound_expr.expression),
-                exp.Max(this=expr.expression),
-            ).as_("day_diff", quoted=True),
-        ).from_(from_)
-
-        # Use sequence to create sequence of integers from 0 to days_diff
-        return (
-            exp.select(
-                exp.Cast(
-                    this=self.func(
-                        "date_add",
-                        exp.Literal.string(interval_unit.to_interval_name()),
-                        exp.Cast(
-                            this=exp.column("n", quoted=True),
-                            to=exp.DataType.build("BIGINT"),
-                        ),
-                        exp.column("min_date", quoted=True),
-                    ),
-                    to=exp.DataType.build("DATE"),
-                ).as_("date", quoted=True)
-            )
-            .from_(exp.to_identifier("date_range", quoted=True))
-            .join(
-                exp.Table(
-                    this=exp.Anonymous(
-                        this="UNNEST",
-                        expressions=[
-                            self.func(
-                                "sequence",
-                                exp.Literal.number(0),
-                                exp.column("day_diff", quoted=True),
-                            )
-                        ],
-                    ),
-                    alias=exp.TableAlias(
-                        this=exp.to_identifier("t", quoted=True),
-                        columns=[exp.to_identifier("n", quoted=True)],
-                    ),
-                ),
-                join_type="CROSS",
-            )
-            .with_("date_range", date_range)
-        )
-
     def time_part(
         self,
         arg: TypedSelectExpression,
         unit: str,
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
@@ -374,7 +284,6 @@ class HexSLTrino(HexSLDialect):
         """
         Trino-specific startswith implementation using native STARTS_WITH function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTS_WITH", string.expression, prefix.expression)
@@ -388,7 +297,6 @@ class HexSLTrino(HexSLDialect):
         """
         Trino-specific endswith implementation using SUBSTR with negative index.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         # Use SUBSTR with negative index: SUBSTR(string, -LENGTH(suffix)) = suffix
@@ -405,7 +313,6 @@ class HexSLTrino(HexSLDialect):
         Trino's CONCAT returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -442,7 +349,6 @@ class HexSLTrino(HexSLDialect):
         Trino's SPLIT_PART returns null for out-of-bounds indices, so we coalesce
         to empty string only for non-null input strings.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [string.kind, delimiter.kind, part_number.kind]
@@ -473,9 +379,9 @@ class HexSLTrino(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,  # noqa: ANN401
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with proper type handling for Trino.
@@ -483,9 +389,6 @@ class HexSLTrino(HexSLDialect):
         Trino uses FROM_ISO8601_TIMESTAMP for ISO timestamp strings.
         """
         # Handle date and datetime objects with Trino-specific functions
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         if isinstance(literal, datetime.datetime):
             # Check if datetime has timezone info
@@ -561,7 +464,7 @@ class HexSlTrinoSqlGlotDialect(Trino):
     def dialect_name(cls) -> str:
         return "hex-sl-trino"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Trino.Generator):  # noqa: F821
+    class Generator(HexSLPlaceholderGeneratorMixin, Trino.Generator):
         TRANSFORMS = Trino.Generator.TRANSFORMS.copy() | {
             exp.Select: transforms.preprocess(
                 [
@@ -578,7 +481,7 @@ class HexSlTrinoSqlGlotDialect(Trino):
 
     class Tokenizer(Trino.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS = {
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

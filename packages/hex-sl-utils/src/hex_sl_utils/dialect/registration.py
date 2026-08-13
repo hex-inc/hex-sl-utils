@@ -1,16 +1,15 @@
 # Register the custom dialect
-from hex_sl._vendor.sqlglot.dialects.dialect import Dialect
-
-from .bigquery import HexSlBigQuerySqlGlotDialect
-from .clickhouse import HexSlClickHouseSqlGlotDialect
-from .duckdb import HexSlDuckDBSqlGlotDialect
-from .mssql import HexSlMSSQLSqlGlotDialect
-from .mysql import HexSlMySQLSqlGlotDialect
-from .postgres import HexSlPostgresSqlGlotDialect
-from .redshift import HexSlRedshiftSqlGlotDialect
-from .snowflake import HexSlSnowflakeSqlGlotDialect
-from .spark import HexSlDatabricksSqlGlotDialect
-from .trino import HexSlTrinoSqlGlotDialect
+from hex_sl_utils._vendor.sqlglot.dialects.dialect import Dialect
+from hex_sl_utils.dialect.bigquery import HexSlBigQuerySqlGlotDialect
+from hex_sl_utils.dialect.clickhouse import HexSlClickHouseSqlGlotDialect
+from hex_sl_utils.dialect.duckdb import HexSlDuckDBSqlGlotDialect
+from hex_sl_utils.dialect.mssql import HexSlMSSQLSqlGlotDialect
+from hex_sl_utils.dialect.mysql import HexSlMySQLSqlGlotDialect
+from hex_sl_utils.dialect.postgres import HexSlPostgresSqlGlotDialect
+from hex_sl_utils.dialect.redshift import HexSlRedshiftSqlGlotDialect
+from hex_sl_utils.dialect.snowflake import HexSlSnowflakeSqlGlotDialect
+from hex_sl_utils.dialect.spark import HexSlDatabricksSqlGlotDialect
+from hex_sl_utils.dialect.trino import HexSlTrinoSqlGlotDialect
 
 # Register our custom dialects with sqlglot
 Dialect.classes[HexSlTrinoSqlGlotDialect.dialect_name()] = (

@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+import datetime
+from typing import Any, ClassVar
 
-from hex_sl._vendor.sqlglot import exp, tokens
-from hex_sl._vendor.sqlglot.dialects.bigquery import BigQuery
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import DialectName, HexSLDialect, TruncUnit
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, tokens
+from hex_sl_utils._vendor.sqlglot.dialects.bigquery import BigQuery
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
-
-if TYPE_CHECKING:
-    from hex_sl.expr import TypedSelectExpression
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLBigQuery(HexSLDialect):
@@ -45,7 +44,6 @@ class HexSLBigQuery(HexSLDialect):
         """
         Build an IS NAN check using BigQuery's native IS_NAN function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use BigQuery's native IS_NAN function
         cast_arg = self.cast_to_float(arg)
@@ -63,7 +61,6 @@ class HexSLBigQuery(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         quantiles_expr = self.func(
@@ -84,7 +81,6 @@ class HexSLBigQuery(HexSLDialect):
         """
         Build expression to convert a timestamp to epoch milliseconds.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # BigQuery doesn't support the unix_seconds function on dates directly,
@@ -159,10 +155,9 @@ class HexSLBigQuery(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         sql_unit = "WEEK(MONDAY)" if unit == "weekmonday" else unit
@@ -199,7 +194,6 @@ class HexSLBigQuery(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         ts_utc = exp.Anonymous(
             this="timestamp_millis",
@@ -212,7 +206,6 @@ class HexSLBigQuery(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
@@ -240,7 +233,6 @@ class HexSLBigQuery(HexSLDialect):
         Returns:
             A TypedSelectExpression representing the division
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use ieee_divide for BigQuery
         div_expr = self.func("ieee_divide", left.expression, right.expression)
@@ -253,9 +245,9 @@ class HexSLBigQuery(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,  # noqa: ANN401
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with proper type handling for BigQuery.
@@ -263,9 +255,6 @@ class HexSLBigQuery(HexSLDialect):
         BigQuery uses TIMESTAMP for timestamptz and DATETIME for timestamp.
         """
         # Handle datetime objects with BigQuery-specific functions
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         if isinstance(literal, datetime.datetime):
             # Check if datetime has timezone info
@@ -319,7 +308,6 @@ class HexSLBigQuery(HexSLDialect):
         """
         BigQuery-specific startswith implementation using native STARTS_WITH function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTS_WITH", string.expression, prefix.expression)
@@ -333,7 +321,6 @@ class HexSLBigQuery(HexSLDialect):
         """
         BigQuery-specific endswith implementation using native ends_with function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         endswith_expr = self.func("ENDS_WITH", string.expression, suffix.expression)
@@ -346,7 +333,6 @@ class HexSLBigQuery(HexSLDialect):
         BigQuery's CONCAT returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -382,8 +368,6 @@ class HexSLBigQuery(HexSLDialect):
         BigQuery uses EXTRACT(DAYOFWEEK FROM date) which returns Sunday=1, Saturday=7.
         This already matches our expected format, so no adjustment needed.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -415,7 +399,6 @@ class HexSLBigQuery(HexSLDialect):
           )
         )
         """
-        from hex_sl.expr import TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind(
             [
@@ -459,74 +442,11 @@ class HexSLBigQuery(HexSLDialect):
         BigQuery rounds when casting to INT64, so we need to use TRUNC first
         to ensure truncation behavior matches other databases.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # First truncate the value, then cast to INT64
         truncated = self.func("TRUNC", arg.expression)
         cast_expr = exp.Cast(this=truncated, to=exp.DataType.build("INT64"))
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.NUMBER, arg.kind)
-
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        name = "unnest_spine"
-
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        interval_unit_name = interval_unit.to_interval_name()
-
-        return exp.select(
-            exp.alias_(
-                exp.Cast(
-                    this=exp.column("date", table=name, quoted=True),
-                    to=exp.DataType.build("DATE"),
-                ),
-                alias="date",
-                quoted=True,
-            )
-        ).from_(
-            exp.Unnest(
-                expressions=[
-                    self.func(
-                        "GENERATE_DATE_ARRAY",
-                        exp.Cast(
-                            this=exp.Subquery(
-                                this=exp.select(
-                                    exp.Min(
-                                        this=exp.Cast(
-                                            this=min_bound_expr.expression,
-                                            to=exp.DataType.build("DATE"),
-                                        )
-                                    )
-                                ).from_(from_)
-                            ),
-                            to=exp.DataType.build("DATE"),
-                        ),
-                        exp.Cast(
-                            this=exp.Subquery(
-                                this=exp.select(
-                                    exp.Max(this=max_bound_expr.expression)
-                                ).from_(from_)
-                            ),
-                            to=exp.DataType.build("DATE"),
-                        ),
-                        exp.Interval(  # type: ignore[no-untyped-call]
-                            this=exp.Literal.number(1),
-                            unit=interval_unit_name,
-                        ),
-                    )
-                ],
-                alias=exp.TableAlias(
-                    this=name, columns=[exp.to_identifier("date", quoted=True)]
-                ),
-            )
-        )
 
 
 class HexSlBigQuerySqlGlotDialect(BigQuery):
@@ -540,7 +460,7 @@ class HexSlBigQuerySqlGlotDialect(BigQuery):
 
     class Tokenizer(BigQuery.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS = {
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

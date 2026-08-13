@@ -1,25 +1,23 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+import datetime
+from typing import Any
 
-from hex_sl._vendor.sqlglot import exp, transforms
-from hex_sl._vendor.sqlglot.dialects.spark import Spark
-from hex_sl._vendor.sqlglot.tokens import TokenType
-from hex_sl.datatype import DataType
-from hex_sl.dialect.base import (
-    DialectName,
-    HexSLDialect,
-    TruncUnit,
-    hex_sl_eliminate_qualify,
-)
-from hex_sl.dialect.utils.placeholder import (
+from hex_sl_utils._vendor.sqlglot import exp, transforms
+from hex_sl_utils._vendor.sqlglot.dialects.spark import Spark
+from hex_sl_utils._vendor.sqlglot.tokens import TokenType
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect_name import DialectName
+from hex_sl_utils.dialect.placeholder import (
     HexSLPlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-from hex_sl.semantic.time_unit import OffsetTimeUnit, StandardTimeUnit
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.time import TimeTruncUnit
 
 
 class HexSLSpark(HexSLDialect):
@@ -56,7 +54,6 @@ class HexSLSpark(HexSLDialect):
         """
         Build an IS NAN check using Spark's native ISNAN function.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Use Spark's native ISNAN function
         cast_arg = self.cast_to_float(arg)
@@ -72,7 +69,6 @@ class HexSLSpark(HexSLDialect):
 
         Spark uses PERCENTILE(cast_arg, 0.5) for median calculation.
         """
-        from hex_sl.expr import TypedSelectExpression
 
         # Cast to DOUBLE using dialect method
         cast_typed = self.cast_to_float(arg)
@@ -91,7 +87,6 @@ class HexSLSpark(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
@@ -107,7 +102,6 @@ class HexSLSpark(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-        from hex_sl.expr import TypedSelectExpression
 
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
@@ -120,9 +114,9 @@ class HexSLSpark(HexSLDialect):
 
     def compile_literal(
         self,
-        literal: Any,  # noqa: ANN401
-        context: Optional[ExpressionContext] = None,
-        data_type: Optional[DataType] = None,
+        literal: Any,
+        context: ExpressionContext | None = None,
+        data_type: DataType | None = None,
     ) -> TypedSelectExpression:
         """
         Compile a literal expression with Spark-specific date and datetime handling.
@@ -130,9 +124,6 @@ class HexSLSpark(HexSLDialect):
         Spark uses MAKE_DATE(year, month, day) for date literals and
         CAST('string' AS TIMESTAMP) for datetime literals.
         """
-        import datetime
-
-        from hex_sl.expr import TypedSelectExpression
 
         # Handle datetime objects with Spark-specific CAST functions
         if isinstance(literal, datetime.datetime):
@@ -178,8 +169,6 @@ class HexSLSpark(HexSLDialect):
         """
         Build expression to convert epoch milliseconds to a timestamp.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         # Convert epoch milliseconds to timestamp
         ts_from_seconds = self.func(
@@ -214,7 +203,6 @@ class HexSLSpark(HexSLDialect):
         """
         Build expression to convert a timestamp to epoch milliseconds.
         """
-        from hex_sl.datatype import DataType
 
         epoch_seconds: exp.Expression
         if arg.data_type == DataType.TIMESTAMPTZ:
@@ -265,11 +253,9 @@ class HexSLSpark(HexSLDialect):
     def datetime_trunc(
         self,
         arg: TypedSelectExpression,
-        unit: TruncUnit,
+        unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
@@ -337,8 +323,6 @@ class HexSLSpark(HexSLDialect):
         Spark uses DAYOFWEEK(TO_DATE(date)) which returns Sunday=1, Saturday=7.
         This already matches our expected format, so no adjustment needed.
         """
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
@@ -350,8 +334,6 @@ class HexSLSpark(HexSLDialect):
         return TypedSelectExpression.from_sqlglot(dow_expr, DataType.NUMBER, arg.kind)
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
@@ -382,103 +364,12 @@ class HexSLSpark(HexSLDialect):
                 kind=arg.kind,
             )
 
-    def inline_timespine(
-        self,
-        expr: TypedSelectExpression,
-        time_unit: StandardTimeUnit | OffsetTimeUnit,
-        from_: exp.Table,
-        timezone: str,
-    ) -> exp.Expression:
-        interval_unit, min_bound_expr, max_bound_expr = self._compute_timespine_bounds(
-            expr, time_unit, timezone
-        )
-
-        # Build subqueries for min and max dates, but use CTE to compute them once
-        # Using WITH clause ensures Spark computes these values only once
-        min_date_subquery = exp.select(
-            exp.Min(
-                this=exp.Cast(
-                    this=min_bound_expr.expression,
-                    to=exp.DataType.build("DATE"),
-                )
-            ).as_("min_date", quoted=True)
-        ).from_(from_)
-
-        max_date_subquery = exp.select(
-            exp.Max(
-                this=exp.Cast(
-                    this=max_bound_expr.expression,
-                    to=exp.DataType.build("DATE"),
-                )
-            ).as_("max_date", quoted=True)
-        ).from_(from_)
-
-        # Build the main query using LATERAL VIEW with references to CTEs
-        timespine_query = (
-            exp.select(
-                exp.Cast(
-                    this=self.func(
-                        "date_add",
-                        exp.Literal(
-                            this=interval_unit.to_interval_name(), is_string=False
-                        ),
-                        exp.column("n", quoted=True),
-                        exp.column("min_date", quoted=True),
-                    ),
-                    to=exp.DataType.build("DATE"),
-                ).as_("date", quoted=True)
-            )
-            .lateral(
-                exp.Lateral(
-                    this=self.func(
-                        "explode",
-                        self.func(
-                            "sequence",
-                            exp.Literal.number(0),
-                            self.func(
-                                "date_diff",
-                                exp.Literal(
-                                    this=interval_unit.to_interval_name(),
-                                    is_string=False,
-                                ),
-                                exp.column("min_date", quoted=True),
-                                exp.column("max_date", quoted=True),
-                            ),
-                        ),
-                    ),
-                    view=True,
-                    alias=exp.TableAlias(columns=[exp.to_identifier("n", quoted=True)]),
-                )
-            )
-            .from_(
-                exp.Subquery(
-                    this=exp.select(
-                        exp.column("min_date", quoted=True),
-                        exp.column("max_date", quoted=True),
-                    )
-                    .from_(exp.Table(this=exp.to_identifier("min_dates", quoted=True)))
-                    .join(
-                        exp.Table(this=exp.to_identifier("max_dates", quoted=True)),
-                        join_type="CROSS",
-                    ),
-                    alias=exp.to_identifier("bounds", quoted=True),
-                )
-            )
-        )
-
-        # Add CTEs to avoid recalculating min/max
-        return timespine_query.with_("min_dates", min_date_subquery).with_(
-            "max_dates", max_date_subquery
-        )
-
     def time_part(
         self,
         arg: TypedSelectExpression,
         unit: str,
         timezone: str,
     ) -> TypedSelectExpression:
-        from hex_sl.datatype import DataType
-        from hex_sl.expr import TypedSelectExpression
 
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
@@ -518,7 +409,6 @@ class HexSLSpark(HexSLDialect):
         """
         Spark-specific startswith implementation using native STARTSWITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, prefix.kind])
         startswith_expr = self.func("STARTSWITH", string.expression, prefix.expression)
@@ -532,7 +422,6 @@ class HexSLSpark(HexSLDialect):
         """
         Spark-specific endswith implementation using native ENDSWITH function.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, suffix.kind])
         endswith_expr = self.func("ENDSWITH", string.expression, suffix.expression)
@@ -545,7 +434,6 @@ class HexSLSpark(HexSLDialect):
         Spark's CONCAT returns NULL if any argument is NULL, so we need to wrap
         each argument in COALESCE to ensure consistent behavior.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         if len(args) == 0:
             return self.compile_literal("")
@@ -576,7 +464,6 @@ class HexSLSpark(HexSLDialect):
         """
         Build expression to check if a string contains a substring using CONTAINS.
         """
-        from hex_sl.expr import ExpressionKind, TypedSelectExpression
 
         kind = ExpressionKind._validate_infer_kind([string.kind, substring.kind])
 
