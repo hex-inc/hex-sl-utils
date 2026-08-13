@@ -1,6 +1,6 @@
-from hex_sl_utils.load.context import LoadContext
-from hex_sl_utils.load.load_item import load_item
-from hex_sl_utils.types import Model
+from hex_sl_utils.spec.load.context import LoadContext
+from hex_sl_utils.spec.load.load_item import load_item
+from hex_sl_utils.spec.types import Model
 
 
 def test_load_item_handles_empty_problem_scope():

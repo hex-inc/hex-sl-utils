@@ -15,3 +15,8 @@ uv build --package hex-sl-utils --no-sources
 ```
 
 Package behavior and public API documentation live in [README.md](README.md).
+
+## Structure
+
+- `spec/` Hex semantic specification: definitions, validation, and loading
+  resources.

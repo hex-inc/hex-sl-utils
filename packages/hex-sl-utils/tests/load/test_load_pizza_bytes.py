@@ -1,6 +1,6 @@
 from inline_snapshot import snapshot
 
-from hex_sl_utils.load import load_project
+from hex_sl_utils.spec.load import load_project
 
 from .utils import get_test_project_dir, make_yml
 

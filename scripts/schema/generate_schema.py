@@ -8,7 +8,7 @@ from pydantic import RootModel
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, JsonSchemaValue
 from pydantic_core import CoreSchema
 
-from hex_sl_utils.types import Resource
+from hex_sl_utils.spec.types import Resource
 
 here = Path(__file__).absolute().parent
 root = here.parent.parent
