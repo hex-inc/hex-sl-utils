@@ -1,22 +1,21 @@
+"""MySQL-dialect execution driver backed by the source MariaDB service."""
+
 from __future__ import annotations
 
-
 import polars as pl
-from typing import TYPE_CHECKING, Any
+import pymysql
+import pymysql.cursors
 
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.dialect.utils.placeholder import PlaceholderStyle
-from . import SqlDriver
-
-if TYPE_CHECKING:
-    from hex_sl.project.dataset import Dataset
+from database.driver.base import SqlDriver
+from database.driver.query import RenderedQuery
+from hex_sl_utils.placeholder import PlaceholderStyle
 
 
 class MySqlDriver(SqlDriver):
-    def __init__(self):
-        import pymysql.cursors
+    dialect_name = "mysql"
+    placeholder_style = PlaceholderStyle.PYFORMAT
 
-        # Connect to the database
+    def __init__(self) -> None:
         self.connection = pymysql.connect(
             host="localhost",
             user="mysql",
@@ -24,34 +23,24 @@ class MySqlDriver(SqlDriver):
             cursorclass=pymysql.cursors.DictCursor,
         )
 
-        self.dialect = HexSLDialect.from_name("mysql")
-
-    def evaluate_dataset(
-        self, dataset: Dataset, parameters: dict[str, Any] = None, timezone: str = "UTC"
-    ) -> pl.DataFrame:
-        sql, config = dataset.sql_placeholders(
-            PlaceholderStyle.PYFORMAT, dialect=self.dialect
-        )
-        parameters = (
-            {
-                name: value
-                for name, value in parameters.items()
-                if name in config.used_parameters
-            }
-            if parameters
-            else None
-        )
-
+    def execute_rendered(self, query: RenderedQuery) -> pl.DataFrame:
+        """Execute one MySQL-dialect query."""
+        if not isinstance(query.parameters, dict):
+            msg = "MySQL requires named parameters"
+            raise TypeError(msg)
         with self.connection.cursor() as cursor:
-            cursor.execute(sql, args=parameters)
+            if query.parameters:
+                cursor.execute(query.sql, args=query.parameters)
+            else:
+                cursor.execute(query.sql)
             rows = cursor.fetchall()
             cols = [d[0] for d in cursor.description]
-
-        result = pl.DataFrame(
-            data=rows, schema=cols, orient="row", infer_schema_length=100000
+        return pl.DataFrame(
+            data=rows,
+            schema=cols,
+            orient="row",
+            infer_schema_length=100_000,
         )
-        return self.convert_timezones(result, dataset.dimensions_list, timezone)
 
-    def __del__(self):
-        if hasattr(self, "connection"):
-            self.connection.close()
+    def close(self) -> None:
+        self.connection.close()

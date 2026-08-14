@@ -1,35 +1,32 @@
+"""In-process Spark SQL execution driver."""
+
 from __future__ import annotations
-import os
+
 from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import polars as pl
-import sys
-from typing import TYPE_CHECKING, Any, Optional
-from pyspark.sql import SparkSession
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.dialect.utils.placeholder import PlaceholderStyle
-from . import SqlDriver
+from pyspark.sql import SparkSession  # type: ignore[reportMissingImports]
 
-# Add scripts directory to path to import get_main_dir
-scripts_dir = Path(__file__).resolve().parent.parent.parent / "scripts"
-sys.path.insert(0, str(scripts_dir))
-from get_main_dir import get_main_dir  # noqa: E402
-
-if TYPE_CHECKING:
-    from hex_sl.project.dataset import Dataset
+from database.driver.base import SqlDriver
+from database.driver.query import RenderedQuery
+from hex_sl_utils.placeholder import PlaceholderStyle
 
 
 class SparkDriver(SqlDriver):
+    dialect_name = "spark"
+    placeholder_style = PlaceholderStyle.COLON_NAMED
+
     def __init__(self) -> None:
-        main_dir = Path(get_main_dir())
-        # Get the path to the spark_setup directory
-        setup_dir = main_dir / "scripts" / "spark_setup"
-        store_dir = setup_dir / "store"
+        self.temporary_directory = TemporaryDirectory(prefix="hex-sl-utils-spark-")
+        setup_dir = Path(self.temporary_directory.name) / "spark_setup"
+        store_dir = Path(self.temporary_directory.name) / "store"
         metastore_dir = store_dir / "metastore_db"
         warehouse_dir = store_dir / "warehouse"
-
-        # Ensure directories exist
-        os.makedirs(metastore_dir, exist_ok=True)
-        os.makedirs(warehouse_dir, exist_ok=True)
+        metastore_dir.mkdir(parents=True)
+        warehouse_dir.mkdir(parents=True)
+        setup_dir.mkdir()
+        _write_hive_site(setup_dir, metastore_dir, warehouse_dir)
 
         self.spark: SparkSession = (
             SparkSession.builder.appName("HexSLSparkDriver")
@@ -49,53 +46,37 @@ class SparkDriver(SqlDriver):
             .master("local[*]")
             .getOrCreate()
         )
-        # Set timezone to UTC
+        self.spark.conf.set("spark.sql.ansi.enabled", "false")
         self.spark.conf.set("spark.sql.session.timeZone", "UTC")
-        self.dialect = HexSLDialect.from_name("spark")
 
-    def evaluate_dataset(
-        self,
-        dataset: Dataset,
-        parameters: Optional[dict[str, Any]] = None,
-        timezone: str = "UTC",
-    ) -> pl.DataFrame:
-        """
-        Evaluate the given dataset's sql query using Spark and return the results
-        as a Polars DataFrame.
-
-        Args:
-            dataset (Dataset): The dataset to evaluate.
-            parameters (dict[str, Any], optional): Parameters for the query.
-            timezone (str): The timezone to use for the evaluation.
-
-        Returns:
-            pl.DataFrame: The evaluation results as a Polars DataFrame.
-        """
-        sql, config = dataset.sql_placeholders(
-            PlaceholderStyle.COLON_NAMED, dialect=self.dialect
-        )
-        parameters = (
-            {
-                name: value
-                for name, value in parameters.items()
-                if name in config.used_parameters
-            }
-            if parameters
-            else None
+    def execute_rendered(self, query: RenderedQuery) -> pl.DataFrame:
+        """Execute one rendered Spark SQL query."""
+        if not isinstance(query.parameters, dict):
+            msg = "Spark requires named parameters"
+            raise TypeError(msg)
+        return pl.from_pandas(
+            self.spark.sql(query.sql, args=query.parameters).toPandas()
         )
 
-        # Execute the query
-        spark_df = self.spark.sql(sql, args=parameters)
+    def close(self) -> None:
+        self.spark.stop()
+        self.temporary_directory.cleanup()
 
-        # Convert Spark DataFrame to Polars DataFrame
-        pdf = spark_df.toPandas()
-        result = pl.from_pandas(pdf)
 
-        return self.convert_timezones(result, dataset.dimensions_list, timezone)
-
-    def __del__(self) -> None:
-        if hasattr(self, "spark"):
-            try:
-                self.spark.stop()
-            except Exception:  # noqa: BLE001
-                pass
+def _write_hive_site(
+    setup_directory: Path,
+    metastore_directory: Path,
+    warehouse_directory: Path,
+) -> None:
+    hive_site = f"""<configuration>
+  <property>
+    <name>javax.jdo.option.ConnectionURL</name>
+    <value>jdbc:derby:;databaseName={metastore_directory};create=true</value>
+  </property>
+  <property>
+    <name>spark.sql.warehouse.dir</name>
+    <value>{warehouse_directory}</value>
+  </property>
+</configuration>
+"""
+    (setup_directory / "hive-site.xml").write_text(hive_site)
