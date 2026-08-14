@@ -18,6 +18,8 @@ jobs:
     name: Verify release candidate
     if: github.event_name == 'push' || startsWith(github.head_ref, 'release/')
     runs-on: ubuntu-latest
+    env:
+      RELEASE_DRY_RUN: ${{ github.event_name == 'pull_request' }}
     outputs:
       package: ${{ steps.release.outputs.package }}
       version: ${{ steps.release.outputs.version }}
@@ -44,7 +46,7 @@ jobs:
       - name: Validate release metadata
         id: release
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+          if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
             devbox run -- uv run --locked python scripts/release.py --dry-run
           else
             devbox run -- uv run --locked python scripts/release.py \
@@ -56,7 +58,7 @@ jobs:
         run: devbox run test
       - name: Build distributions
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+          if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
             devbox run build
           else
             devbox run -- uv build --package "${{ steps.release.outputs.package }}" \
@@ -64,7 +66,7 @@ jobs:
           fi
       - name: Smoke-test distributions
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
+          if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
             devbox run smoke-test
           else
             devbox run smoke-test -- --package "${{ steps.release.outputs.package }}"
