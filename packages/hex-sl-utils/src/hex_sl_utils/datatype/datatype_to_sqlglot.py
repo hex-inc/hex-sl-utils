@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from hex_sl_common import DataType
+from hex_sl_utils._vendor.sqlglot import exp
 
-from hex_sl._vendor.sqlglot import exp
+from .datatype import DataType
 
 
 def datatype_to_sqlglot(dt: DataType) -> exp.DataType:

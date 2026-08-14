@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
-from hex_sl.datatype import DataType, datatype_to_sqlglot
-from hex_sl._vendor.sqlglot import exp
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
 
 
 class DataTypeModel(BaseModel):

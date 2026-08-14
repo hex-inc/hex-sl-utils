@@ -1,12 +1,12 @@
 """Tests for TypedSelectExpression validation."""
 
 import pytest
-from hex_sl._vendor.sqlglot import parse_one
-from hex_sl.datatype import DataType
-from hex_sl.expr import TypedSelectExpression
-from hex_sl_common.exceptions import TypeCheckError
 from inline_snapshot import snapshot
 
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.expr import TypedSelectExpression
 
 # Test data for valid expressions
 VALID_EXPRESSIONS = [
@@ -198,9 +198,7 @@ Invalid expressions:
 
 def test_invalid_table_reference():
     """Test that table references are rejected."""
-    # Import exp to create a Table node directly
-    from hex_sl._vendor.sqlglot import exp
-
+    # create a Table node directly
     table = exp.Table(this="my_table")
 
     with pytest.raises(TypeCheckError) as exc_info:
@@ -213,8 +211,6 @@ def test_invalid_table_reference():
 
 def test_invalid_alias_at_top_level():
     """Test that aliases are rejected at the top level."""
-    from hex_sl._vendor.sqlglot import exp
-
     alias = exp.Alias(this=exp.Column(this="col1"), alias="c1")
 
     with pytest.raises(TypeCheckError) as exc_info:

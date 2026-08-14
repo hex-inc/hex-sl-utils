@@ -1,6 +1,6 @@
 from enum import auto
 
-from hex_sl.utils import AutoName
+from hex_sl_utils.utils import AutoName
 
 
 class ExpressionContext(AutoName):

@@ -51,10 +51,6 @@ class UserFacingError(Exception):
 class TypeCheckError(UserFacingError):
     """Semantic validation error (type mismatches in queries)."""
 
-    pass
-
 
 class UnsupportedByDialectError(UserFacingError):
     """Feature not supported by the target SQL dialect."""
-
-    pass

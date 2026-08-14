@@ -1,4 +1,4 @@
-from hex_sl._vendor.sqlglot import exp
+from hex_sl_utils._vendor.sqlglot import exp
 
 
 def has_aggregate_function(expression: exp.Expression) -> bool:

@@ -1,4 +1,4 @@
-from hex_sl._vendor.sqlglot import exp
+from hex_sl_utils._vendor.sqlglot import exp
 
 
 def _needs_parens_for_substitution(expr: exp.Expression) -> bool:
@@ -21,7 +21,7 @@ def _needs_parens_for_substitution(expr: exp.Expression) -> bool:
 
     # Concat expressions need parens because they are transformed to
     # the || binary operator in some dialects during SQL generation
-    if isinstance(expr, exp.Concat):
+    if isinstance(expr, exp.Concat):  # noqa: SIM103
         return True
 
     return False

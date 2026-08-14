@@ -1,6 +1,5 @@
-from hex_sl._vendor.sqlglot import parse_one
-
-from hex_sl.expr import has_window_function
+from hex_sl_utils._vendor.sqlglot import parse_one
+from hex_sl_utils.expr import has_window_function
 
 
 def test_has_window1():

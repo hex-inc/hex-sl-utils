@@ -1,26 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Optional,
-    Union,
-    cast,
-    get_args,
-)
+from typing import Union, cast, get_args
 
-from hex_sl._vendor.sqlglot import exp
-from hex_sl.expr import (
-    ExpressionKind,
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.exception import TypeCheckError
+
+from .expr_inspection import (
     has_aggregate_function,
     has_column_references,
     has_window_function,
 )
-from hex_sl.utils import TypeCheckError
-
-if TYPE_CHECKING:
-    from hex_sl.datatype import DataType
-
+from .expr_kind import ExpressionKind
 
 # Define the union type for valid SELECT expressions
 # These types are grouped together because they represent the kinds of expressions
@@ -93,7 +85,7 @@ class TypedSelectExpression:
         cls,
         expression: exp.Expression,
         data_type: DataType,
-        kind: Optional[ExpressionKind] = None,
+        kind: ExpressionKind | None = None,
         strict: bool = False,
     ) -> TypedSelectExpression:
         """Create a TypedSelectExpression from a SQLGlot expression.
@@ -180,7 +172,7 @@ class TypedSelectExpression:
         """
         Whether the expression can be inlined inside an aggregation
         """
-        if self.kind in (ExpressionKind.SCALAR, ExpressionKind.COLUMN):
+        if self.kind in (ExpressionKind.SCALAR, ExpressionKind.COLUMN):  # noqa: SIM103
             return True
         else:
             return False

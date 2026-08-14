@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from enum import auto
 
-from hex_sl.utils import AutoName, TypeCheckError
+from hex_sl_utils.exception import TypeCheckError
+from hex_sl_utils.utils import AutoName
 
 
 class ExpressionKind(AutoName):
@@ -27,7 +28,7 @@ class ExpressionKind(AutoName):
             ):
                 # Mix of Scalar and Column unifies to Column
                 return ExpressionKind.COLUMN
-            elif (
+            elif (  # noqa: SIM114
                 ExpressionKind.SCALAR in kinds_set
                 and ExpressionKind.WINDOW in kinds_set
             ):
@@ -43,12 +44,12 @@ class ExpressionKind(AutoName):
             ):
                 # Mix of Scalar and AGG unifies to AGG
                 return ExpressionKind.AGGREGATION
-        elif len(kinds_set) == 3:
-            if (
-                ExpressionKind.SCALAR in kinds_set
-                and ExpressionKind.COLUMN in kinds_set
-                and ExpressionKind.WINDOW in kinds_set
-            ):
-                return ExpressionKind.WINDOW
+        elif (
+            len(kinds_set) == 3
+            and ExpressionKind.SCALAR in kinds_set
+            and ExpressionKind.COLUMN in kinds_set
+            and ExpressionKind.WINDOW in kinds_set
+        ):
+            return ExpressionKind.WINDOW
         msg = f"Cannot unify expression kinds: {kinds}"
         raise TypeCheckError(msg)

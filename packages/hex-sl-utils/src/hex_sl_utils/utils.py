@@ -10,7 +10,7 @@ class AutoName(Enum):
     # https://github.com/microsoft/pyright/issues/3742#issuecomment-1193395728.
     # The `Enum` class in Python has non-standard behaviors that are difficult to
     # capture in the a type system.
-    def _generate_next_value_(name, start, count, last_values):  # type: ignore[override]  # noqa: ANN001, ANN202, N805
+    def _generate_next_value_(name, start, count, last_values):  # type: ignore[override]
         return name.lower()  # type: ignore[attr-defined]
 
     def __repr__(self) -> str:

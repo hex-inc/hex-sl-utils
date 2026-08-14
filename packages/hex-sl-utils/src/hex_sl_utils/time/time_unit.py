@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import Literal
 
-
 # Type alias for time truncation units
-TruncUnit = Literal[
+TimeTruncUnit = Literal[
     "year",
     "quarter",
     "month",

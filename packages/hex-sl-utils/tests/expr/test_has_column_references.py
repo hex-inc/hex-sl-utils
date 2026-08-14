@@ -1,5 +1,5 @@
-from hex_sl._vendor.sqlglot import parse_one
-from hex_sl.expr import has_column_references
+from hex_sl_utils._vendor.sqlglot import parse_one
+from hex_sl_utils.expr import has_column_references
 
 
 def test_expression_with_columns():
