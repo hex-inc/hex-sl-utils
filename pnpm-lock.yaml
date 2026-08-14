@@ -6,7 +6,7 @@ settings:
 
 importers:
 
-  scripts/schema:
+  scripts/spec-schema:
     devDependencies:
       '@types/node':
         specifier: ^24.0.13

@@ -16,7 +16,10 @@ def main() -> None:
     before = {path: path.read_bytes() for path in paths}
 
     subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "schema" / "generate_schema.py")],
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "spec-schema" / "generate_schema.py"),
+        ],
         cwd=ROOT,
         check=True,
     )

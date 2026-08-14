@@ -2,8 +2,8 @@ from typing import Any
 
 from inline_snapshot import snapshot
 
-from hex_sl_utils.load import load_project
-from hex_sl_utils.types import (
+from hex_sl_utils.spec.load import load_project
+from hex_sl_utils.spec.types import (
     Measure,
     ScalarExpressionDefaultBoolean,
     ScalarExpressionDefaultNumber,

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from hex_sl_utils.types import Dimension, Model, Project, Relation, View
+from hex_sl_utils.spec.types import Dimension, Model, Project, Relation, View
 
 
 def test_model_defaults() -> None:

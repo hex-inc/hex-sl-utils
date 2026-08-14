@@ -9,8 +9,8 @@ from typing import Any
 import yaml
 from pydantic import BaseModel
 
-from hex_sl_utils.load import load_project
-from hex_sl_utils.types import Model, Problem, Resource
+from hex_sl_utils.spec.load import load_project
+from hex_sl_utils.spec.types import Model, Problem, Resource
 
 here = Path(__file__).parent
 

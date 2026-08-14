@@ -3,7 +3,7 @@ from typing import Any, cast
 
 from inline_snapshot import snapshot
 
-from hex_sl_utils.load import load_project, load_project_files
+from hex_sl_utils.spec.load import load_project, load_project_files
 
 from .utils import (
     get_test_project_dir,

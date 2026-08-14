@@ -8,7 +8,7 @@ from pydantic import RootModel
 from pydantic.json_schema import GenerateJsonSchema, JsonSchemaMode, JsonSchemaValue
 from pydantic_core import CoreSchema
 
-from hex_sl_utils.types import Resource
+from hex_sl_utils.spec.types import Resource
 
 here = Path(__file__).absolute().parent
 root = here.parent.parent
@@ -109,7 +109,13 @@ def export_json_schemas() -> None:
 
     subprocess.run(["pnpm", "install", "--frozen-lockfile"], check=True, cwd=root)
     subprocess.run(
-        ["pnpm", "--filter", "@hex/sl-utils-scripts-schema", "run", "build"],
+        [
+            "pnpm",
+            "--filter",
+            "@hex/sl-utils-scripts-spec-schema",
+            "run",
+            "build",
+        ],
         check=True,
         cwd=root,
     )

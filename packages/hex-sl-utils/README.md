@@ -31,7 +31,7 @@ Python 3.9 or newer is required.
 Load all `.yml` and `.yaml` resources beneath a project directory:
 
 ```python
-from hex_sl_utils.load import load_project
+from hex_sl_utils.spec.load import load_project
 
 loaded = load_project(
     project_dir="path/to/project",
@@ -50,7 +50,7 @@ Converters and other callers that already hold file contents in memory can use
 the equivalent `load_project_files` entry point:
 
 ```python
-from hex_sl_utils.load import load_project_files
+from hex_sl_utils.spec.load import load_project_files
 
 loaded = load_project_files(
     files={"orders.yml": "id: orders\nbase_sql_table: analytics.orders\n"},
@@ -59,11 +59,11 @@ loaded = load_project_files(
 )
 ```
 
-Models are also available directly from `hex_sl_utils.types` for validation and
-generation:
+Models are also available directly from `hex_sl_utils.spec.types` for validation
+and generation:
 
 ```python
-from hex_sl_utils.types import Model
+from hex_sl_utils.spec.types import Model
 
 model = Model.model_validate(
     {

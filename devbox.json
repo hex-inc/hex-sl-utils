@@ -49,9 +49,11 @@
         "devbox run build",
         "devbox run smoke-test"
       ],
-      "build:schema": ["uv run --locked --all-packages python scripts/schema/generate_schema.py"],
+      "build:schema": [
+        "uv run --locked --all-packages python scripts/spec-schema/generate_schema.py"
+      ],
       "verify:schema": [
-        "uv run --locked --all-packages python scripts/schema/check_generated_schema.py"
+        "uv run --locked --all-packages python scripts/spec-schema/check_generated_schema.py"
       ],
       "build:vendoring": [
         "uv run --locked --all-packages python scripts/vendoring/vendor_sqlglot.py"
