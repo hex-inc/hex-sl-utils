@@ -3,30 +3,32 @@
 import pytest
 from inline_snapshot import snapshot
 
-from hex_sl.calc.ast.literals import LiteralBool, LiteralNumber
-from hex_sl.calc.ast.binary import (
-    BinaryPlus,
-    BinaryMultiply,
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.ast.binary import (
     BinaryAnd,
+    BinaryMultiply,
     BinaryOr,
+    BinaryPlus,
     BinaryPower,
 )
-from hex_sl.calc.ast.unary import UnaryMinus, UnaryNot
-from hex_sl.calc.compiler import CalcToTypedSelectVisitor
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.expr import ExpressionContext
-from hex_sl.schema import Schema
+from hex_sl_utils.calc.ast.expr import CalcExpr
+from hex_sl_utils.calc.ast.literals import LiteralBool, LiteralNumber
+from hex_sl_utils.calc.ast.unary import UnaryMinus, UnaryNot
+from hex_sl_utils.calc.compiler import CalcToTypedSelectVisitor
+from hex_sl_utils.calc.parentheses import parens_if_needed
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.expr import ExpressionContext
 
 
 @pytest.fixture
 def visitor() -> CalcToTypedSelectVisitor:
     """Create a visitor for compiling calc expressions."""
-    schema = Schema(name="test_schema", types={})
-    dialect = HexSLDialect.from_name("duckdb")
+    columns = {}
+    dialect = Dialect.from_name("duckdb")
     return CalcToTypedSelectVisitor(
         dialect,
         ExpressionContext.PROJECTION,
-        schema,
+        columns,
         timezone="UTC",
     )
 
@@ -97,8 +99,11 @@ class TestUnaryPrecedence:
     def test_unary_minus_with_power(self, visitor):
         """Test -(a ^ b) requires parentheses."""
         # Create expression: -(2 ^ 3)
-        pow_expr = BinaryPower(lhs=LiteralNumber(number=2), rhs=LiteralNumber(number=3))
-        neg_expr = UnaryMinus(arg=pow_expr)
+        pow_expr = BinaryPower(
+            lhs=CalcExpr(root=LiteralNumber(number=2)),
+            rhs=CalcExpr(root=LiteralNumber(number=3)),
+        )
+        neg_expr = UnaryMinus(arg=CalcExpr(root=pow_expr))
         result = visitor.visit_unary(neg_expr)
 
         # Should generate -(POWER(2, 3))
@@ -118,9 +123,6 @@ class TestUnaryPrecedence:
         """Test NOT v IS NULL doesn't add extra parentheses."""
         # We can't directly create IS NULL through the calc AST, but we can
         # verify the helper function behavior
-        from hex_sl._vendor.sqlglot import exp
-        from hex_sl.calc.parentheses import parens_if_needed
-
         # Create IS NULL expression
         is_null = exp.Is(this=exp.column("carrier"), expression=exp.Null())
 

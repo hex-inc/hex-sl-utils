@@ -1,11 +1,10 @@
-from hex_sl.calc.ast.literals import LiteralBool, LiteralNumber
-from hex_sl.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
-
-from hex_sl.datatype import DataType
-from hex_sl.expr import ExpressionKind
-from hex_sl.calc.compiler import CalcToTypedSelectVisitor
-
 from inline_snapshot import snapshot
+
+from hex_sl_utils.calc.ast.literals import LiteralBool, LiteralNumber
+from hex_sl_utils.calc.ast.unary import UnaryMinus, UnaryNot, UnaryPlus
+from hex_sl_utils.calc.compiler import CalcToTypedSelectVisitor
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.expr import ExpressionKind
 
 
 # Unary Operators

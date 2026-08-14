@@ -1,10 +1,9 @@
 import pytest
-from hex_sl.dialect.snowflake import HexSLSnowflake
-from hex_sl.project.dataset import Dataset
-from hex_sl.calc.parser import parse_calc_expression
-from hex_sl.expr import ExpressionContext
-from hex_sl.schema import Schema
-from hex_sl.datatype import DataType
+
+from hex_sl_utils.calc.parser import parse_calc_expression
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.snowflake import Snowflake
+from hex_sl_utils.expr import ExpressionContext
 
 
 class TestSnowflakePartitionPruning:
@@ -20,36 +19,28 @@ class TestSnowflakePartitionPruning:
 
     @pytest.fixture
     def dialect(self):
-        return HexSLSnowflake()
+        return Snowflake()
 
-    def _get_generated_sql_from_calc(
-        self, dialect, calc_expr: str, table_name: str = "HEX_SL_TESTING.tpch.lineitem"
-    ) -> str:
+    def _get_generated_sql_from_calc(self, dialect, calc_expr: str) -> str:
         """Helper to compile a calc expression and get the generated SQL."""
-        # Create a simple schema with the columns we need
-        schema = Schema(
-            name="test_schema",
-            types={
-                "l_shipdate": DataType.DATE,
-                "l_commitdate": DataType.TIMESTAMP,
-                "l_receiptdate": DataType.TIMESTAMPTZ,
-            },
-        )
+        # Define the column types needed by the expression
+        columns = {
+            "l_shipdate": DataType.DATE,
+            "l_commitdate": DataType.TIMESTAMP,
+            "l_receiptdate": DataType.TIMESTAMPTZ,
+        }
 
         # Parse and compile the calc expression
         parsed_expr = parse_calc_expression(calc_expr)
-        compiled_expr = dialect.compile_expression(
+        compiled_expr = dialect.compile_calc_expr(
             parsed_expr,
             ExpressionContext.WHERE,
-            schema,
+            columns,
             "UTC",
             parameters={},
         )
 
-        # Generate SQL with the expression in a WHERE clause
-        dataset_sql = f"SELECT COUNT(*) as cnt FROM {table_name} WHERE {compiled_expr.expression.sql(dialect=dialect.sqlglot_dialect())}"
-        dataset = Dataset(name="test_sql_generation", sql=dataset_sql)
-        return dataset.base_sql(dialect=dialect)
+        return compiled_expr.expression.sql(dialect=dialect.sqlglot_dialect())
 
     def _assert_no_partition_blocking_functions(self, sql: str, test_name: str):
         """Assert that SQL doesn't contain functions that block partition pruning."""

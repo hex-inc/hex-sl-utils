@@ -1,21 +1,21 @@
-from hex_sl.calc.parser import parse_calc_expression
-
-from hex_sl.datatype import DataType
-from hex_sl.dialect.clickhouse import HexSLClickHouse
-from hex_sl.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
-
-from hex_sl._vendor.sqlglot import exp
-
 from inline_snapshot import snapshot
 
-from hex_sl.schema import Schema
+from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils.calc.parser import parse_calc_expression
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.clickhouse import ClickHouse
+from hex_sl_utils.expr import (
+    ExpressionContext,
+    ExpressionKind,
+    TypedSelectExpression,
+)
 
 
 # Unary Operators
 def test_compilation_substitution():
-    dialect = HexSLClickHouse()
+    dialect = ClickHouse()
     calc_expr = parse_calc_expression("42 + a")
-    schema = Schema(name="test_schema", types={})
+    columns = {}
     substitutions = {
         "a": TypedSelectExpression(
             expression=exp.Literal.number(12),
@@ -24,10 +24,10 @@ def test_compilation_substitution():
         )
     }
 
-    typed_expr = dialect.compile_expression(
+    typed_expr = dialect.compile_calc_expr(
         calc_expr,
         ExpressionContext.PROJECTION,
-        schema,
+        columns,
         "America/New_York",
         parameters={},
         substitutions=substitutions,

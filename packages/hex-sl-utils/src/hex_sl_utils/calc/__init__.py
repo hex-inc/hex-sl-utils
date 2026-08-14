@@ -2,6 +2,7 @@ from typing import get_args
 
 from hex_sl_utils.calc.ast.args import Args
 from hex_sl_utils.calc.ast.expr import TaggedCalcExprUnion
+from hex_sl_utils.calc.parser import parse_calc_expression
 
 from .ast import CalcExpr
 from .visitor import HEXSL_CALC_FN_NAME
@@ -17,4 +18,8 @@ for union_type in get_args(TaggedCalcExprUnion):
         if hasattr(cls, "model_rebuild"):
             cls.model_rebuild()
 
-__all__ = ["HEXSL_CALC_FN_NAME", "CalcExpr"]
+__all__ = [
+    "HEXSL_CALC_FN_NAME",
+    "CalcExpr",
+    "parse_calc_expression",
+]

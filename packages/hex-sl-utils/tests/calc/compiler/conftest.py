@@ -1,16 +1,16 @@
 import pytest
-from hex_sl.calc.compiler import CalcToTypedSelectVisitor
-from hex_sl.dialect.clickhouse import HexSLClickHouse
-from hex_sl.expr import ExpressionContext
-from hex_sl.schema import Schema
+
+from hex_sl_utils.calc.compiler import CalcToTypedSelectVisitor
+from hex_sl_utils.dialect.clickhouse import ClickHouse
+from hex_sl_utils.expr import ExpressionContext
 
 
 @pytest.fixture
 def visitor() -> CalcToTypedSelectVisitor:
-    schema = Schema(name="test_schema", types={})
+    columns = {}
     return CalcToTypedSelectVisitor(
-        HexSLClickHouse(),
+        ClickHouse(),
         ExpressionContext.PROJECTION,
-        schema,
+        columns,
         timezone="America/New_York",
     )

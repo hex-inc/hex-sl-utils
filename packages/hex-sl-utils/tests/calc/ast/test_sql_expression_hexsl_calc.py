@@ -1,16 +1,18 @@
+from typing import cast
+
 from inline_snapshot import snapshot
 
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl.calc.ast.expr import CalcExpr
-from hex_sl.calc.ast.sql_expression import SqlExpression
-from hex_sl.calc.compiler import CalcToTypedSelectVisitor
-from hex_sl.calc.parser import parse_calc_expression
-from hex_sl.calc.substitution import ColumnSubstitutionVisitor
-from hex_sl.calc.visitor import HEXSL_CALC_FN_NAME
-from hex_sl.datatype import DataType
-from hex_sl.dialect.duckdb import HexSLDuckDB as DuckDBDialect
-from hex_sl.expr import ExpressionContext
-from hex_sl.schema import Schema
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.calc.ast.base import ExprBase
+from hex_sl_utils.calc.ast.expr import CalcExpr
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression
+from hex_sl_utils.calc.compiler import CalcToTypedSelectVisitor
+from hex_sl_utils.calc.parser import parse_calc_expression
+from hex_sl_utils.calc.substitution import ColumnSubstitutionVisitor
+from hex_sl_utils.calc.visitor import HEXSL_CALC_FN_NAME
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.duckdb import DuckDB
+from hex_sl_utils.expr import ExpressionContext
 
 
 def test_sql_expression_with_hexsl_calc_substitution():
@@ -18,12 +20,14 @@ def test_sql_expression_with_hexsl_calc_substitution():
     sql_expr = SqlExpression(sql="amount * tax_rate", data_type=DataType.NUMBER)
 
     # Create substitutions
-    substitutions = {"tax_rate": parse_calc_expression("0.08 + regional_rate").root}
+    substitutions: dict[str, ExprBase] = {
+        "tax_rate": parse_calc_expression("0.08 + regional_rate").root
+    }
 
     # Apply substitution with dialect
-    dialect = DuckDBDialect()
+    dialect = DuckDB()
     visitor = ColumnSubstitutionVisitor(substitutions, dialect)
-    result = sql_expr.accept(visitor)
+    result = cast(SqlExpression, sql_expr.accept(visitor))
 
     # Check that the SQL contains _hexsl_calc placeholder with JSON
     assert result.sql == snapshot(
@@ -38,7 +42,7 @@ def test_sql_expression_with_hexsl_calc_substitution():
             calc_json = node.expressions[0].this
 
     # Verify we can parse the JSON back to a CalcExpr
-    calc_expr = CalcExpr.model_validate_json(calc_json)
+    calc_expr = CalcExpr.model_validate_json(cast(str, calc_json))
     # Should be the substituted expression
     assert calc_expr.to_string() == "(0.08 + regional_rate)"
 
@@ -49,9 +53,7 @@ def test_column_extraction_from_hexsl_calc():
     sql_with_placeholder = f"amount * _hexsl_calc('{calc_json}')"
     sql_expr = SqlExpression(sql=sql_with_placeholder, data_type=DataType.NUMBER)
 
-    from hex_sl.dialect.duckdb import HexSLDuckDB
-
-    dialect = HexSLDuckDB()
+    dialect = DuckDB()
 
     calc_expr = CalcExpr(root=sql_expr)
     columns = calc_expr.get_unqualified_columns(dialect)
@@ -68,14 +70,14 @@ def test_full_compilation_with_resolution():
     )
 
     # Set up compilation context
-    dialect = DuckDBDialect()
-    schema = Schema(name="test", types={"amount": DataType.NUMBER})
+    dialect = DuckDB()
+    columns = {"amount": DataType.NUMBER}
 
     # Compile with resolution
     compiler = CalcToTypedSelectVisitor(
         dialect=dialect,
         context=ExpressionContext.PROJECTION,
-        schema=schema,
+        columns=columns,
         timezone="UTC",
         skip_mangle=True,  # Skip mangling for this test
     )
@@ -95,12 +97,14 @@ def test_recursive_hexsl_calc_substitution():
     )
 
     # Create substitutions that affect the calc inside the placeholder
-    substitutions = {"tax_rate": parse_calc_expression("0.08").root}
+    substitutions: dict[str, ExprBase] = {
+        "tax_rate": parse_calc_expression("0.08").root
+    }
 
     # Apply substitution with dialect
-    dialect = DuckDBDialect()
+    dialect = DuckDB()
     visitor = ColumnSubstitutionVisitor(substitutions, dialect)
-    result = sql_expr.accept(visitor)
+    result = cast(SqlExpression, sql_expr.accept(visitor))
 
     # Check that the SQL still contains _hexsl_calc placeholder with JSON
     assert result.sql == snapshot(
@@ -116,7 +120,7 @@ def test_recursive_hexsl_calc_substitution():
             calc_json_updated = node.expressions[0].this
 
     # Parse JSON and verify substitution happened
-    calc_expr = CalcExpr.model_validate_json(calc_json_updated)
+    calc_expr = CalcExpr.model_validate_json(cast(str, calc_json_updated))
     assert calc_expr.to_string() == "(price + 0.08)"
 
 
@@ -138,9 +142,9 @@ def test_sql_expression_no_substitutions():
     # Test SqlExpression with no substitutions needed
     sql_expr = SqlExpression(sql="10 * 20", data_type=DataType.NUMBER)
 
-    dialect = DuckDBDialect()
+    dialect = DuckDB()
     visitor = ColumnSubstitutionVisitor({}, dialect)
-    result = sql_expr.accept(visitor)
+    result = cast(SqlExpression, sql_expr.accept(visitor))
 
     # Should return the same SqlExpression unchanged
     assert result.sql == sql_expr.sql
@@ -151,15 +155,15 @@ def test_sql_expression_with_multiple_columns():
     # Test substitution of multiple columns
     sql_expr = SqlExpression(sql="col1 + col2 * col3", data_type=DataType.NUMBER)
 
-    substitutions = {
+    substitutions: dict[str, ExprBase] = {
         "col1": parse_calc_expression("10").root,
         "col2": parse_calc_expression("20").root,
         "col3": parse_calc_expression("price + tax").root,
     }
 
-    dialect = DuckDBDialect()
+    dialect = DuckDB()
     visitor = ColumnSubstitutionVisitor(substitutions, dialect)
-    result = sql_expr.accept(visitor)
+    result = cast(SqlExpression, sql_expr.accept(visitor))
 
     # Should have three _hexsl_calc placeholders (case-insensitive)
     calc_count = result.sql.upper().count(HEXSL_CALC_FN_NAME)
@@ -170,9 +174,7 @@ def test_sql_expression_with_aggregate_detection():
     # Test that aggregate functions in SQL are detected
     sql_expr = SqlExpression(sql="SUM(amount) / COUNT(*)", data_type=DataType.NUMBER)
 
-    from hex_sl.dialect.duckdb import HexSLDuckDB
-
-    dialect = HexSLDuckDB()
+    dialect = DuckDB()
 
     calc_expr = CalcExpr(root=sql_expr)
     has_agg = calc_expr.has_aggregation(dialect)
@@ -186,9 +188,7 @@ def test_sql_expression_with_aggregate_in_placeholder():
         sql=f"amount * _hexsl_calc('{calc_json}')", data_type=DataType.NUMBER
     )
 
-    from hex_sl.dialect.duckdb import HexSLDuckDB
-
-    dialect = HexSLDuckDB()
+    dialect = DuckDB()
 
     calc_expr = CalcExpr(root=sql_expr)
     has_agg = calc_expr.has_aggregation(dialect)
@@ -201,9 +201,7 @@ def test_sql_expression_qualified_columns():
         sql="orders.amount + customers.credit", data_type=DataType.NUMBER
     )
 
-    from hex_sl.dialect.duckdb import HexSLDuckDB
-
-    dialect = HexSLDuckDB()
+    dialect = DuckDB()
 
     calc_expr = CalcExpr(root=sql_expr)
     all_columns = calc_expr.get_all_columns(dialect)
@@ -219,20 +217,18 @@ def test_sql_expression_substituted_with_sql_expression():
     This test verifies that SqlExpression nodes can be substituted into other
     SqlExpression nodes using JSON serialization in the placeholder.
     """
-    from hex_sl.schema import Schema
-
     # Create a SQL expression with a column reference
     sql_expr = SqlExpression(sql="price * multiplier", data_type=DataType.NUMBER)
 
     # Substitute multiplier with another SqlExpression
-    substitutions = {
+    substitutions: dict[str, ExprBase] = {
         "multiplier": SqlExpression(
             sql="CASE WHEN category = 'A' THEN 1.1 ELSE 1.0 END",
             data_type=DataType.NUMBER,
         )
     }
 
-    dialect = DuckDBDialect()
+    dialect = DuckDB()
     calc = CalcExpr(root=sql_expr)
 
     # Substitution creates the placeholder with JSON
@@ -245,18 +241,15 @@ def test_sql_expression_substituted_with_sql_expression():
     )
 
     # Now compile - this should succeed with JSON serialization
-    schema = Schema(
-        name="products",
-        types={
-            "price": DataType.NUMBER,
-            "category": DataType.STRING,
-        },
-    )
+    columns = {
+        "price": DataType.NUMBER,
+        "category": DataType.STRING,
+    }
 
     compiler = CalcToTypedSelectVisitor(
         dialect=dialect,
         context=ExpressionContext.PROJECTION,
-        schema=schema,
+        columns=columns,
         timezone="UTC",
         skip_mangle=True,
     )

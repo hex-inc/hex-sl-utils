@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union
+from collections.abc import Mapping
 
-from hex_sl._vendor.sqlglot import parse_one
-from hex_sl.calc.ast.binary import BinaryBase
-from hex_sl.calc.ast.column import Column
-from hex_sl.calc.ast.functions import FuncBase
-from hex_sl.calc.ast.literals import (
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.calc.ast.binary import BinaryBase
+from hex_sl_utils.calc.ast.column import Column
+from hex_sl_utils.calc.ast.functions import FuncBase
+from hex_sl_utils.calc.ast.literals import (
     LiteralBool,
     LiteralDate,
     LiteralNull,
@@ -14,38 +14,33 @@ from hex_sl.calc.ast.literals import (
     LiteralString,
     LiteralTimestamp,
 )
-from hex_sl.calc.ast.parameter import Parameter
-from hex_sl.calc.ast.sql_expression import SqlExpression
-from hex_sl.calc.ast.unary import UnaryBase
-from hex_sl.calc.visitor import CalcVisitor
-from hex_sl.datatype import DataType
-from hex_sl.expr import (
-    ExpressionContext,
-    TypedSelectExpression,
-)
-from hex_sl.schema import Schema
-
-if TYPE_CHECKING:
-    from hex_sl.dialect.base import HexSLDialect
+from hex_sl_utils.calc.ast.parameter import Parameter
+from hex_sl_utils.calc.ast.sql_expression import SqlExpression
+from hex_sl_utils.calc.ast.unary import UnaryBase
+from hex_sl_utils.calc.visitor import CalcVisitor
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.dialect import Dialect
+from hex_sl_utils.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils.expr.expr_substitution import _needs_parens_for_substitution
 
 
 class CalcToTypedSelectVisitor(CalcVisitor[TypedSelectExpression]):
     def __init__(
         self,
-        dialect: HexSLDialect,
+        dialect: Dialect,
         context: ExpressionContext,
-        schema: Schema,
+        columns: Mapping[str, DataType],
         timezone: str,
-        parameters: Optional[dict[str, DataType]] = None,
-        substitutions: Optional[dict[str, TypedSelectExpression]] = None,
-        skip_mangle: Union[bool, list[str], None] = None,
+        parameters: Mapping[str, DataType] | None = None,
+        substitutions: Mapping[str, TypedSelectExpression] | None = None,
+        skip_mangle: bool | list[str] | None = None,
     ) -> None:
-        self.schema = schema
+        self.columns = columns
         self.dialect = dialect
         self.context = context
         self.timezone = timezone
-        self.parameters = parameters or {}
-        self.substitutions = substitutions or {}
+        self.parameters = dict(parameters or {})
+        self.substitutions = dict(substitutions or {})
         self.skip_mangle = skip_mangle or []
 
     def visit_literal_number(self, literal: LiteralNumber) -> TypedSelectExpression:
@@ -70,7 +65,7 @@ class CalcToTypedSelectVisitor(CalcVisitor[TypedSelectExpression]):
 
     def visit_column(self, column: Column) -> TypedSelectExpression:
         return column.compile(
-            self.schema, self.dialect, self.substitutions, self.skip_mangle
+            self.columns, self.dialect, self.substitutions, self.skip_mangle
         )
 
     def visit_parameter(self, parameter: Parameter) -> TypedSelectExpression:
@@ -93,17 +88,12 @@ class CalcToTypedSelectVisitor(CalcVisitor[TypedSelectExpression]):
         return typed_select_expr
 
     def visit_sql_expression(self, sql_expr: SqlExpression) -> TypedSelectExpression:
-        from hex_sl._vendor.sqlglot import exp
-        from hex_sl.calc.ast.column import Column
-
         sqlglot_expr = parse_one(sql_expr.sql, dialect=self.dialect.sqlglot_dialect())
 
         # Resolve column references by applying substitutions (inlining dimension
         # calc expressions), performing schema lookups, and applying name mangling
         def resolve_column_reference(node: exp.Expression) -> exp.Expression:
             if isinstance(node, exp.Column):
-                from hex_sl.expr import _needs_parens_for_substitution
-
                 column = Column(
                     name=node.name, qualifiers=(node.table,) if node.table else ()
                 )
@@ -120,9 +110,9 @@ class CalcToTypedSelectVisitor(CalcVisitor[TypedSelectExpression]):
         resolved_expr = sqlglot_expr.transform(resolve_column_reference)
 
         # Then resolve any _HEXSL_CALC placeholders
-        resolved_expr = self.dialect.resolve_hexsl_calc_placeholders(
+        resolved_expr = self.dialect.resolve_calc_placeholders(
             resolved_expr,
-            schema=self.schema,
+            columns=self.columns,
             timezone=self.timezone,
             context=self.context,
             parameters=self.parameters,

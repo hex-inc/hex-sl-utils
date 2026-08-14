@@ -1,25 +1,21 @@
-from hex_sl.calc.parser import parse_calc_expression
-
-from hex_sl.datatype import DataType
-from hex_sl.dialect.clickhouse import HexSLClickHouse
-from hex_sl.expr import ExpressionContext
-
-
 from inline_snapshot import snapshot
 
-from hex_sl.schema import Schema
+from hex_sl_utils.calc.parser import parse_calc_expression
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect.clickhouse import ClickHouse
+from hex_sl_utils.expr import ExpressionContext
 
 
 # Unary Operators
 def test_parameter_compilation():
-    dialect = HexSLClickHouse()
+    dialect = ClickHouse()
     calc_expr = parse_calc_expression("42 + {{a}}")
-    schema = Schema(name="test_schema", types={})
+    columns = {}
 
-    typed_expr = dialect.compile_expression(
+    typed_expr = dialect.compile_calc_expr(
         calc_expr,
         ExpressionContext.PROJECTION,
-        schema,
+        columns,
         "America/New_York",
         parameters={"a": DataType.NUMBER, "b": DataType.STRING},
     )
