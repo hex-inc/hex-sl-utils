@@ -1,9 +1,19 @@
 from __future__ import annotations
 
-from tests.compiler.snapshots.snapshot_base import AggregationSnapshotTestBase
+from hex_sl_utils.datatype import DataType
+
+from ..snapshot_base import AggregationSnapshotTestBase
 
 
 class SnapshotTest(AggregationSnapshotTestBase):
+    columns = {
+        "numeric_col": DataType.NUMBER,
+        "var_col": DataType.NUMBER,
+        "boolean_col": DataType.BOOLEAN,
+        "boolean_num_col": DataType.NUMBER,
+        "null_col": DataType.NUMBER,
+    }
+
     @classmethod
     def get_calc_expressions(cls) -> list[str]:
         return [

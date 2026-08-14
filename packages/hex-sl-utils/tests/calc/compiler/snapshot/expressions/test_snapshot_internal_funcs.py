@@ -1,9 +1,24 @@
 from __future__ import annotations
 
-from tests.compiler.snapshots.snapshot_base import SelectionSnapshotTestBase
+from hex_sl_utils.datatype import DataType
+
+from ..snapshot_base import SelectionSnapshotTestBase
 
 
 class SnapshotTest(SelectionSnapshotTestBase):
+    columns = {
+        "str_int": DataType.STRING,
+        "str_float": DataType.STRING,
+        "bool_col": DataType.BOOLEAN,
+        "date_col": DataType.DATE,
+        "timestamp_col": DataType.TIMESTAMP,
+        "int_col": DataType.NUMBER,
+        "float_col": DataType.NUMBER,
+        "str_date": DataType.STRING,
+        "str_datetime": DataType.STRING,
+        "epoch_ms": DataType.NUMBER,
+    }
+
     @classmethod
     def get_calc_expressions(cls) -> list[str]:
         """Return calc expressions to test."""

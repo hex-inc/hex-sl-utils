@@ -1,9 +1,17 @@
 from __future__ import annotations
 
-from tests.compiler.snapshots.snapshot_base import AggregationSnapshotTestBase
+from hex_sl_utils.datatype import DataType
+
+from ..snapshot_base import AggregationSnapshotTestBase
 
 
 class SnapshotTest(AggregationSnapshotTestBase):
+    columns = {
+        "int_col": DataType.NUMBER,
+        "float_col": DataType.NUMBER,
+    }
+    support_method = "supports_percentile_approx"
+
     @classmethod
     def get_calc_expressions(cls) -> list[str]:
         return [

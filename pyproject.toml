@@ -84,6 +84,11 @@ target-version = "py314"
 [tool.ruff.lint.isort]
 known-first-party = ["hex_sl_utils"]
 
+[tool.ruff.lint.per-file-ignores]
+"packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions/test_snapshot_*.py" = [
+  "RUF012",
+]
+
 [tool.rumdl]
 exclude = ["**/_vendor/**"]
 flavor = "gfm"

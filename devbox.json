@@ -44,7 +44,8 @@
         "devbox run verify:schema",
         "devbox run verify:timezones",
         "devbox run verify:vendoring",
-        "devbox run verify:calc-parser"
+        "devbox run verify:calc-parser",
+        "devbox run verify:calc-sql-snapshots"
       ],
       "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py \"$@\""],
       "ci": [
@@ -77,6 +78,12 @@
       ],
       "verify:calc-parser": [
         "uv run --locked --all-packages python scripts/calc-parser/check_standalone_parser.py"
+      ],
+      "build:calc-sql-snapshots": [
+        "uv run --locked --all-packages python scripts/calc-sql-snapshots/update_snapshots.py"
+      ],
+      "verify:calc-sql-snapshots": [
+        "uv run --locked --all-packages python scripts/calc-sql-snapshots/update_snapshots.py --check"
       ]
     }
   }

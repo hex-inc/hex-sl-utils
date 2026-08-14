@@ -1,9 +1,18 @@
 from __future__ import annotations
 
-from tests.compiler.snapshots.snapshot_base import SelectionSnapshotTestBase
+from hex_sl_utils.datatype import DataType
+
+from ..snapshot_base import SelectionSnapshotTestBase
 
 
 class SnapshotTest(SelectionSnapshotTestBase):
+    columns = {
+        "str_col1": DataType.STRING,
+        "str_col2": DataType.STRING,
+        "var_len_col": DataType.STRING,
+        "replace_col": DataType.STRING,
+    }
+
     @classmethod
     def get_calc_expressions(cls) -> list[str]:
         return [
