@@ -30,6 +30,15 @@ def get_env_port(name: str, driver_name: str) -> int:
     return _parse_port(get_env_var(name, driver_name), name)
 
 
+def get_local_port(dialect_name: str, default: int) -> int:
+    """Read the loopback port for a local Compose-backed dialect."""
+    variable_name = f"HEX_SL_UTILS_DATABASE_{dialect_name.upper()}_PORT"
+    value = os.environ.get(variable_name)
+    if value is None:
+        return default
+    return _parse_port(value, variable_name)
+
+
 def _parse_port(value: str, variable_name: str) -> int:
     """Validate and convert an environment port value."""
     try:

@@ -16,6 +16,7 @@ from database.driver.connection import (
     ConnectionVarsNotSetError,
     get_env_port,
     get_env_var,
+    get_local_port,
 )
 from database.driver.query import ExecutableQuery, RenderedQuery, render_query
 from database.driver.registry import create_driver, normalize_requested_dialects
@@ -97,6 +98,21 @@ def test_missing_connection_setting_names_the_driver(
 
     with pytest.raises(ConnectionVarsNotSetError, match="TEST_DATABASE_URL"):
         get_env_var("TEST_DATABASE_URL", "test")
+
+
+def test_local_port_uses_the_configured_dialect_port(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("HEX_SL_UTILS_DATABASE_POSTGRES_PORT", "15437")
+
+    assert get_local_port("postgres", 5437) == 15437
+
+
+def test_local_port_rejects_an_invalid_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("HEX_SL_UTILS_DATABASE_POSTGRES_PORT", "invalid")
+
+    with pytest.raises(ValueError, match="HEX_SL_UTILS_DATABASE_POSTGRES_PORT"):
+        get_local_port("postgres", 5437)
 
 
 def test_bigquery_parameter_types_match_the_source_driver() -> None:

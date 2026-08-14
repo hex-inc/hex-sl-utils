@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy import create_engine
 
+from database.driver.connection import get_local_port
 from database.driver.polars_read_database import PolarsReadDatabaseDriver
 from hex_sl_utils.placeholder import PlaceholderStyle
 
@@ -16,7 +17,8 @@ class PostgresDriver(PolarsReadDatabaseDriver):
 
     def __init__(self) -> None:
         self._engine: Any = create_engine(
-            "postgresql://postgres:postgres@localhost:5437/hex_sl_testing"
+            "postgresql://postgres:postgres@127.0.0.1:"
+            f"{get_local_port('postgres', 5437)}/hex_sl_testing"
         )
 
     def connection(self) -> Any:

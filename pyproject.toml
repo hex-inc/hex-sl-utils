@@ -60,6 +60,8 @@ pythonpath = ["."]
 testpaths = ["packages", "tests"]
 markers = [
   "database: requires a database service or database-specific client",
+  "database_cloud: requires a credentialed cloud warehouse",
+  "database_local: requires a local database engine or service",
   "integration: crosses a process or external-service boundary",
 ]
 

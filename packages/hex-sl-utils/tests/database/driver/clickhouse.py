@@ -6,6 +6,7 @@ import clickhouse_connect
 import polars as pl
 
 from database.driver.base import SqlDriver
+from database.driver.connection import get_local_port
 from database.driver.query import RenderedQuery
 from hex_sl_utils.placeholder import PlaceholderStyle
 
@@ -16,7 +17,9 @@ class ClickHouseDriver(SqlDriver):
 
     def __init__(self) -> None:
         self.connection = clickhouse_connect.get_client(
-            host="localhost", port=8123, username="default"
+            host="127.0.0.1",
+            port=get_local_port("clickhouse", 8123),
+            username="default",
         )
 
     def execute_rendered(self, query: RenderedQuery) -> pl.DataFrame:

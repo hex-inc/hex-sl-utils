@@ -2,6 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.18.0/.schema/devbox.schema.json",
   "packages": {
     "nodejs": "24",
+    "jdk": "22",
+    "libpq": "18.4",
     "oxfmt": "0.59.0",
     "oxlint": "1.75.0",
     "python": {
@@ -36,6 +38,15 @@
         "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
       ],
       "test": ["uv run --locked --all-packages pytest"],
+      "database:up": [
+        "docker compose down --volumes --remove-orphans",
+        "docker compose up --build --wait -d"
+      ],
+      "database:down": ["docker compose down --volumes --remove-orphans"],
+      "database:test-local": ["bash scripts/database/run_local_tests.sh \"$@\""],
+      "database:smoke": [
+        "bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""
+      ],
       "test-cov": [
         "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
       ],

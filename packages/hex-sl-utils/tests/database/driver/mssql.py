@@ -6,6 +6,7 @@ import polars as pl
 import pymssql
 
 from database.driver.base import SqlDriver
+from database.driver.connection import get_local_port
 from database.driver.query import RenderedQuery
 from hex_sl_utils.placeholder import PlaceholderStyle
 
@@ -15,7 +16,7 @@ class MSSQLDriver(SqlDriver):
     placeholder_style = PlaceholderStyle.PYFORMAT
 
     def __init__(self) -> None:
-        server = "localhost"
+        server = "127.0.0.1"
         database = "master"
         username = "sa"
         password = "yourStrong(!)Password"
@@ -26,10 +27,8 @@ class MSSQLDriver(SqlDriver):
             password=password,
             database=database,
             as_dict=True,
-            port="1433",
+            port=str(get_local_port("mssql", 1433)),
         )
-        with self.connection.cursor() as cursor:
-            cursor.execute("USE [hex-sl-testing]")
 
     def execute_rendered(self, query: RenderedQuery) -> pl.DataFrame:
         """Execute one SQL Server query."""

@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import create_engine
 from sqlalchemy.engine.url import URL
 
+from database.driver.connection import get_local_port
 from database.driver.polars_read_database import PolarsReadDatabaseDriver
 from hex_sl_utils.placeholder import PlaceholderStyle
 
@@ -19,8 +20,8 @@ class TrinoDriver(PolarsReadDatabaseDriver):
         self._engine: Any = create_engine(
             URL.create(
                 drivername="trino",
-                host="localhost",
-                port=8093,
+                host="127.0.0.1",
+                port=get_local_port("trino", 8093),
                 database="hive",
                 username="trino",
                 query={"protocol": "http", "auth": "basic"},

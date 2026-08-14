@@ -7,6 +7,7 @@ import pymysql
 import pymysql.cursors
 
 from database.driver.base import SqlDriver
+from database.driver.connection import get_local_port
 from database.driver.query import RenderedQuery
 from hex_sl_utils.placeholder import PlaceholderStyle
 
@@ -17,7 +18,8 @@ class MySqlDriver(SqlDriver):
 
     def __init__(self) -> None:
         self.connection = pymysql.connect(
-            host="localhost",
+            host="127.0.0.1",
+            port=get_local_port("mysql", 3306),
             user="mysql",
             password="mysql",
             cursorclass=pymysql.cursors.DictCursor,
