@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from scripts.release import release_candidate, release_from_tag, workspace_releases
+from scripts.release import release_candidates, release_from_tag, workspace_releases
 
 
 def write_package(packages_dir: Path, name: str, version: str) -> None:
@@ -54,32 +54,37 @@ def test_release_tag_rejects_development_version(tmp_path: Path) -> None:
         release_from_tag("example-package-v1.2.3.dev0", tmp_path)
 
 
-def test_release_candidate_selects_one_non_development_version(
+def test_release_candidates_select_non_development_versions(
     tmp_path: Path,
 ) -> None:
     write_package(tmp_path, "example-package", "1.2.3")
     write_package(tmp_path, "other-package", "2.0.0.dev0")
 
-    release = release_candidate(tmp_path)
+    releases = release_candidates(tmp_path)
 
-    assert release.name == "example-package"
-    assert release.version == "1.2.3"
+    assert [(release.name, release.version) for release in releases] == [
+        ("example-package", "1.2.3")
+    ]
 
 
-def test_release_candidate_requires_a_non_development_version(
+def test_release_candidates_require_a_non_development_version(
     tmp_path: Path,
 ) -> None:
     write_package(tmp_path, "example-package", "1.2.3.dev0")
 
-    with pytest.raises(ValueError, match="found: none"):
-        release_candidate(tmp_path)
+    with pytest.raises(ValueError, match="at least one"):
+        release_candidates(tmp_path)
 
 
-def test_release_candidate_rejects_multiple_non_development_versions(
+def test_release_candidates_allow_multiple_non_development_versions(
     tmp_path: Path,
 ) -> None:
     write_package(tmp_path, "first-package", "1.2.3")
     write_package(tmp_path, "second-package", "2.0.0")
 
-    with pytest.raises(ValueError, match="Expected exactly one"):
-        release_candidate(tmp_path)
+    releases = release_candidates(tmp_path)
+
+    assert [(release.name, release.version) for release in releases] == [
+        ("first-package", "1.2.3"),
+        ("second-package", "2.0.0"),
+    ]

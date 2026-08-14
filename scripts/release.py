@@ -62,8 +62,8 @@ def release_from_tag(tag: str, packages_dir: Path = PACKAGES) -> PackageRelease:
     return validated_release(matches[0])
 
 
-def release_candidate(packages_dir: Path = PACKAGES) -> PackageRelease:
-    """Find the one publishable package prepared by a release pull request."""
+def release_candidates(packages_dir: Path = PACKAGES) -> list[PackageRelease]:
+    """Find publishable packages prepared by a release pull request."""
     candidates: list[PackageRelease] = []
     for release in workspace_releases(packages_dir):
         try:
@@ -75,12 +75,9 @@ def release_candidate(packages_dir: Path = PACKAGES) -> PackageRelease:
         if not version.is_devrelease:
             candidates.append(release)
 
-    if len(candidates) != 1:
-        found = ", ".join(candidate.tag for candidate in candidates) or "none"
-        raise ValueError(
-            f"Expected exactly one non-development release candidate; found: {found}"
-        )
-    return candidates[0]
+    if not candidates:
+        raise ValueError("Expected at least one non-development release candidate")
+    return candidates
 
 
 def main() -> None:
@@ -92,7 +89,7 @@ def main() -> None:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="validate the one non-development package prepared for release",
+        help="validate non-development packages prepared for release",
     )
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
@@ -100,18 +97,19 @@ def main() -> None:
     if args.dry_run:
         if args.tag is not None:
             parser.error("tag cannot be used with --dry-run")
-        release = release_candidate()
-        print(f"Validated release candidate: {release.name} {release.version}")
+        candidates = release_candidates()
+        print("Validated release candidates:")
+        for candidate in candidates:
+            print(f"- {candidate.name} {candidate.version}")
     else:
         if args.tag is None:
             parser.error("tag is required unless --dry-run is used")
         release = release_from_tag(args.tag)
         print(f"Validated release: {release.name} {release.version}")
-
-    if args.github_output is not None:
-        with args.github_output.open("a") as output:
-            output.write(f"package={release.name}\n")
-            output.write(f"version={release.version}\n")
+        if args.github_output is not None:
+            with args.github_output.open("a") as output:
+                output.write(f"package={release.name}\n")
+                output.write(f"version={release.version}\n")
 
 
 if __name__ == "__main__":

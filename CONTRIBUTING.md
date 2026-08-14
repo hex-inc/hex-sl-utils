@@ -211,17 +211,17 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
 
 ### Releasing a package
 
-1. Create a `release/<version>` branch and open a release pull request that:
-   - sets a non-development version in the package's `pyproject.toml`;
-   - moves the package's changes from `Unreleased` to that version in its
+1. Create a `release/<description>` branch and open a release pull request that:
+   - sets a non-development version in each package being released;
+   - moves each package's changes from `Unreleased` to that version in its
      `CHANGELOG.md`;
    - refreshes `uv.lock`; and
    - passes `devbox run ci`.
 
    Pull requests from `release/` branches also run the publishing workflow as a
-   dry run. It validates that exactly one package has a non-development version,
-   then checks, tests, builds, and smoke-tests that package without uploading or
-   publishing artifacts.
+   dry run. It validates that at least one package has a non-development
+   version, then checks, tests, builds, and smoke-tests the workspace without
+   uploading or publishing artifacts.
 
 2. Merge the release pull request to `main`.
 3. Create an annotated tag at that merge commit and push it:
@@ -231,6 +231,8 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
    git push origin hex-sl-utils-v0.1.0
    ```
 
+   A release pull request may prepare multiple packages. Create and push one tag
+   per package; those tags may point to the same merge commit.
 4. Review and approve the `pypi` environment deployment. The publish workflow
    validates the tag and metadata, reruns checks and tests, then builds and
    smoke-tests the selected package. A separate job with publishing credentials
