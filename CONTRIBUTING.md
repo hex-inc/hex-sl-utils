@@ -211,12 +211,17 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
 
 ### Releasing a package
 
-1. Open a release pull request that:
+1. Create a `release/<version>` branch and open a release pull request that:
    - sets a non-development version in the package's `pyproject.toml`;
    - moves the package's changes from `Unreleased` to that version in its
      `CHANGELOG.md`;
    - refreshes `uv.lock`; and
    - passes `devbox run ci`.
+
+   Pull requests from `release/` branches also run the publishing workflow as a
+   dry run. It validates that exactly one package has a non-development version,
+   then checks, tests, builds, and smoke-tests that package without uploading or
+   publishing artifacts.
 
 2. Merge the release pull request to `main`.
 3. Create an annotated tag at that merge commit and push it:
