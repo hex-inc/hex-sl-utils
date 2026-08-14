@@ -6,7 +6,7 @@ import inspect
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 import pytest
 
@@ -14,6 +14,10 @@ from hex_sl_utils.calc import parse_calc_expression
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
 from hex_sl_utils.expr import ExpressionContext
+
+if TYPE_CHECKING:
+    import polars as pl
+    from hex_sl.dialect.base import HexSLDialect
 
 DIALECT_NAMES = (
     "bigquery",
@@ -103,6 +107,49 @@ class SnapshotTestBase(ABC):
     def test_sql(self, dialect_name: str) -> None:
         assert self.compile_sql(dialect_name) == self.get_expected_sql()[dialect_name]
 
+    @classmethod
+    @abstractmethod
+    def get_expected_df(cls, dialect: HexSLDialect) -> pl.DataFrame:
+        """Get the expected results dataframe (computed in polars).
+
+        Returns:
+            pl.DataFrame: The expected results for validation
+        """
+        ...
+
+    @classmethod
+    def validate(
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+    ) -> None:
+        """Validate the query results against expected values.
+
+        This provides a default implementation using polars frame comparison.
+        Subclasses can override this for custom validation logic.
+
+        Args:
+            expected_df: The expected results dataframe
+            result_df: The actual results from executing the query
+            dialect: The SQL dialect that was used
+        """
+        import polars.testing as pl_testing
+        from hex_sl.dialect.redshift import HexSLRedshift
+
+        # Handle Redshift column name lowercasing
+        if isinstance(dialect, HexSLRedshift):
+            # Redshift returns column names in lowercase
+            expected_df = expected_df.select(
+                **{col.lower(): expected_df[col] for col in expected_df.columns}
+            )
+
+        print(dialect.name())
+        pl_testing.assert_frame_equal(
+            result_df,
+            expected_df,
+            check_dtypes=False,
+            atol=1e-6,
+            check_column_order=True,
+        )
+
 
 class SelectionSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.PROJECTION
@@ -113,6 +160,38 @@ class SelectionSnapshotTestBase(SnapshotTestBase):
         """Get the list of expressions to calculate."""
         ...
 
+    @classmethod
+    @abstractmethod
+    def get_expression_input_data(cls) -> pl.DataFrame:
+        """Get the test data for the expression test."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_expected_df_from_input(
+        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+    ) -> pl.DataFrame:
+        """Get the expected results dataframe from input data (computed in polars).
+
+        Args:
+            expression_input_data: The input data for the expressions
+            dialect: The SQL dialect being tested
+
+        Returns:
+            pl.DataFrame: The expected results for validation
+        """
+        ...
+
+    @classmethod
+    def get_expected_df(cls, dialect: HexSLDialect) -> pl.DataFrame:
+        """Get the expected results dataframe (computed in polars).
+
+        Returns:
+            pl.DataFrame: The expected results for validation
+        """
+        expression_input_data = cls.get_expression_input_data()
+        return cls.get_expected_df_from_input(expression_input_data, dialect)
+
 
 class AggregationSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.AGGREGATION
@@ -122,6 +201,38 @@ class AggregationSnapshotTestBase(SnapshotTestBase):
     def get_calc_expressions(cls) -> list[str]:
         """Get the list of expressions to calculate."""
         ...
+
+    @classmethod
+    @abstractmethod
+    def get_expression_input_data(cls) -> pl.DataFrame:
+        """Get the test data for the expression test."""
+        ...
+
+    @classmethod
+    @abstractmethod
+    def get_expected_df_from_input(
+        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+    ) -> pl.DataFrame:
+        """Get the expected results dataframe from input data (computed in polars).
+
+        Args:
+            expression_input_data: The input data for the expressions
+            dialect: The SQL dialect being tested
+
+        Returns:
+            pl.DataFrame: The expected results for validation
+        """
+        ...
+
+    @classmethod
+    def get_expected_df(cls, dialect: HexSLDialect) -> pl.DataFrame:
+        """Get the expected results dataframe (computed in polars).
+
+        Returns:
+            pl.DataFrame: The expected results for validation
+        """
+        expression_input_data = cls.get_expression_input_data()
+        return cls.get_expected_df_from_input(expression_input_data, dialect)
 
 
 _DIALECT_HEADER = re.compile(r"^-- === ([A-Z0-9_]+) ===$")

@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+import polars as pl
+from datetime import datetime, date
+from hex_sl.dialect.base import HexSLDialect
+from hex_sl.dialect.clickhouse import HexSLClickHouse
+from hex_sl.dialect.mssql import HexSLMSSQL
+
 from hex_sl_utils.datatype import DataType
 
 from ..snapshot_base import SelectionSnapshotTestBase
@@ -39,3 +45,129 @@ class SnapshotTest(SelectionSnapshotTestBase):
             "todatetime(ts_string_col, 'UTC')",
             "todatetime(ts_string_col, 'America/New_York')",
         ]
+
+    @classmethod
+    def get_expression_input_data(cls) -> pl.DataFrame:
+        return pl.DataFrame(
+            {
+                "int_col": [-1, 10, 0, 2],
+                "float_col": [2.5, 2.0, -12.0, 2.001],
+                "bool_col": [True, False, True, False],
+                "date_col": [
+                    date(2021, 1, 1),
+                    date(2021, 1, 2),
+                    date(2021, 1, 3),
+                    date(2021, 1, 4),
+                ],
+                "datetime_col": [
+                    datetime(2021, 1, 1, 10, 10, 10),
+                    datetime(2021, 1, 2, 11, 11, 11),
+                    datetime(2021, 1, 3, 12, 12, 12),
+                    datetime(2021, 1, 4, 13, 13, 13),
+                ],
+                "string_col": ["0", "FALSE", "1.50", "TRUE"],
+                "ts_string_col": [
+                    "2021-01-01 10:10:10",
+                    "2021-01-02 11:11:11",
+                    None,
+                    "2021-01-04 13:13:13",
+                ],
+                "date_string_col": ["2021-01-01", "bogus", "2021-01-03", "2021-01-04"],
+            }
+        )
+
+    @classmethod
+    def get_expected_df_from_input(
+        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+    ) -> pl.DataFrame:
+        df = expression_input_data
+        expected_df = pl.DataFrame(
+            {
+                "row": [0, 1, 2, 3],
+                "col1": df["int_col"].cast(pl.Utf8),
+                "col2": df["float_col"].cast(pl.Utf8),
+                "col3": df.select(
+                    pl.when(pl.col("bool_col"))
+                    .then(pl.lit("true"))
+                    .otherwise(pl.lit("false"))
+                    .alias("col3")
+                )["col3"],
+                "col4": df["date_col"].cast(pl.Utf8),
+                "col5": df["datetime_col"].dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "col6": df["int_col"] != 0,
+                "col7": df.select(
+                    pl.when(
+                        pl.col("string_col").str.to_lowercase().is_in(["true", "1"])
+                    )
+                    .then(True)
+                    .when(pl.col("string_col").str.to_lowercase().is_in(["false", "0"]))
+                    .then(False)
+                    .otherwise(
+                        # MSSQL doesn't support null booleans
+                        False if isinstance(dialect, HexSLMSSQL) else None
+                    )
+                    .alias("col7")
+                )["col7"],
+                "col8": df["string_col"].cast(pl.Float64, strict=False),
+                "col9": df["bool_col"].cast(pl.Int32),
+                "col10": df["date_string_col"].str.strptime(
+                    pl.Date, "%Y-%m-%d", strict=False
+                ),
+                "col11": df["ts_string_col"].str.strptime(
+                    pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False
+                ),
+                "col12": (
+                    df["ts_string_col"]
+                    .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False)
+                    .dt.replace_time_zone("UTC")
+                    .dt.convert_time_zone("America/New_York")
+                ),
+                "col13": (
+                    df["ts_string_col"]
+                    .str.strptime(pl.Datetime, "%Y-%m-%d %H:%M:%S", strict=False)
+                    .dt.replace_time_zone("America/New_York")
+                ),
+            }
+        )
+        return expected_df
+
+    @classmethod
+    def validate(
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+    ) -> None:
+        # Convert col2 (float to string) to handle formatting differences
+        expected_col2 = expected_df["col2"].to_list()
+        result_col2 = result_df["col2"].to_list()
+
+        # Normalize float formatting (remove trailing zeros after decimal)
+        for i in range(len(expected_col2)):
+            if expected_col2[i] is not None:
+                # Normalize by converting to float and back to string
+                expected_col2[i] = str(float(expected_col2[i]))
+            if result_col2[i] is not None:
+                result_col2[i] = str(float(result_col2[i]))
+
+        # Create modified dataframes for comparison
+        expected_df_mod = expected_df.with_columns(pl.Series("col2", expected_col2))
+        result_df_mod = result_df.with_columns(pl.Series("col2", result_col2))
+
+        # Handle timezone differences for columns 11 and 12
+        if isinstance(dialect, HexSLClickHouse):
+            # Remove timezone from dialects that always parse timestamp strings into
+            #  timezone aware timestamps
+            result_df_mod = result_df_mod.with_columns(
+                col11=expected_df["col11"].dt.replace_time_zone(None)
+            )
+
+        # Use parent validation
+        super().validate(expected_df_mod, result_df_mod, dialect)
+
+
+# Database result tests
+
+def test_snapshot_cast_functions_validate(dialect_name):
+    """Test cast functions validation for each dialect."""
+    dialect = HexSLDialect.from_name(dialect_name)
+    result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
+    expected_df = SnapshotTest.get_expected_df(dialect)
+    SnapshotTest.validate(expected_df, result_df, dialect)
