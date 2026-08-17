@@ -176,15 +176,15 @@ exactly match a workspace distribution name and the version in that package's
 
 1. Create a protected GitHub environment named `pypi`. Require maintainer
    approval for deployments to that environment.
-2. Create the package project on PyPI.
-3. In the PyPI project's publishing settings, add this repository and
-   `.github/workflows/publish.yml` as a Trusted Publisher using the `pypi`
-   environment.
-4. Repeat the Trusted Publisher configuration for each distribution added to
-   the workspace.
+2. Create a PyPI API token with access to every distribution published by this
+   workflow. The first upload of a new distribution requires an account-scoped
+   token; after the project exists, prefer the narrowest scope that still
+   covers the workspace's publishing needs.
+3. Add the token as an environment secret named `PYPI_API_TOKEN` on the `pypi`
+   GitHub environment.
 
-No long-lived PyPI token is stored in GitHub. The workflow exchanges GitHub's
-short-lived identity token for publishing credentials.
+The protected environment limits access to the long-lived token and keeps
+maintainer approval in front of every upload.
 
 ### Versioning policy
 
@@ -235,8 +235,9 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
    per package; those tags may point to the same merge commit.
 4. Review and approve the `pypi` environment deployment. The publish workflow
    validates the tag and metadata, reruns checks and tests, then builds and
-   smoke-tests the selected package. A separate job with publishing credentials
-   downloads and publishes those exact artifacts through Trusted Publishing.
+   smoke-tests the selected package. A separate job with access to the
+   `PYPI_API_TOKEN` environment secret downloads and publishes those exact
+   artifacts.
 5. Open a follow-up pull request setting the next development version, such as
    `0.2.0.dev0`, and restore an empty `Unreleased` section.
 
