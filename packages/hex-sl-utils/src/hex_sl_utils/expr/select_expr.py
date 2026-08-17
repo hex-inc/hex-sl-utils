@@ -172,7 +172,4 @@ class TypedSelectExpression:
         """
         Whether the expression can be inlined inside an aggregation
         """
-        if self.kind in (ExpressionKind.SCALAR, ExpressionKind.COLUMN):  # noqa: SIM103
-            return True
-        else:
-            return False
+        return self.kind in (ExpressionKind.SCALAR, ExpressionKind.COLUMN)
