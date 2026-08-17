@@ -37,16 +37,16 @@
         "oxlint . --fix --deny-warnings --no-error-on-unmatched-pattern",
         "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
       ],
-      "test": ["uv run --locked --all-packages pytest"],
-      "database:up": [
-        "docker compose down --volumes --remove-orphans",
-        "docker compose up --build --wait -d"
+      "test": [
+        "devbox run test:packages",
+        "devbox run test:workspace",
+        "devbox run test:database:local",
+        "devbox run test:database:cloud"
       ],
-      "database:down": ["docker compose down --volumes --remove-orphans"],
-      "database:test-local": ["bash scripts/database/run_local_tests.sh \"$@\""],
-      "database:smoke": ["bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""],
+      "test:packages": ["uv run --locked --all-packages pytest packages -m 'not database'"],
+      "test:workspace": ["uv run --locked --all-packages pytest tests -m 'not database'"],
       "test-cov": [
-        "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
+        "uv run --locked --all-packages pytest packages tests -m 'not database' --cov=packages --cov-report=term-missing --cov-report=xml"
       ],
       "build": ["uv build --all-packages --no-sources"],
       "verify": [
@@ -93,6 +93,24 @@
       ],
       "verify:calc-sql-snapshots": [
         "uv run --locked --all-packages python scripts/calc-sql-snapshots/update_snapshots.py --check"
+      ],
+      "check:database": ["devbox run check:database:local", "devbox run check:database:cloud"],
+      "check:database:local": [
+        "uv run --locked --all-packages --group database-local pyright --project pyrightconfig.database.local.json"
+      ],
+      "check:database:cloud": [
+        "uv run --locked --all-packages --group database-cloud pyright --project pyrightconfig.database.cloud.json"
+      ],
+      "test:database": ["devbox run test:database:local", "devbox run test:database:cloud"],
+      "test:database:local": ["bash scripts/database/run_local_tests.sh \"$@\""],
+      "test:database:cloud": ["bash scripts/database/run_cloud_tests.sh \"$@\""],
+      "database:local:up": [
+        "docker compose down --volumes --remove-orphans",
+        "docker compose up --build --wait -d"
+      ],
+      "database:local:down": ["docker compose down --volumes --remove-orphans"],
+      "database:local:smoke": [
+        "bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""
       ]
     }
   }

@@ -83,6 +83,7 @@ include = ["packages", "scripts", "tests"]
 exclude = [
   "**/_vendor",
   "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
+  "packages/hex-sl-utils/tests/database",
 ]
 ignore = ["packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py"]
 pythonVersion = "3.14"

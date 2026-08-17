@@ -1,0 +1,106 @@
+name: Test Database
+
+on:
+  pull_request:
+    paths: &database-paths
+      - "packages/hex-sl-utils/**"
+      - "scripts/database/**"
+      - "compose.yaml"
+      - "docker/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "devbox.json"
+      - "devbox.lock"
+      - ".github/workflows/database.yml"
+  push:
+    branches: [main]
+    paths: *database-paths
+
+permissions:
+  contents: read
+
+env:
+  UV_CACHE_DIR: /tmp/.uv-cache
+
+jobs:
+  local:
+    name: Local
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
+        with:
+          devbox-version: 0.17.5
+          enable-cache: "true"
+      - name: Restore uv cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/.uv-cache
+          key: database-local-uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: database-local-uv-${{ runner.os }}-
+      - name: Sync workspace
+        run: devbox run setup
+      - name: Check database test code
+        run: devbox run check:database:local
+      - name: Run local database tests
+        run: devbox run test:database:local
+        env:
+          HEX_SL_UTILS_DATABASE_KEEP_RUNNING: "1"
+      - name: Collect Compose logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Tear down Compose services
+        if: always()
+        run: devbox run database:local:down
+      - name: Minimize uv cache
+        if: always()
+        run: devbox run -- uv cache prune --ci
+
+  cloud:
+    name: Cloud
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TEST_BIG_QUERY_PROJECT_ID: ${{ secrets.TEST_BIG_QUERY_PROJECT_ID }}
+      TEST_BIG_QUERY_SERVICE_ACCOUNT: ${{ secrets.TEST_BIG_QUERY_SERVICE_ACCOUNT }}
+      TEST_REDSHIFT_ENDPOINT: ${{ secrets.TEST_REDSHIFT_ENDPOINT }}
+      TEST_REDSHIFT_PORT: ${{ secrets.TEST_REDSHIFT_PORT }}
+      TEST_REDSHIFT_USERNAME: ${{ secrets.TEST_REDSHIFT_USERNAME }}
+      TEST_REDSHIFT_DB: ${{ secrets.TEST_REDSHIFT_DB }}
+      TEST_REDSHIFT_PASSWORD: ${{ secrets.TEST_REDSHIFT_PASSWORD }}
+      TEST_SNOWFLAKE_ACC: ${{ secrets.TEST_SNOWFLAKE_ACC }}
+      TEST_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+      TEST_SNOWFLAKE_PRIVATE_KEY: ${{ secrets.TEST_SNOWFLAKE_PRIVATE_KEY }}
+      TEST_SNOWFLAKE_DB: ${{ secrets.TEST_SNOWFLAKE_DB }}
+      TEST_SNOWFLAKE_WH: ${{ secrets.TEST_SNOWFLAKE_WH }}
+      TEST_SNOWFLAKE_ROLE: ${{ secrets.TEST_SNOWFLAKE_ROLE }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
+        with:
+          devbox-version: 0.17.5
+          enable-cache: "true"
+      - name: Restore uv cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/.uv-cache
+          key: database-cloud-uv-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+          restore-keys: database-cloud-uv-${{ runner.os }}-
+      - name: Sync workspace
+        run: devbox run setup
+      - name: Check cloud database test code
+        run: devbox run check:database:cloud
+      - name: Run cloud database tests
+        run: devbox run test:database:cloud
+      - name: Minimize uv cache
+        if: always()
+        run: devbox run -- uv cache prune --ci

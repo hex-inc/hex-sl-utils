@@ -13,9 +13,9 @@ trap cleanup EXIT
 docker compose down --volumes --remove-orphans
 docker compose up --build --wait -d
 
-database_dialects="${HEX_SL_UTILS_DATABASE_DIALECTS:-clickhouse,duckdb,mssql,mysql,postgres,spark,trino}"
-
 uv run --locked --all-packages --group database-local \
-  pytest packages/hex-sl-utils/tests/database -m 'database and database_local' \
-  --database-dialects "$database_dialects" \
+  pytest \
+  packages/hex-sl-utils/tests/database \
+  packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions \
+  -m 'database and database_local' \
   "$@"

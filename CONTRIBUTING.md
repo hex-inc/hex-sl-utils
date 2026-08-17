@@ -140,6 +140,48 @@ integration driver or service to the default development environment.
 For Python tests, use `@pytest.mark.integration` for tests crossing an external
 boundary and `@pytest.mark.database` for database-specific coverage.
 
+### Database
+
+Database execution is test-only coverage for compiled SQL expressions against
+actual engines to catch rendering or parameter-binding differences.
+
+#### Local targets
+
+The local matrix uses Docker Compose for ClickHouse, SQL Server, MariaDB,
+Postgres, and Trino, plus in-process DuckDB and Spark. Run it from the
+repository root:
+
+```bash
+# all dialects
+devbox run test:database:local
+
+# specific dialect(s)
+devbox run test:database:local -- --dialect duckdb
+
+# manually start/stop local services
+devbox run database:local:up
+devbox run database:local:down
+
+# smoke test database connection / query execution
+devbox run database:local:smoke
+```
+
+#### Cloud targets
+
+BigQuery, Redshift, and Snowflake are credentialed cloud targets and can incur
+service costs. Configure their credentials only in your shell, CI secret store,
+or a gitignored `scripts/database/.env` file copied from
+`scripts/database/.env.example`. A requested cloud dialect with missing
+credentials fails rather than skipping.
+
+```bash
+# all dialects
+devbox run test:database:cloud
+
+# specific dialect(s)
+devbox run test:database:cloud -- --dialect bigquery
+```
+
 ## Generated artifacts
 
 Keep generators under `scripts/` and generated output with the package that
