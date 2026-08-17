@@ -1,6 +1,6 @@
 [project]
 name = "hex-sl-utils"
-version = "0.1.0.dev0"
+version = "0.1.0"
 description = "Reusable models and utilities for Hex semantic-layer resources"
 readme = "README.md"
 requires-python = ">=3.9"

@@ -468,7 +468,7 @@ wheels = [
 
 [[package]]
 name = "hex-sl-utils"
-version = "0.1.0.dev0"
+version = "0.1.0"
 source = { editable = "packages/hex-sl-utils" }
 dependencies = [
     { name = "eval-type-backport", marker = "python_full_version < '3.10'" },
