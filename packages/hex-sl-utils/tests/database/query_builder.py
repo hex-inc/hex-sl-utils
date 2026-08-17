@@ -1,76 +1,63 @@
-"""Copied HexSL inline-VALUES query builder for calc result tests."""
+"""Build self-contained inline-VALUES queries for calc result tests."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from hex_sl._vendor.sqlglot import exp, to_identifier
-from hex_sl.expr import ExpressionContext, TypedSelectExpression
+from hex_sl_utils._vendor.sqlglot import exp, to_identifier
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 if TYPE_CHECKING:
     import polars as pl
 
-    from hex_sl.datatype import DataType
-    from hex_sl.dialect.base import HexSLDialect
-    from hex_sl.schema import Schema
-
 
 def build_values_query_for_df(
     table: pl.DataFrame,
-    dialect: HexSLDialect,
+    columns: Mapping[str, DataType],
+    dialect: Dialect,
     table_alias: str = "t",
-) -> tuple[exp.Select, Schema]:
-    """
-    Build a sqlglot Select expression with inline VALUES from a Polars DataFrame
-    """
-
-    from hex_sl.calc.ast.column import unmangle
-    from hex_sl.datatype import datatype_to_sqlglot
-    from hex_sl.schema import Schema
-
-    schema: Schema = Schema.from_polars(table, table_alias)
-    cols = table.columns
-    rows = []
-
-    for row in table.iter_rows():
-        typed_exprs = []
-        for col, value in zip(cols, row):
-            data_type: DataType = schema.types[unmangle(col)]
-
-            # Handle None by casting the NULL literal
-            if value is None:
-                null_expr: exp.Expression
-                if dialect.null_literals_should_be_cast_to_type():
-                    null_expr = exp.cast(exp.null(), to=datatype_to_sqlglot(data_type))
-                else:
-                    null_expr = exp.null()
-
-                typed_exprs.append(
-                    TypedSelectExpression.from_sqlglot(
-                        expression=null_expr,
-                        data_type=data_type,
-                    )
-                )
-            # Otherwise, compile the literal with ibis
-            else:
-                typed_exprs.append(
-                    dialect.compile_literal(value, context=ExpressionContext.PROJECTION)
-                )
-
-        rows.append(exp.Tuple(expressions=[expr.expression for expr in typed_exprs]))
-
-    values_query = (
-        exp.Select()
-        .from_(
-            exp.Values(
-                expressions=rows,
-                alias=exp.TableAlias(
-                    this=to_identifier(table_alias, quoted=True),
-                    columns=[exp.to_identifier(col, quoted=True) for col in cols],
-                ),
-            )
+) -> exp.Select:
+    """Compile one dataframe into a dialect-aware inline VALUES relation."""
+    if list(columns) != table.columns:
+        msg = (
+            "Declared calc columns must match dataframe columns: "
+            f"{list(columns)!r} != {table.columns!r}"
         )
-        .select("*", copy=False)
-    )
+        raise ValueError(msg)
 
-    return values_query, schema
+    rows = [
+        exp.Tuple(
+            expressions=[
+                dialect.compile_literal(
+                    _normalize_literal(value, columns[column]),
+                    data_type=columns[column],
+                ).expression
+                for column, value in zip(table.columns, row, strict=True)
+            ]
+        )
+        for row in table.iter_rows()
+    ]
+    values = exp.Values(
+        expressions=rows,
+        alias=exp.TableAlias(
+            this=to_identifier(table_alias, quoted=True),
+            columns=[
+                exp.to_identifier(column, quoted=True) for column in table.columns
+            ],
+        ),
+    )
+    return exp.select("*").from_(values)
+
+
+def _normalize_literal(value: object, data_type: DataType) -> object:
+    """Use UTC offsets for TIMESTAMPTZ literals, matching dataframe serialization."""
+    if (
+        data_type == DataType.TIMESTAMPTZ
+        and isinstance(value, datetime)
+        and value.tzinfo is not None
+    ):
+        return value.astimezone(timezone.utc)
+    return value

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import polars as pl
-from hex_sl.dialect.base import HexSLDialect
+import polars.testing as pl_testing
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -51,7 +52,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         df = expression_input_data
         expected_df = pl.DataFrame(
@@ -90,24 +91,24 @@ class SnapshotTest(SelectionSnapshotTestBase):
         cls,
         expected_df: pl.DataFrame,
         result_df: pl.DataFrame,
-        dialect: HexSLDialect,
+        dialect: Dialect,
     ):
-        import polars.testing as pl_testing
-        from tests.compiler.util import floatify
+        from database.util import floatify
 
         pl_testing.assert_frame_equal(
             floatify(result_df),
             expected_df,
             check_dtypes=False,
-            rtol=1e-3,
+            rel_tol=1e-3,
         )
 
 
 # Database result tests
 
+
 def test_snapshot_binary_math_validate(dialect_name):
     """Test binary math validation for each dialect."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

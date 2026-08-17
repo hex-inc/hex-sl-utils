@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import date
+
 import polars as pl
-from hex_sl.dialect.base import HexSLDialect
+import polars.testing as pl_testing
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -49,7 +51,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         df = expression_input_data
         diff_ms = df.select(
@@ -71,24 +73,23 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def validate(
-        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
     ) -> None:
-        import polars.testing as pl_testing
-
         # Convert the result to the expected schema, to handle Decimals
         result_df = result_df.cast(expected_df.schema)
 
         print(dialect.name())
         pl_testing.assert_frame_equal(
-            result_df, expected_df, check_dtypes=False, atol=1e-2
+            result_df, expected_df, check_dtypes=False, abs_tol=1e-2
         )
 
 
 # Database result tests
 
+
 def test_snapshot_datediff_date_validate(dialect_name):
     """Test datediff date expressions for each dialect separately."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

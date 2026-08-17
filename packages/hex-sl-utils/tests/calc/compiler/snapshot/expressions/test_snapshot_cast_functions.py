@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+
 import polars as pl
-from datetime import datetime, date
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.dialect.clickhouse import HexSLClickHouse
-from hex_sl.dialect.mssql import HexSLMSSQL
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.dialect.clickhouse import ClickHouse
+from hex_sl_utils.dialect.mssql import MSSQL
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -78,7 +79,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         df = expression_input_data
         expected_df = pl.DataFrame(
@@ -104,7 +105,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
                     .then(False)
                     .otherwise(
                         # MSSQL doesn't support null booleans
-                        False if isinstance(dialect, HexSLMSSQL) else None
+                        False if isinstance(dialect, MSSQL) else None
                     )
                     .alias("col7")
                 )["col7"],
@@ -133,7 +134,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def validate(
-        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
     ) -> None:
         # Convert col2 (float to string) to handle formatting differences
         expected_col2 = expected_df["col2"].to_list()
@@ -152,22 +153,22 @@ class SnapshotTest(SelectionSnapshotTestBase):
         result_df_mod = result_df.with_columns(pl.Series("col2", result_col2))
 
         # Handle timezone differences for columns 11 and 12
-        if isinstance(dialect, HexSLClickHouse):
+        if isinstance(dialect, ClickHouse):
             # Remove timezone from dialects that always parse timestamp strings into
             #  timezone aware timestamps
             result_df_mod = result_df_mod.with_columns(
                 col11=expected_df["col11"].dt.replace_time_zone(None)
             )
 
-        # Use parent validation
         super().validate(expected_df_mod, result_df_mod, dialect)
 
 
 # Database result tests
 
+
 def test_snapshot_cast_functions_validate(dialect_name):
     """Test cast functions validation for each dialect."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

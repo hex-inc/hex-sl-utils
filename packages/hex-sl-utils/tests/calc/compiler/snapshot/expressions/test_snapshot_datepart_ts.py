@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+
 import polars as pl
 import polars.testing as pl_testing
-from hex_sl.dialect.base import HexSLDialect
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -45,7 +46,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         """Get the expected results dataframe (computed in polars).
 
@@ -75,20 +76,21 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def validate(
-        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
     ) -> None:
         """Validate the query results against expected values."""
         assert result_df.shape == (4, 10)
         pl_testing.assert_frame_equal(
-            result_df, expected_df, check_dtypes=False, atol=1e-6
+            result_df, expected_df, check_dtypes=False, abs_tol=1e-6
         )
 
 
 # Database result tests
 
+
 def test_snapshot_datepart_ts_validate(dialect_name):
     """Test datepart timestamp expressions for each dialect separately."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

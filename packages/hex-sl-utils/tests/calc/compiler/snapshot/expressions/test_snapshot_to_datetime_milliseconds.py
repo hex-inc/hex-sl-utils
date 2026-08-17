@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import polars as pl
 import polars.testing as pl_testing
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.dialect.clickhouse import HexSLClickHouse
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.dialect.clickhouse import ClickHouse
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -37,7 +37,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         df = expression_input_data
         parse_formats = [
@@ -61,11 +61,11 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def validate(
-        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: HexSLDialect
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
     ) -> None:
         print(dialect)
 
-        if isinstance(dialect, HexSLClickHouse):
+        if isinstance(dialect, ClickHouse):
             # Remove timezone from ClickHouse datetime
             result_df = result_df.with_columns(
                 col1=expected_df["col1"].dt.replace_time_zone(None),
@@ -75,15 +75,16 @@ class SnapshotTest(SelectionSnapshotTestBase):
             result_df,
             expected_df,
             check_dtypes=False,
-            rtol=1e-3,
+            rel_tol=1e-3,
         )
 
 
 # Database result tests
 
+
 def test_snapshot_to_datetime_milliseconds_validate(dialect_name):
     """Test to_datetime milliseconds expressions for each dialect separately."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

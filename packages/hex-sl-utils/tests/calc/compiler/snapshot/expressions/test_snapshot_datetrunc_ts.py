@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+
 import polars as pl
-from hex_sl.dialect.base import HexSLDialect
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -46,7 +47,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         df = expression_input_data
         expected_df = pl.DataFrame(
@@ -75,9 +76,10 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
 # Database result tests
 
+
 def test_snapshot_datetrunc_ts_validate(dialect_name):
     """Test datetrunc timestamp expressions for each dialect separately."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

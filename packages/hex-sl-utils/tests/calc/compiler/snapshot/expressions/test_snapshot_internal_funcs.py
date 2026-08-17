@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+
 import polars as pl
-from datetime import datetime, date
-from hex_sl.dialect.base import HexSLDialect
 
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
@@ -92,10 +93,10 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
     @classmethod
     def get_expected_df_from_input(
-        cls, expression_input_data: pl.DataFrame, dialect: HexSLDialect
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
         """Calculate expected results using polars."""
-        from hex_sl.dialect.clickhouse import HexSLClickHouse
+        from hex_sl_utils.dialect.clickhouse import ClickHouse
 
         df = expression_input_data
 
@@ -109,7 +110,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
         col7 = df["float_col"]
 
         # Handle dialect-specific datetime precision
-        if isinstance(dialect, HexSLClickHouse):
+        if isinstance(dialect, ClickHouse):
             # ClickHouse returns nanosecond precision with UTC timezone
             col8 = (
                 df["str_date"]
@@ -183,9 +184,10 @@ class SnapshotTest(SelectionSnapshotTestBase):
 
 # Database result tests
 
+
 def test_snapshot_internal_funcs_validate(dialect_name):
     """Test internal functions validation for each dialect."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)

@@ -69,6 +69,7 @@ def main() -> None:
 
 def _generate_snapshots() -> dict[Path, str]:
     sys.path.insert(0, str(CALC_TEST_ROOT))
+    sys.path.insert(0, str(PROJECT_ROOT / "packages" / "hex-sl-utils" / "tests"))
     snapshot_base = importlib.import_module("compiler.snapshot.snapshot_base")
     snapshot_test_base = snapshot_base.SnapshotTestBase
 

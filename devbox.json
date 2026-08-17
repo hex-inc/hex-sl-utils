@@ -44,9 +44,7 @@
       ],
       "database:down": ["docker compose down --volumes --remove-orphans"],
       "database:test-local": ["bash scripts/database/run_local_tests.sh \"$@\""],
-      "database:smoke": [
-        "bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""
-      ],
+      "database:smoke": ["bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""],
       "test-cov": [
         "uv run --locked --all-packages pytest --cov=packages --cov-report=term-missing --cov-report=xml"
       ],

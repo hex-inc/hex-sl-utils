@@ -21,6 +21,7 @@ dev = [
   "requests>=2.34.2,<3; python_version >= '3.14'",
   "ruff>=0.16.3",
   "rumdl>=0.2.58",
+  "pytz>=2025.2",
 ]
 database-local = [
   "clickhouse-connect>=0.7",
@@ -112,6 +113,7 @@ known-first-party = ["hex_sl_utils"]
 
 [tool.ruff.lint.per-file-ignores]
 "packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions/test_snapshot_*.py" = [
+  "DTZ001",
   "RUF012",
 ]
 "packages/hex-sl-utils/tests/database/driver/base.py" = ["UP045"]
