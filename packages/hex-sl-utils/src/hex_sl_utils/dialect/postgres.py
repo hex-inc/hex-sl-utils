@@ -5,13 +5,13 @@ from typing import Any, Literal
 
 from hex_sl_utils._vendor.sqlglot import exp, transforms
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl_utils._vendor.sqlglot.dialects.postgres import Postgres
+from hex_sl_utils._vendor.sqlglot.dialects.postgres import Postgres as SqlGlotPostgres
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -21,7 +21,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLPostgres(HexSLDialect):
+class Postgres(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "postgres"
@@ -96,7 +96,6 @@ class HexSLPostgres(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_anon = exp.Anonymous(
             this="PERCENTILE_CONT", expressions=[exp.Literal.number(percentile)]
@@ -271,7 +270,6 @@ class HexSLPostgres(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit.lower() == "week":
             result_expr = self._trunc_week(arg.expression, convert_tz)
@@ -384,7 +382,6 @@ class HexSLPostgres(HexSLDialect):
         return result_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         # In Postgres, the `AT TIME ZONE` clause returns a timestamp without timezone
         # (unlike Athena and BigQuery, which returns a timestamp with timezone).
         return TypedSelectExpression.from_sqlglot(
@@ -516,17 +513,17 @@ class HexSLPostgres(HexSLDialect):
         return dtype == DataType.TIMESTAMPTZ
 
 
-class HexSlPostgresSqlGlotDialect(Postgres):
+class PostgresSqlGlotOverride(SqlGlotPostgres):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-postgres"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Postgres.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotPostgres.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
         # From ibis
-        TRANSFORMS = Postgres.Generator.TRANSFORMS.copy() | {
+        TRANSFORMS = SqlGlotPostgres.Generator.TRANSFORMS.copy() | {
             exp.Map: rename_func("hstore"),
             exp.Split: rename_func("string_to_array"),
             exp.RegexpSplit: rename_func("regexp_split_to_array"),
@@ -541,9 +538,9 @@ class HexSlPostgresSqlGlotDialect(Postgres):
             ),
         }
 
-    class Parser(Postgres.Parser):
+    class Parser(SqlGlotPostgres.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            Postgres.Parser.PLACEHOLDER_PARSERS,
+            SqlGlotPostgres.Parser.PLACEHOLDER_PARSERS,
             parameter_fallback=lambda self: (
                 self.expression(
                     exp.Placeholder,

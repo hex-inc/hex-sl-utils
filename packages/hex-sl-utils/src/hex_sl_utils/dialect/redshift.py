@@ -5,17 +5,17 @@ from typing import Any
 
 from hex_sl_utils._vendor.sqlglot import exp, transforms
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl_utils._vendor.sqlglot.dialects.redshift import Redshift
+from hex_sl_utils._vendor.sqlglot.dialects.redshift import Redshift as SqlGlotRedshift
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl_utils.dialect.postgres import HexSLPostgres
+from hex_sl_utils.dialect.postgres import Postgres
 from hex_sl_utils.dialect.transforms import (
     hex_sl_eliminate_qualify,
     values_as_union_with_consistent_names_sql,
@@ -24,7 +24,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLRedshift(HexSLPostgres):
+class Redshift(Postgres):
     @classmethod
     def name(cls) -> DialectName:
         return "redshift"
@@ -63,7 +63,6 @@ class HexSLRedshift(HexSLPostgres):
         context: ExpressionContext | None = None,
         data_type: DataType | None = None,
     ) -> TypedSelectExpression:
-
         if isinstance(literal, datetime.datetime):
             # Handle datetime objects with Redshift-specific CAST functions
             if literal.tzinfo is not None:
@@ -195,7 +194,6 @@ class HexSLRedshift(HexSLPostgres):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
         # Apply timezone if provided, otherwise use the original expression
@@ -331,13 +329,13 @@ class HexSLRedshift(HexSLPostgres):
             )
 
 
-class HexSlRedshiftSqlGlotDialect(Redshift):
+class RedshiftSqlGlotOverride(SqlGlotRedshift):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-redshift"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Redshift.Generator):
-        TRANSFORMS = Redshift.Generator.TRANSFORMS.copy() | {
+    class Generator(PlaceholderGeneratorMixin, SqlGlotRedshift.Generator):
+        TRANSFORMS = SqlGlotRedshift.Generator.TRANSFORMS.copy() | {
             exp.Mod: rename_func("mod"),
             exp.Select: transforms.preprocess(
                 [
@@ -355,9 +353,9 @@ class HexSlRedshiftSqlGlotDialect(Redshift):
         ) -> str:
             return values_as_union_with_consistent_names_sql(self, expression)
 
-    class Parser(Redshift.Parser):
+    class Parser(SqlGlotRedshift.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            Redshift.Parser.PLACEHOLDER_PARSERS,
+            SqlGlotRedshift.Parser.PLACEHOLDER_PARSERS,
             parameter_fallback=lambda self: (
                 self.expression(
                     exp.Placeholder,

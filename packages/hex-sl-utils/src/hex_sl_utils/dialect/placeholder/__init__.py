@@ -1,8 +1,8 @@
 from hex_sl_utils.dialect.placeholder.placeholder import (
-    HEXSL_PLACEHOLDER_OFFSET_META,
     PLACEHOLDER_KIND_SEMANTIC,
-    HexSLPlaceholderGeneratorMixin,
+    PLACEHOLDER_OFFSET_META,
     PlaceholderConfig,
+    PlaceholderGeneratorMixin,
     get_placeholder_config,
     parse_dollar_brace_after_match,
     parse_jinja_placeholder,
@@ -13,10 +13,10 @@ from hex_sl_utils.dialect.placeholder.placeholder import (
 from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
 
 __all__ = [
-    "HEXSL_PLACEHOLDER_OFFSET_META",
     "PLACEHOLDER_KIND_SEMANTIC",
-    "HexSLPlaceholderGeneratorMixin",
+    "PLACEHOLDER_OFFSET_META",
     "PlaceholderConfig",
+    "PlaceholderGeneratorMixin",
     "PlaceholderStyle",
     "get_placeholder_config",
     "parse_dollar_brace_after_match",

@@ -1,63 +1,63 @@
 # Register the custom dialect
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import Dialect
-from hex_sl_utils.dialect.bigquery import HexSlBigQuerySqlGlotDialect
-from hex_sl_utils.dialect.clickhouse import HexSlClickHouseSqlGlotDialect
-from hex_sl_utils.dialect.duckdb import HexSlDuckDBSqlGlotDialect
-from hex_sl_utils.dialect.mssql import HexSlMSSQLSqlGlotDialect
-from hex_sl_utils.dialect.mysql import HexSlMySQLSqlGlotDialect
-from hex_sl_utils.dialect.postgres import HexSlPostgresSqlGlotDialect
-from hex_sl_utils.dialect.redshift import HexSlRedshiftSqlGlotDialect
-from hex_sl_utils.dialect.snowflake import HexSlSnowflakeSqlGlotDialect
-from hex_sl_utils.dialect.spark import HexSlDatabricksSqlGlotDialect
-from hex_sl_utils.dialect.trino import HexSlTrinoSqlGlotDialect
+from hex_sl_utils.dialect.bigquery import BigQuerySqlGlotOverride
+from hex_sl_utils.dialect.clickhouse import ClickHouseSqlGlotOverride
+from hex_sl_utils.dialect.duckdb import DuckDBSqlGlotOverride
+from hex_sl_utils.dialect.mssql import MSSQLSqlGlotOverride
+from hex_sl_utils.dialect.mysql import MySQLSqlGlotOverride
+from hex_sl_utils.dialect.postgres import PostgresSqlGlotOverride
+from hex_sl_utils.dialect.redshift import RedshiftSqlGlotOverride
+from hex_sl_utils.dialect.snowflake import SnowflakeSqlGlotOverride
+from hex_sl_utils.dialect.spark import SparkSqlGlotOverride
+from hex_sl_utils.dialect.trino import TrinoSqlGlotOverride
 
 # Register our custom dialects with sqlglot
-Dialect.classes[HexSlTrinoSqlGlotDialect.dialect_name()] = (
+Dialect.classes[TrinoSqlGlotOverride.dialect_name()] = (
     # Athena
-    HexSlTrinoSqlGlotDialect
+    TrinoSqlGlotOverride
 )
 
-Dialect.classes[HexSlBigQuerySqlGlotDialect.dialect_name()] = (
+Dialect.classes[BigQuerySqlGlotOverride.dialect_name()] = (
     # BigQuery
-    HexSlBigQuerySqlGlotDialect
+    BigQuerySqlGlotOverride
 )
 
-Dialect.classes[HexSlClickHouseSqlGlotDialect.dialect_name()] = (
+Dialect.classes[ClickHouseSqlGlotOverride.dialect_name()] = (
     # ClickHouse
-    HexSlClickHouseSqlGlotDialect
+    ClickHouseSqlGlotOverride
 )
 
-Dialect.classes[HexSlDatabricksSqlGlotDialect.dialect_name()] = (
+Dialect.classes[SparkSqlGlotOverride.dialect_name()] = (
     # Databricks
-    HexSlDatabricksSqlGlotDialect
+    SparkSqlGlotOverride
 )
 
-Dialect.classes[HexSlDuckDBSqlGlotDialect.dialect_name()] = (
+Dialect.classes[DuckDBSqlGlotOverride.dialect_name()] = (
     # DuckDB
-    HexSlDuckDBSqlGlotDialect
+    DuckDBSqlGlotOverride
 )
 
-Dialect.classes[HexSlMSSQLSqlGlotDialect.dialect_name()] = (
+Dialect.classes[MSSQLSqlGlotOverride.dialect_name()] = (
     # MSSQL
-    HexSlMSSQLSqlGlotDialect
+    MSSQLSqlGlotOverride
 )
 
-Dialect.classes[HexSlMySQLSqlGlotDialect.dialect_name()] = (
+Dialect.classes[MySQLSqlGlotOverride.dialect_name()] = (
     # MySQL
-    HexSlMySQLSqlGlotDialect
+    MySQLSqlGlotOverride
 )
 
-Dialect.classes[HexSlPostgresSqlGlotDialect.dialect_name()] = (
+Dialect.classes[PostgresSqlGlotOverride.dialect_name()] = (
     # Postgres
-    HexSlPostgresSqlGlotDialect
+    PostgresSqlGlotOverride
 )
 
-Dialect.classes[HexSlRedshiftSqlGlotDialect.dialect_name()] = (
+Dialect.classes[RedshiftSqlGlotOverride.dialect_name()] = (
     # Redshift
-    HexSlRedshiftSqlGlotDialect
+    RedshiftSqlGlotOverride
 )
 
-Dialect.classes[HexSlSnowflakeSqlGlotDialect.dialect_name()] = (
+Dialect.classes[SnowflakeSqlGlotOverride.dialect_name()] = (
     # Snowflake
-    HexSlSnowflakeSqlGlotDialect
+    SnowflakeSqlGlotOverride
 )

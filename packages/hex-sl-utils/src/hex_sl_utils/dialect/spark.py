@@ -4,13 +4,13 @@ import datetime
 from typing import Any
 
 from hex_sl_utils._vendor.sqlglot import exp, transforms
-from hex_sl_utils._vendor.sqlglot.dialects.spark import Spark
+from hex_sl_utils._vendor.sqlglot.dialects.spark import Spark as SqlGlotSpark
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -20,7 +20,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLSpark(HexSLDialect):
+class Spark(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "spark"
@@ -87,7 +87,6 @@ class HexSLSpark(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
             "PERCENTILE", cast_typed.expression, exp.Literal.number(percentile)
@@ -102,7 +101,6 @@ class HexSLSpark(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
             "percentile_approx", cast_typed.expression, exp.Literal.number(percentile)
@@ -256,7 +254,6 @@ class HexSLSpark(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
         # Apply timezone if provided, otherwise use the original expression
@@ -334,7 +331,6 @@ class HexSLSpark(HexSLDialect):
         return TypedSelectExpression.from_sqlglot(dow_expr, DataType.NUMBER, arg.kind)
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
                 exp.cast(
@@ -370,7 +366,6 @@ class HexSLSpark(HexSLDialect):
         unit: str,
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -473,13 +468,13 @@ class HexSLSpark(HexSLDialect):
         return TypedSelectExpression.from_sqlglot(contains_expr, DataType.BOOLEAN, kind)
 
 
-class HexSlDatabricksSqlGlotDialect(Spark):
+class SparkSqlGlotOverride(SqlGlotSpark):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-spark"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Spark.Generator):
-        TRANSFORMS = Spark.Generator.TRANSFORMS.copy() | {
+    class Generator(PlaceholderGeneratorMixin, SqlGlotSpark.Generator):
+        TRANSFORMS = SqlGlotSpark.Generator.TRANSFORMS.copy() | {
             exp.Select: transforms.preprocess(
                 [
                     transforms.eliminate_semi_and_anti_joins,
@@ -491,9 +486,9 @@ class HexSlDatabricksSqlGlotDialect(Spark):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
-    class Parser(Spark.Parser):
+    class Parser(SqlGlotSpark.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            Spark.Parser.PLACEHOLDER_PARSERS,
+            SqlGlotSpark.Parser.PLACEHOLDER_PARSERS,
             parameter_fallback=lambda self: (
                 self.expression(exp.Placeholder, this=getattr(self._prev, "text", ""))
                 if self._match(TokenType.NUMBER) or self._match_set(self.ID_VAR_TOKENS)

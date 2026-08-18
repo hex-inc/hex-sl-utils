@@ -4,13 +4,13 @@ import datetime
 from typing import Any, ClassVar
 
 from hex_sl_utils._vendor.sqlglot import exp, tokens, transforms
-from hex_sl_utils._vendor.sqlglot.dialects.trino import Trino
+from hex_sl_utils._vendor.sqlglot.dialects.trino import Trino as SqlGlotTrino
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -20,7 +20,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLTrino(HexSLDialect):
+class Trino(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "trino"
@@ -49,7 +49,6 @@ class HexSLTrino(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ApproxQuantile(
             this=cast_typed.expression, quantile=exp.Literal.number(percentile)
@@ -93,7 +92,6 @@ class HexSLTrino(HexSLDialect):
         self,
         arg: TypedSelectExpression,
     ) -> TypedSelectExpression:
-
         # port of prior ibis logic, in which we first calculate at a
         # second-level precision, and then add the milliseconds back separately
         # (potentially to avoid overflow? unknown why ibis chose this approach)
@@ -160,7 +158,6 @@ class HexSLTrino(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
         # Apply timezone if provided, otherwise use the original expression
@@ -231,7 +228,6 @@ class HexSLTrino(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
                 self.func("at_timezone", arg.expression, exp.Literal.string(tz)),
@@ -251,7 +247,6 @@ class HexSLTrino(HexSLDialect):
         unit: str,
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -457,15 +452,15 @@ def custom_epoch_cast_to_ts(expression: exp.Expression) -> exp.Expression:
     return expression
 
 
-class HexSlTrinoSqlGlotDialect(Trino):
+class TrinoSqlGlotOverride(SqlGlotTrino):
     SUPPORTS_USER_DEFINED_TYPES = True
 
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-trino"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Trino.Generator):
-        TRANSFORMS = Trino.Generator.TRANSFORMS.copy() | {
+    class Generator(PlaceholderGeneratorMixin, SqlGlotTrino.Generator):
+        TRANSFORMS = SqlGlotTrino.Generator.TRANSFORMS.copy() | {
             exp.Select: transforms.preprocess(
                 [
                     transforms.eliminate_semi_and_anti_joins,
@@ -479,16 +474,16 @@ class HexSlTrinoSqlGlotDialect(Trino):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
-    class Tokenizer(Trino.Tokenizer):
+    class Tokenizer(SqlGlotTrino.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
         SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }
 
-    class Parser(Trino.Parser):
+    class Parser(SqlGlotTrino.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            Trino.Parser.PLACEHOLDER_PARSERS
+            SqlGlotTrino.Parser.PLACEHOLDER_PARSERS
         )
 
         def _parse_placeholder(self) -> exp.Expression | None:

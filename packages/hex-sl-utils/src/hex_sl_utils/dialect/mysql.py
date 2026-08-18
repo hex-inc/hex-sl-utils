@@ -6,13 +6,13 @@ from typing import Any, ClassVar, Literal
 
 from hex_sl_utils._vendor.sqlglot import Generator, exp, tokens, transforms
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import rename_func
-from hex_sl_utils._vendor.sqlglot.dialects.mysql import MySQL
+from hex_sl_utils._vendor.sqlglot.dialects.mysql import MySQL as SqlGlotMySQL
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -23,7 +23,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLMySQL(HexSLDialect):
+class MySQL(Dialect):
     _TRUNC_FORMATS: ClassVar[dict[str, tuple[str, str]]] = {
         "year": ("%Y-01-01", "DATE"),
         "month": ("%Y-%m-01", "DATE"),
@@ -90,7 +90,6 @@ class HexSLMySQL(HexSLDialect):
     def cast_str_to_timestamp(
         self, arg: TypedSelectExpression, tz: str, force_tz: bool = False
     ) -> TypedSelectExpression:
-
         ts_expr = TypedSelectExpression.from_sqlglot(
             exp.cast(arg.expression, to=exp.DataType.build("DATETIME(3)")),
             DataType.TIMESTAMP,
@@ -210,7 +209,6 @@ class HexSLMySQL(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
         if unit == "quarter":
@@ -484,7 +482,6 @@ class HexSLMySQL(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -599,16 +596,16 @@ def regexp_like_func() -> Callable[[Generator, exp.Expression], str]:
     )
 
 
-class HexSlMySQLSqlGlotDialect(MySQL):
+class MySQLSqlGlotOverride(SqlGlotMySQL):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-mysql"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, MySQL.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotMySQL.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
-        TRANSFORMS = MySQL.Generator.TRANSFORMS.copy() | {
+        TRANSFORMS = SqlGlotMySQL.Generator.TRANSFORMS.copy() | {
             exp.LogicalOr: rename_func("max"),
             exp.LogicalAnd: rename_func("min"),
             exp.VariancePop: rename_func("var_pop"),
@@ -625,16 +622,16 @@ class HexSlMySQLSqlGlotDialect(MySQL):
             ),
         }
 
-    class Tokenizer(MySQL.Tokenizer):
+    class Tokenizer(SqlGlotMySQL.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
         SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }
 
-    class Parser(MySQL.Parser):
+    class Parser(SqlGlotMySQL.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            MySQL.Parser.PLACEHOLDER_PARSERS
+            SqlGlotMySQL.Parser.PLACEHOLDER_PARSERS
         )
 
         def _parse_placeholder(self) -> exp.Expression | None:

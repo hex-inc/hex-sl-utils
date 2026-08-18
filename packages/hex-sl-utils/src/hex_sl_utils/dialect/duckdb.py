@@ -4,13 +4,13 @@ import datetime
 from typing import Any, Literal
 
 from hex_sl_utils._vendor.sqlglot import exp, generator
-from hex_sl_utils._vendor.sqlglot.dialects.duckdb import DuckDB
+from hex_sl_utils._vendor.sqlglot.dialects.duckdb import DuckDB as SqlGlotDuckDB
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -19,7 +19,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLDuckDB(HexSLDialect):
+class DuckDB(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "duckdb"
@@ -51,7 +51,6 @@ class HexSLDuckDB(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
             "QUANTILE", cast_typed.expression, exp.Literal.number(percentile)
@@ -66,7 +65,6 @@ class HexSLDuckDB(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
             "APPROX_QUANTILE", cast_typed.expression, exp.Literal.number(percentile)
@@ -138,7 +136,6 @@ class HexSLDuckDB(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit.lower() == "week":
             result_expr = self._trunc_week(arg.expression, convert_tz)
@@ -251,7 +248,6 @@ class HexSLDuckDB(HexSLDialect):
         return result_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         # In DuckDB, the `AT TIME ZONE` clause returns a timestamp without timezone
         # (unlike Athena and BigQuery, which returns a timestamp with timezone).
         return TypedSelectExpression.from_sqlglot(
@@ -476,7 +472,6 @@ class HexSLDuckDB(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -580,12 +575,12 @@ class HexSLDuckDB(HexSLDialect):
         )
 
 
-class HexSlDuckDBSqlGlotDialect(DuckDB):
+class DuckDBSqlGlotOverride(SqlGlotDuckDB):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-duckdb"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, DuckDB.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotDuckDB.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
@@ -594,12 +589,14 @@ class HexSlDuckDBSqlGlotDialect(DuckDB):
             # And it messes up months and quarters.
             return generator.Generator.interval_sql(self, expression)
 
-    class Parser(DuckDB.Parser):
-        NO_PAREN_FUNCTION_PARSERS = DuckDB.Parser.NO_PAREN_FUNCTION_PARSERS.copy()
+    class Parser(SqlGlotDuckDB.Parser):
+        NO_PAREN_FUNCTION_PARSERS = (
+            SqlGlotDuckDB.Parser.NO_PAREN_FUNCTION_PARSERS.copy()
+        )
         NO_PAREN_FUNCTION_PARSERS.pop("@", None)
 
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            DuckDB.Parser.PLACEHOLDER_PARSERS,
+            SqlGlotDuckDB.Parser.PLACEHOLDER_PARSERS,
             parameter_fallback=lambda self: (
                 self.expression(exp.Placeholder, this=getattr(self._prev, "text", ""))
                 if self._match(TokenType.NUMBER) or self._match_set(self.ID_VAR_TOKENS)

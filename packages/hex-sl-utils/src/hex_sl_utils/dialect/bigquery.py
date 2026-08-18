@@ -4,13 +4,13 @@ import datetime
 from typing import Any, ClassVar
 
 from hex_sl_utils._vendor.sqlglot import exp, tokens
-from hex_sl_utils._vendor.sqlglot.dialects.bigquery import BigQuery
+from hex_sl_utils._vendor.sqlglot.dialects.bigquery import BigQuery as SqlGlotBigQuery
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -19,7 +19,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLBigQuery(HexSLDialect):
+class BigQuery(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "bigquery"
@@ -61,7 +61,6 @@ class HexSLBigQuery(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         quantiles_expr = self.func(
             "APPROX_QUANTILES", cast_typed.expression, exp.Literal.number(100)
@@ -158,7 +157,6 @@ class HexSLBigQuery(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         sql_unit = "WEEK(MONDAY)" if unit == "weekmonday" else unit
 
@@ -206,7 +204,6 @@ class HexSLBigQuery(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             return TypedSelectExpression.from_sqlglot(
                 self.func("DATETIME", arg.expression, exp.Literal.string(tz)),
@@ -449,25 +446,25 @@ class HexSLBigQuery(HexSLDialect):
         return TypedSelectExpression.from_sqlglot(cast_expr, DataType.NUMBER, arg.kind)
 
 
-class HexSlBigQuerySqlGlotDialect(BigQuery):
+class BigQuerySqlGlotOverride(SqlGlotBigQuery):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-bigquery"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, BigQuery.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotBigQuery.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
-    class Tokenizer(BigQuery.Tokenizer):
+    class Tokenizer(SqlGlotBigQuery.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
         SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }
 
-    class Parser(BigQuery.Parser):
+    class Parser(SqlGlotBigQuery.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            BigQuery.Parser.PLACEHOLDER_PARSERS
+            SqlGlotBigQuery.Parser.PLACEHOLDER_PARSERS
         )
 
         def _parse_placeholder(self) -> exp.Expression | None:

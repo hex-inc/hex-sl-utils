@@ -17,7 +17,7 @@ from hex_sl_utils.utils import assert_unreachable
 TimePartUnit = Literal["hour", "minute", "second", "millisecond"]
 
 
-class HexSLDialect:
+class Dialect:
     _DATE_UNITS = frozenset(["year", "quarter", "month", "week", "weekmonday", "day"])
 
     @classmethod
@@ -1346,16 +1346,16 @@ class HexSLDialect:
     ]
 
     @classmethod
-    def from_name(cls, name: str) -> HexSLDialect:
+    def from_name(cls, name: str) -> Dialect:
         """
-        Returns the hex-sl dialect from the name.
+        Returns the dialect from the name.
 
         Args:
             name: Dialect name (case-insensitive). Accepts both canonical names
                   (e.g., "trino", "postgres") and aliases (e.g., "athena", "alloydb").
 
         Returns:
-            HexSLDialect: The dialect instance.
+            Dialect: The dialect instance.
 
         Raises:
             ValueError: If the dialect name is not supported.
@@ -1364,45 +1364,45 @@ class HexSLDialect:
         canonical_name = normalize_dialect_name(name)
 
         if canonical_name == "trino":
-            from hex_sl_utils.dialect.trino import HexSLTrino
+            from hex_sl_utils.dialect.trino import Trino
 
-            return HexSLTrino()
+            return Trino()
         elif canonical_name == "bigquery":
-            from hex_sl_utils.dialect.bigquery import HexSLBigQuery
+            from hex_sl_utils.dialect.bigquery import BigQuery
 
-            return HexSLBigQuery()
+            return BigQuery()
         elif canonical_name == "clickhouse":
-            from hex_sl_utils.dialect.clickhouse import HexSLClickHouse
+            from hex_sl_utils.dialect.clickhouse import ClickHouse
 
-            return HexSLClickHouse()
+            return ClickHouse()
         elif canonical_name == "spark":
-            from hex_sl_utils.dialect.spark import HexSLSpark
+            from hex_sl_utils.dialect.spark import Spark
 
-            return HexSLSpark()
+            return Spark()
         elif canonical_name in ("duckdb", "motherduck"):
-            from hex_sl_utils.dialect.duckdb import HexSLDuckDB
+            from hex_sl_utils.dialect.duckdb import DuckDB
 
-            return HexSLDuckDB()
+            return DuckDB()
         elif canonical_name == "mssql":
-            from hex_sl_utils.dialect.mssql import HexSLMSSQL
+            from hex_sl_utils.dialect.mssql import MSSQL
 
-            return HexSLMSSQL()
+            return MSSQL()
         elif canonical_name == "mysql":
-            from hex_sl_utils.dialect.mysql import HexSLMySQL
+            from hex_sl_utils.dialect.mysql import MySQL
 
-            return HexSLMySQL()
+            return MySQL()
         elif canonical_name == "postgres":
-            from hex_sl_utils.dialect.postgres import HexSLPostgres
+            from hex_sl_utils.dialect.postgres import Postgres
 
-            return HexSLPostgres()
+            return Postgres()
         elif canonical_name == "redshift":
-            from hex_sl_utils.dialect.redshift import HexSLRedshift
+            from hex_sl_utils.dialect.redshift import Redshift
 
-            return HexSLRedshift()
+            return Redshift()
         elif canonical_name == "snowflake":
-            from hex_sl_utils.dialect.snowflake import HexSLSnowflake
+            from hex_sl_utils.dialect.snowflake import Snowflake
 
-            return HexSLSnowflake()
+            return Snowflake()
         else:
             # This should not be reached as normalize_dialect_name validates
             msg = f"Unsupported dialect: {name}"

@@ -4,17 +4,19 @@ import datetime
 from typing import Any, ClassVar
 
 from hex_sl_utils._vendor.sqlglot import exp, tokens
-from hex_sl_utils._vendor.sqlglot.dialects.clickhouse import ClickHouse
+from hex_sl_utils._vendor.sqlglot.dialects.clickhouse import (
+    ClickHouse as SqlGlotClickHouse,
+)
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import (
     NormalizationStrategy,
     rename_func,
 )
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -23,7 +25,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLClickHouse(HexSLDialect):
+class ClickHouse(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "clickhouse"
@@ -55,7 +57,6 @@ class HexSLClickHouse(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ParameterizedAgg(
             this="quantileExact",
@@ -71,7 +72,6 @@ class HexSLClickHouse(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = exp.ParameterizedAgg(
             this="quantileTDigest",
@@ -189,7 +189,6 @@ class HexSLClickHouse(HexSLDialect):
     def cast_str_to_timestamp(
         self, arg: TypedSelectExpression, tz: str, force_tz: bool = False
     ) -> TypedSelectExpression:
-
         return TypedSelectExpression.from_sqlglot(
             self.func(
                 "parseDateTime64BestEffortOrNull",
@@ -358,7 +357,6 @@ class HexSLClickHouse(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
 
         if unit.lower() == "week":
@@ -510,7 +508,6 @@ class HexSLClickHouse(HexSLDialect):
     def cast_date_to_timestamptz(
         self, arg: TypedSelectExpression, tz: str
     ) -> TypedSelectExpression:
-
         return TypedSelectExpression.from_sqlglot(
             exp.Anonymous(
                 this="toDateTime64",
@@ -705,7 +702,7 @@ class HexSLClickHouse(HexSLDialect):
         )
 
 
-class HexSlClickHouseSqlGlotDialect(ClickHouse):
+class ClickHouseSqlGlotOverride(SqlGlotClickHouse):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-clickhouse"
@@ -714,14 +711,14 @@ class HexSlClickHouseSqlGlotDialect(ClickHouse):
     NORMALIZATION_STRATEGY = NormalizationStrategy.CASE_SENSITIVE
 
     # From ibis
-    TRANSFORMS = ClickHouse.Generator.TRANSFORMS.copy() | {
+    TRANSFORMS = SqlGlotClickHouse.Generator.TRANSFORMS.copy() | {
         exp.ArraySize: rename_func("length"),
         exp.ArraySort: rename_func("arraySort"),
         exp.LogicalAnd: rename_func("min"),
         exp.LogicalOr: rename_func("max"),
     }
 
-    class Generator(HexSLPlaceholderGeneratorMixin, ClickHouse.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotClickHouse.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
@@ -737,7 +734,7 @@ class HexSlClickHouseSqlGlotDialect(ClickHouse):
             """
             return f"varPop({self.sql(expression.this)})"
 
-    class Tokenizer(ClickHouse.Tokenizer):
+    class Tokenizer(SqlGlotClickHouse.Tokenizer):
         # Remove $ from heredoc strings to allow ${...} placeholders
         HEREDOC_STRINGS: ClassVar[list[str | tuple[str, str]]] = []
 
@@ -747,9 +744,9 @@ class HexSlClickHouseSqlGlotDialect(ClickHouse):
             "$": TokenType.PARAMETER,
         }
 
-    class Parser(ClickHouse.Parser):
+    class Parser(SqlGlotClickHouse.Parser):
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            ClickHouse.Parser.PLACEHOLDER_PARSERS
+            SqlGlotClickHouse.Parser.PLACEHOLDER_PARSERS
         )
 
         def _parse_placeholder(self) -> exp.Expression | None:

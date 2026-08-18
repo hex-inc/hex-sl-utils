@@ -15,7 +15,8 @@ from hex_sl_utils.utils import assert_unreachable
 
 # Constant for semantic placeholder kind (${...} style)
 PLACEHOLDER_KIND_SEMANTIC = "semantic"
-HEXSL_PLACEHOLDER_OFFSET_META = "hexsl_placeholder_offset"
+PLACEHOLDER_OFFSET_META = "hexsl_placeholder_offset"
+PLACEHOLDER_RECORD_ORDER_META = "_hexsl_record_placeholder_order"
 
 
 @dataclass
@@ -113,7 +114,7 @@ def placeholder_sql(generator: Generator, expression: exp.Placeholder) -> str:
             msg = f"Unknown parameter: {name}"
             raise UserFacingError(msg)
 
-        record_order = getattr(generator, "_hexsl_record_placeholder_order", True)
+        record_order = getattr(generator, PLACEHOLDER_RECORD_ORDER_META, True)
         if record_order:
             config.used_parameters[name] = config.all_parameters[name]
 
@@ -201,21 +202,21 @@ def _record_named_placeholder_occurrence(
         config.occurrences.append(name)
 
 
-class HexSLPlaceholderGeneratorMixin:
+class PlaceholderGeneratorMixin:
     def preprocess(self, expression: exp.Expression) -> exp.Expression:
-        previous = getattr(self, "_hexsl_record_placeholder_order", True)
-        self._hexsl_record_placeholder_order = False
+        previous = getattr(self, PLACEHOLDER_RECORD_ORDER_META, True)
+        self.__setattr__(PLACEHOLDER_RECORD_ORDER_META, False)
         try:
             return _super_preprocess(self, expression)
         finally:
-            self._hexsl_record_placeholder_order = previous
+            self.__setattr__(PLACEHOLDER_RECORD_ORDER_META, previous)
 
 
 def _super_preprocess(
-    generator: HexSLPlaceholderGeneratorMixin,
+    generator: PlaceholderGeneratorMixin,
     expression: exp.Expression,
 ) -> exp.Expression:
-    parent = cast(Any, super(HexSLPlaceholderGeneratorMixin, generator))
+    parent = cast(Any, super(PlaceholderGeneratorMixin, generator))
     return parent.preprocess(expression)
 
 
@@ -383,7 +384,7 @@ def _placeholder_for_name(
 ) -> exp.Expression:
     offset = _required_token_offset(parser) if offset is None else offset
     placeholder = parser.expression(exp.Placeholder, this=exp.to_identifier(name))
-    placeholder.meta[HEXSL_PLACEHOLDER_OFFSET_META] = offset
+    placeholder.meta[PLACEHOLDER_OFFSET_META] = offset
 
     config = get_placeholder_config()
     if config is not None:

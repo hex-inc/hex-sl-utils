@@ -4,7 +4,7 @@ from inline_snapshot import snapshot
 from hex_sl_utils._vendor.sqlglot import exp, parse_one
 from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
 from hex_sl_utils.dialect import (
-    HexSLDialect,
+    Dialect,
     PlaceholderConfig,
     PlaceholderStyle,
     set_placeholder_style,
@@ -26,18 +26,18 @@ def query_str():
     return "SELECT {{foo}}, {{bar}} + {{baz}} * {{foo}}"
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_default_placeholder_parse_roundtrip(dialect_name: str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     parsed = parse_one("SELECT {{foo}}", dialect=dialect.sqlglot_dialect())
     assert parsed.sql(dialect=dialect.sqlglot_dialect()) == snapshot("SELECT {{foo}}")
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_qmark(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.QMARK, parameter_types) as config:
@@ -73,9 +73,9 @@ def test_placeholder_mode_qmark(dialect_name: str, parameter_types, query_str):
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_format(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.FORMAT, parameter_types) as config:
@@ -106,9 +106,9 @@ def test_placeholder_mode_format(dialect_name: str, parameter_types, query_str):
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_numeric(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.NUMERIC, parameter_types) as config:
@@ -139,9 +139,9 @@ def test_placeholder_mode_numeric(dialect_name: str, parameter_types, query_str)
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_asyncpg(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.ASYNCPG, parameter_types) as config:
@@ -172,9 +172,9 @@ def test_placeholder_mode_asyncpg(dialect_name: str, parameter_types, query_str)
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_named(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.COLON_NAMED, parameter_types) as config:
@@ -205,9 +205,9 @@ def test_placeholder_mode_named(dialect_name: str, parameter_types, query_str):
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_pyformat(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     with set_placeholder_style(PlaceholderStyle.PYFORMAT, parameter_types) as config:
@@ -238,9 +238,9 @@ def test_placeholder_mode_pyformat(dialect_name: str, parameter_types, query_str
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_placeholder_mode_clickhouse(dialect_name: str, parameter_types, query_str):
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     expected_type = datatype_to_sqlglot(DataType.NUMBER).sql(
@@ -276,10 +276,10 @@ def test_placeholder_mode_clickhouse(dialect_name: str, parameter_types, query_s
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_semantic_placeholder_simple(dialect_name: str):
     """Test ${foo} semantic placeholder parse and round-trip."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     parsed = parse_one("SELECT ${foo}", dialect=dialect.sqlglot_dialect())
@@ -294,10 +294,10 @@ def test_semantic_placeholder_simple(dialect_name: str):
     assert parsed.sql(dialect=dialect.sqlglot_dialect()) == snapshot("SELECT ${foo}")
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_semantic_placeholder_dotted(dialect_name: str):
     """Test ${dataset.column} semantic placeholder with dotted notation."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     parsed = parse_one("SELECT ${dataset.column}", dialect=dialect.sqlglot_dialect())
@@ -313,10 +313,10 @@ def test_semantic_placeholder_dotted(dialect_name: str):
     )
 
 
-@pytest.mark.parametrize("dialect_name", HexSLDialect.all_dialects)
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
 def test_mixed_placeholders(dialect_name: str):
     """Test mixing ${...} semantic placeholders with {{...}} query param placeholders."""
-    dialect = HexSLDialect.from_name(dialect_name)
+    dialect = Dialect.from_name(dialect_name)
     assert dialect is not None
 
     parsed = parse_one(

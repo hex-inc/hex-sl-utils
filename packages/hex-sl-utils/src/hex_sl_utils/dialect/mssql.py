@@ -9,11 +9,11 @@ from hex_sl_utils._vendor.sqlglot.dialects.tsql import TSQL
 from hex_sl_utils._vendor.sqlglot.helper import flatten, seq_get
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.mssql_utils import extract_static_sqlglot_constant
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -25,7 +25,7 @@ from hex_sl_utils.time import TimeTruncUnit
 from hex_sl_utils.timezone import iana_to_windows
 
 
-class HexSLMSSQL(HexSLDialect):
+class MSSQL(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "mssql"
@@ -271,7 +271,6 @@ class HexSLMSSQL(HexSLDialect):
         return self.at_timezone(naive_ts, "UTC")
 
     def datetime_to_epoch_ms(self, arg: TypedSelectExpression) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
             arg = self.at_timezone(arg, "UTC")
@@ -316,7 +315,6 @@ class HexSLMSSQL(HexSLDialect):
         arg: TypedSelectExpression,
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             arg = self.at_timezone(arg, timezone)
 
@@ -542,7 +540,6 @@ class HexSLMSSQL(HexSLDialect):
         )
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         windows_tz = iana_to_windows(tz)
         # SQL Server's AT TIME ZONE always returns a datetimeoffset
         # (timestamp with time zone)
@@ -599,7 +596,6 @@ class HexSLMSSQL(HexSLDialect):
         )
 
     def today(self, timezone: str) -> TypedSelectExpression:
-
         return TypedSelectExpression.from_sqlglot(
             exp.Cast(this=exp.CurrentDate(), to=exp.DataType.build("DATE")),
             DataType.DATE,
@@ -857,12 +853,12 @@ def _least(gen: TSQL.Generator, expression: exp.Expression) -> str:
     return gen.func("IIF", exp.LTE(this=arg0, expression=arg1), arg0, arg1)
 
 
-class HexSlMSSQLSqlGlotDialect(TSQL):
+class MSSQLSqlGlotOverride(TSQL):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-mssql"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, TSQL.Generator):
+    class Generator(PlaceholderGeneratorMixin, TSQL.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 

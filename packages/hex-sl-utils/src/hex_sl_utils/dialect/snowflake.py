@@ -6,13 +6,15 @@ from typing import Any, Literal
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils._vendor.sqlglot.dialects.dialect import map_date_part, rename_func
-from hex_sl_utils._vendor.sqlglot.dialects.snowflake import Snowflake
+from hex_sl_utils._vendor.sqlglot.dialects.snowflake import (
+    Snowflake as SqlGlotSnowflake,
+)
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.dialect import HexSLDialect
+from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.placeholder import (
-    HexSLPlaceholderGeneratorMixin,
+    PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
@@ -21,7 +23,7 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.time import TimeTruncUnit
 
 
-class HexSLSnowflake(HexSLDialect):
+class Snowflake(Dialect):
     @classmethod
     def name(cls) -> DialectName:
         return "snowflake"
@@ -77,7 +79,6 @@ class HexSLSnowflake(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_anon = exp.Anonymous(
             this="PERCENTILE_CONT", expressions=[exp.Literal.number(percentile)]
@@ -96,7 +97,6 @@ class HexSLSnowflake(HexSLDialect):
         arg: TypedSelectExpression,
         percentile: float,
     ) -> TypedSelectExpression:
-
         cast_typed = self.cast_to_float(arg)
         percentile_expr = self.func(
             "APPROX_PERCENTILE", cast_typed.expression, exp.Literal.number(percentile)
@@ -423,7 +423,6 @@ class HexSLSnowflake(HexSLDialect):
         )
 
     def datetime_to_epoch_ms(self, arg: TypedSelectExpression) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMPTZ:
             # Always convert to UTC before extracting epoch millis
             arg = self.at_timezone(arg, "UTC")
@@ -453,7 +452,6 @@ class HexSLSnowflake(HexSLDialect):
         unit: TimeTruncUnit,
         tz: str,
     ) -> TypedSelectExpression:
-
         convert_tz = tz if arg.data_type == DataType.TIMESTAMPTZ else None
         if unit == "week" or unit == "weekmonday":
             expr = self._trunc_week(arg, unit, convert_tz)
@@ -668,7 +666,6 @@ class HexSLSnowflake(HexSLDialect):
         return week_trunc_expr
 
     def at_timezone(self, arg: TypedSelectExpression, tz: str) -> TypedSelectExpression:
-
         if arg.data_type == DataType.TIMESTAMP:
             return self._replace_timezone(arg, tz)
         else:
@@ -787,7 +784,6 @@ class HexSLSnowflake(HexSLDialect):
         unit: Literal["hour", "minute", "second", "millisecond"],
         timezone: str,
     ) -> TypedSelectExpression:
-
         if arg.data_type == DataType.DATE:
             # Dates don't have a time part, so we return 0
             return self.compile_literal(0)
@@ -852,17 +848,17 @@ class HexSLSnowflake(HexSLDialect):
         )
 
 
-class HexSlSnowflakeSqlGlotDialect(Snowflake):
+class SnowflakeSqlGlotOverride(SqlGlotSnowflake):
     @classmethod
     def dialect_name(cls) -> str:
         return "hex-sl-snowflake"
 
-    class Generator(HexSLPlaceholderGeneratorMixin, Snowflake.Generator):
+    class Generator(PlaceholderGeneratorMixin, SqlGlotSnowflake.Generator):
         def placeholder_sql(self, expression: exp.Placeholder) -> str:
             return placeholder_sql(self, expression)
 
         # From ibis
-        TRANSFORMS = Snowflake.Generator.TRANSFORMS.copy() | {
+        TRANSFORMS = SqlGlotSnowflake.Generator.TRANSFORMS.copy() | {
             exp.ApproxDistinct: rename_func("approx_count_distinct"),
             exp.Levenshtein: rename_func("editdistance"),
         }
@@ -874,13 +870,13 @@ class HexSlSnowflakeSqlGlotDialect(Snowflake):
             # valid there, so it's easier to just use UNION ALL instead.
             return super().values_sql(expression, values_as_table=False)
 
-    class Parser(Snowflake.Parser):
-        FUNCTION_PARSERS = Snowflake.Parser.FUNCTION_PARSERS.copy()
+    class Parser(SqlGlotSnowflake.Parser):
+        FUNCTION_PARSERS = SqlGlotSnowflake.Parser.FUNCTION_PARSERS.copy()
         # Override DATE_PART parser to ensure time units are parsed as Var nodes
         FUNCTION_PARSERS["DATE_PART"] = lambda self: self._parse_date_part_hexsl()
 
         PLACEHOLDER_PARSERS = placeholder_parser_mapping(
-            Snowflake.Parser.PLACEHOLDER_PARSERS,
+            SqlGlotSnowflake.Parser.PLACEHOLDER_PARSERS,
             parameter_fallback=lambda self: (
                 self.expression(exp.Placeholder, this=getattr(self._prev, "text", ""))
                 if self._match(TokenType.NUMBER) or self._match_set(self.ID_VAR_TOKENS)

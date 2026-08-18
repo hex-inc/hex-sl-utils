@@ -3,7 +3,7 @@ from inline_snapshot import snapshot
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.datatype import DataType
-from hex_sl_utils.dialect.snowflake import HexSLSnowflake
+from hex_sl_utils.dialect.snowflake import Snowflake
 from hex_sl_utils.expr import ExpressionKind, TypedSelectExpression
 
 
@@ -12,7 +12,7 @@ class TestSnowflakeTimestampParsing:
 
     @pytest.fixture
     def dialect(self):
-        return HexSLSnowflake()
+        return Snowflake()
 
     def test_at_timezone_with_space_separator(self, dialect):
         """Test at_timezone with timestamp literal using space separator."""
