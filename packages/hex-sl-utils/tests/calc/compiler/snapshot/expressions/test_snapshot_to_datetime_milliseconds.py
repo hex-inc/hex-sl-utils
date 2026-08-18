@@ -63,8 +63,6 @@ class SnapshotTest(SelectionSnapshotTestBase):
     def validate(
         cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
     ) -> None:
-        print(dialect)
-
         if isinstance(dialect, ClickHouse):
             # Remove timezone from ClickHouse datetime
             result_df = result_df.with_columns(

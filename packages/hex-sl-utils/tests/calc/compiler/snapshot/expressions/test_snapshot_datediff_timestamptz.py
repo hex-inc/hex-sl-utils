@@ -80,7 +80,6 @@ class SnapshotTest(SelectionSnapshotTestBase):
         # Convert the result to the expected schema, to handle Decimals
         result_df = result_df.cast(expected_df.schema)
 
-        print(dialect.name())
         pl_testing.assert_frame_equal(
             result_df, expected_df, check_dtypes=False, abs_tol=1e-2
         )
