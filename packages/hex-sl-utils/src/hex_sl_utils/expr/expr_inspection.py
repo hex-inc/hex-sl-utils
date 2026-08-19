@@ -77,3 +77,34 @@ def has_column_references(expression: exp.Expression) -> bool:
 
     traverse(expression)
     return has_columns
+
+
+def get_referenced_placeholders(expression: exp.Expression) -> set[str]:
+    """
+    Analyze a sqlglot expression and return a set of placeholder names.
+
+    Args:
+        expression (exp.Expression): The sqlglot expression to analyze.
+
+    Returns:
+        set[str]: A set of placeholder names.
+    """
+    referenced_placeholders = set()
+
+    def traverse(node: exp.Expression) -> None:
+        if isinstance(node, exp.Placeholder):
+            placeholder = node.name
+            if not placeholder:
+                return
+
+            # Sometimes the name is an Identifier even though the type signature is str
+            if isinstance(placeholder, exp.Identifier):
+                referenced_placeholders.add(placeholder.name)
+            else:
+                referenced_placeholders.add(placeholder)
+
+        for child in node.iter_expressions():
+            traverse(child)
+
+    traverse(expression)
+    return referenced_placeholders
