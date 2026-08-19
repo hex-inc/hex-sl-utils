@@ -1,4 +1,4 @@
-from hex_sl_utils.dialect.placeholder.placeholder import (
+from .placeholder import (
     PLACEHOLDER_KIND_SEMANTIC,
     PLACEHOLDER_OFFSET_META,
     PlaceholderConfig,
@@ -10,7 +10,7 @@ from hex_sl_utils.dialect.placeholder.placeholder import (
     placeholder_sql,
     set_placeholder_style,
 )
-from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
+from .placeholder_style import PlaceholderStyle
 
 __all__ = [
     "PLACEHOLDER_KIND_SEMANTIC",

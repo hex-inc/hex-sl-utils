@@ -9,8 +9,8 @@ from typing import Any, cast
 from hex_sl_utils._vendor.sqlglot import Generator, Parser, exp
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
-from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
 from hex_sl_utils.exception import UserFacingError
+from hex_sl_utils.placeholder.placeholder_style import PlaceholderStyle
 from hex_sl_utils.utils import assert_unreachable
 
 # Constant for semantic placeholder kind (${...} style)

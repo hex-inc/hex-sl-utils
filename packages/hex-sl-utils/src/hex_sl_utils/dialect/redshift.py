@@ -9,18 +9,18 @@ from hex_sl_utils._vendor.sqlglot.dialects.redshift import Redshift as SqlGlotRe
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect.dialect_name import DialectName
-from hex_sl_utils.dialect.placeholder import (
-    PlaceholderGeneratorMixin,
-    parse_jinja_placeholder,
-    placeholder_parser_mapping,
-    placeholder_sql,
-)
 from hex_sl_utils.dialect.postgres import Postgres
 from hex_sl_utils.dialect.transforms import (
     hex_sl_eliminate_qualify,
     values_as_union_with_consistent_names_sql,
 )
 from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.placeholder import (
+    PlaceholderGeneratorMixin,
+    parse_jinja_placeholder,
+    placeholder_parser_mapping,
+    placeholder_sql,
+)
 from hex_sl_utils.time import TimeTruncUnit
 
 
