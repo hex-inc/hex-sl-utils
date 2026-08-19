@@ -1,9 +1,10 @@
 """Tests for placeholder analysis utilities."""
 
 import pytest
-from hex_sl._vendor.sqlglot import exp, parse_one
-from hex_sl.dialect.base import HexSLDialect
-from hex_sl.dialect.utils.placeholder_analysis import (
+
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.placeholder.placeholder_analysis import (
     get_placeholder_name,
     get_semantic_placeholders,
     is_semantic_placeholder,
@@ -13,13 +14,10 @@ from hex_sl.dialect.utils.placeholder_analysis import (
 
 @pytest.fixture
 def duckdb_dialect() -> str:
-    """Return the DuckDB dialect name for parsing."""
-    return HexSLDialect.from_name("duckdb").sqlglot_dialect()
+    return Dialect.from_name("duckdb").sqlglot_dialect()
 
 
 class TestGetPlaceholderName:
-    """Tests for get_placeholder_name function."""
-
     def test_semantic_placeholder_string_name(self, duckdb_dialect: str) -> None:
         """Semantic placeholders store name as string."""
         ast = parse_one("${foo}", dialect=duckdb_dialect)
@@ -43,8 +41,6 @@ class TestGetPlaceholderName:
 
 
 class TestIsSemanticPlaceholder:
-    """Tests for is_semantic_placeholder function."""
-
     def test_semantic_placeholder(self, duckdb_dialect: str) -> None:
         """${...} placeholders are semantic."""
         ast = parse_one("${foo}", dialect=duckdb_dialect)
@@ -61,8 +57,6 @@ class TestIsSemanticPlaceholder:
 
 
 class TestGetSemanticPlaceholders:
-    """Tests for get_semantic_placeholders function."""
-
     def test_finds_semantic_placeholders(self, duckdb_dialect: str) -> None:
         """Should find all ${...} placeholders."""
         ast = parse_one("${a} + ${b} + ${c}", dialect=duckdb_dialect)
@@ -86,28 +80,56 @@ class TestGetSemanticPlaceholders:
 
 
 class TestParsePlaceholderReference:
-    """Tests for parse_placeholder_reference function."""
-
     def test_bare_name(self) -> None:
         """Bare name uses this_dataset."""
-        dataset, item = parse_placeholder_reference("foo", "my_dataset")
-        assert dataset == "my_dataset"
+        dataset, item = parse_placeholder_reference("foo", resource="my_resource")
+        assert dataset == "my_resource"
         assert item == "foo"
 
     def test_dataset_placeholder(self) -> None:
-        """DATASET.name uses this_dataset."""
-        dataset, item = parse_placeholder_reference("DATASET.foo", "my_dataset")
-        assert dataset == "my_dataset"
+        """The marker resolves against the current dataset."""
+        resource, item = parse_placeholder_reference(
+            "ABC.foo", resource="my_resource", marker="ABC"
+        )
+        assert resource == "my_resource"
         assert item == "foo"
 
-    def test_explicit_dataset(self) -> None:
-        """other.name uses explicit dataset."""
-        dataset, item = parse_placeholder_reference("other.foo", "my_dataset")
-        assert dataset == "other"
+    def test_no_implicit_marker(self) -> None:
+        """A qualifier is retained when no marker is supplied."""
+        resource, item = parse_placeholder_reference("ABC.foo", resource="my_resource")
+        assert resource == "ABC"
+        assert item == "foo"
+
+    def test_custom_marker(self) -> None:
+        """A consumer can choose its own current-resource marker."""
+        resource, item = parse_placeholder_reference(
+            "ABC.foo", resource="my_resource", marker="ABC"
+        )
+        assert resource == "my_resource"
+        assert item == "foo"
+
+    def test_explicit_qualifier(self) -> None:
+        """An explicit resource reference is retained."""
+        resource, item = parse_placeholder_reference(
+            "other.foo", resource="my_resource"
+        )
+        assert resource == "other"
         assert item == "foo"
 
     def test_whitespace_stripped(self) -> None:
-        """Whitespace in placeholder is removed."""
-        dataset, item = parse_placeholder_reference(" foo ", "my_dataset")
-        assert dataset == "my_dataset"
+        """Whitespace in placeholder names is removed."""
+        resource, item = parse_placeholder_reference(" foo ", resource="my_resource")
+        assert resource == "my_resource"
         assert item == "foo"
+
+
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
+def test_placeholder_analysis_all_dialects(dialect_name: str) -> None:
+    """Semantic placeholder analysis works with every registered dialect."""
+    dialect = Dialect.from_name(dialect_name).sqlglot_dialect()
+    ast = parse_one("${item} + {{query_parameter}}", dialect=dialect)
+    placeholders = get_semantic_placeholders(ast)
+
+    assert [get_placeholder_name(placeholder) for placeholder in placeholders] == [
+        "item"
+    ]
