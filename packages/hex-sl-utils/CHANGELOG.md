@@ -4,6 +4,8 @@ Notable changes to `hex-sl-utils` are documented here.
 
 ## Unreleased
 
+- Add utilities for parsing semantic references (`${...}`) in SQL strings
+
 ## 0.1.0
 
 - Add Pydantic models for the Hex semantic specification

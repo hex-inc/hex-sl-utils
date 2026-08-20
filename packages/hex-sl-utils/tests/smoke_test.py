@@ -4,6 +4,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import hex_sl_utils
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.expr import QualifiedReference, get_placeholder_references
 from hex_sl_utils.schema import (
     resource_json_schema,
     resource_typescript_declarations,
@@ -31,3 +33,17 @@ assert loaded.problems == []
 assert len(loaded.project.models) == 1
 assert isinstance(loaded.project.models[0], Model)
 assert loaded.project.models[0].id == "smoke_test"
+
+references = get_placeholder_references(
+    "${amount} + ${ABC.tax} + ${buyer.name}",
+    resource="orders",
+    dialect=Dialect.from_name("duckdb"),
+    marker="ABC",
+)
+assert set(references) == {
+    ("orders", "amount"),
+    ("orders", "tax"),
+    ("buyer", "name"),
+}
+qualified_reference: QualifiedReference = (("buyer",), "name")
+assert qualified_reference == (("buyer",), "name")

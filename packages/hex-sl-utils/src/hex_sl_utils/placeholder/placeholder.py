@@ -9,8 +9,8 @@ from typing import Any, cast
 from hex_sl_utils._vendor.sqlglot import Generator, Parser, exp
 from hex_sl_utils._vendor.sqlglot.tokens import TokenType
 from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
-from hex_sl_utils.dialect.placeholder.placeholder_style import PlaceholderStyle
 from hex_sl_utils.exception import UserFacingError
+from hex_sl_utils.placeholder.placeholder_style import PlaceholderStyle
 from hex_sl_utils.utils import assert_unreachable
 
 # Constant for semantic placeholder kind (${...} style)
@@ -535,7 +535,7 @@ def parse_dollar_brace_after_match(parser: Parser) -> exp.Expression | None:
         return None
 
     # We have ${, now collect everything until }
-    # The identifier can be: foo, foo.bar, DATASET, DATASET.foo, etc.
+    # The identifier can be: foo, foo.bar, marker, marker.foo, etc.
     parts: list[str] = []
 
     # Parse the identifier (handles simple identifiers like "foo")
@@ -556,10 +556,10 @@ def parse_dollar_brace_after_match(parser: Parser) -> exp.Expression | None:
             # Trailing dot without identifier - raise error
             parser.raise_error("Expecting identifier after '.'")
 
-    # Validate depth: only ${col} and ${dataset.col} are valid (max 2 parts)
+    # Validate depth: only ${col} and ${resource.col} are valid (max 2 parts)
     if len(parts) > 2:
         parser.raise_error(
-            f"Invalid placeholder: expected ${{col}} or ${{dataset.col}}, "
+            f"Invalid placeholder: expected ${{col}} or ${{resource.col}}, "
             f"got ${{{'.'.join(parts)}}}"
         )
 

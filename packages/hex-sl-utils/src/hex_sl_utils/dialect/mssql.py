@@ -12,15 +12,15 @@ from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.dialect.dialect_name import DialectName
 from hex_sl_utils.dialect.mssql_utils import extract_static_sqlglot_constant
-from hex_sl_utils.dialect.placeholder import (
+from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
+from hex_sl_utils.exception import UnsupportedByDialectError
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
+from hex_sl_utils.placeholder import (
     PlaceholderGeneratorMixin,
     parse_jinja_placeholder,
     placeholder_parser_mapping,
     placeholder_sql,
 )
-from hex_sl_utils.dialect.transforms import hex_sl_eliminate_qualify
-from hex_sl_utils.exception import UnsupportedByDialectError
-from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 from hex_sl_utils.time import TimeTruncUnit
 from hex_sl_utils.timezone import iana_to_windows
 
