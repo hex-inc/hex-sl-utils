@@ -9,7 +9,7 @@ license-files = ["LICENSE", "VENDORED_LICENSES"]
 
 [dependency-groups]
 dev = [
-  "inline-snapshot>=0.31.1",
+  "inline-snapshot>=0.35.4",
   "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
   "pyright>=1.1.411",
