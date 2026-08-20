@@ -92,3 +92,121 @@ shape: (4, 10)
 │ 3   ┆ false ┆ true  ┆ true  ┆ false ┆ true  ┆ true  ┆ true  ┆ false ┆ false │
 └─────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┘\
 """)
+
+
+# SQL expression snapshots
+
+
+def test_snapshot_binary_comparison_sql():
+    """Snapshot directly compiled calc SQL for every supported dialect."""
+    assert SnapshotTest.render_sql_snapshot() == snapshot("""\
+-- === BIGQUERY ===
+`lhs` < `rhs`;
+`lhs` <= `rhs`;
+`lhs` <= `rhs`;
+`lhs` > `rhs`;
+`lhs` >= `rhs`;
+`lhs` >= `rhs`;
+`lhs` = `rhs`;
+`lhs` <> `rhs`;
+`lhs` <> `rhs`;
+
+-- === CLICKHOUSE ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+
+-- === DUCKDB ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+
+-- === MSSQL ===
+IIF([lhs] < [rhs], 1, 0);
+IIF([lhs] <= [rhs], 1, 0);
+IIF([lhs] <= [rhs], 1, 0);
+IIF([lhs] > [rhs], 1, 0);
+IIF([lhs] >= [rhs], 1, 0);
+IIF([lhs] >= [rhs], 1, 0);
+IIF([lhs] = [rhs], 1, 0);
+IIF([lhs] <> [rhs], 1, 0);
+IIF([lhs] <> [rhs], 1, 0);
+
+-- === MYSQL ===
+`lhs` < `rhs`;
+`lhs` <= `rhs`;
+`lhs` <= `rhs`;
+`lhs` > `rhs`;
+`lhs` >= `rhs`;
+`lhs` >= `rhs`;
+`lhs` = `rhs`;
+`lhs` <> `rhs`;
+`lhs` <> `rhs`;
+
+-- === POSTGRES ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+
+-- === REDSHIFT ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+
+-- === SNOWFLAKE ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+
+-- === SPARK ===
+`lhs` < `rhs`;
+`lhs` <= `rhs`;
+`lhs` <= `rhs`;
+`lhs` > `rhs`;
+`lhs` >= `rhs`;
+`lhs` >= `rhs`;
+`lhs` = `rhs`;
+`lhs` <> `rhs`;
+`lhs` <> `rhs`;
+
+-- === TRINO ===
+"lhs" < "rhs";
+"lhs" <= "rhs";
+"lhs" <= "rhs";
+"lhs" > "rhs";
+"lhs" >= "rhs";
+"lhs" >= "rhs";
+"lhs" = "rhs";
+"lhs" <> "rhs";
+"lhs" <> "rhs";
+""")

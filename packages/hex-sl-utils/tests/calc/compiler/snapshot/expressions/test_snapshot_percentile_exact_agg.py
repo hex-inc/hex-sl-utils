@@ -79,3 +79,35 @@ shape: (1, 2)
 │ 30.0 ┆ 4.0  │
 └──────┴──────┘\
 """)
+
+
+# SQL expression snapshots
+
+
+def test_snapshot_percentile_exact_sql():
+    """Snapshot directly compiled calc SQL for every supported dialect."""
+    assert SnapshotTest.render_sql_snapshot() == snapshot("""\
+-- === CLICKHOUSE ===
+quantileExact(0.5)(CAST("int_col" AS Nullable(Float64)));
+quantileExact(0.75)(CAST("float_col" AS Nullable(Float64)));
+
+-- === DUCKDB ===
+QUANTILE(CAST("int_col" AS DOUBLE), 0.5);
+QUANTILE(CAST("float_col" AS DOUBLE), 0.75);
+
+-- === POSTGRES ===
+PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
+  CAST("int_col" AS DOUBLE PRECISION));
+PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+  CAST("float_col" AS DOUBLE PRECISION));
+
+-- === SNOWFLAKE ===
+PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY
+  CAST("int_col" AS DOUBLE));
+PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY
+  CAST("float_col" AS DOUBLE));
+
+-- === SPARK ===
+PERCENTILE(CAST(`int_col` AS DOUBLE), 0.5);
+PERCENTILE(CAST(`float_col` AS DOUBLE), 0.75);
+""")
