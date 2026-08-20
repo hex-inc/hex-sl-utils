@@ -1,6 +1,5 @@
 from .expr_context import ExpressionContext
 from .expr_inspection import (
-    get_referenced_placeholders,
     has_aggregate_function,
     has_column_references,
     has_window_function,
@@ -21,7 +20,6 @@ __all__ = [
     "SelectExpressionTypes",
     "TypedSelectExpression",
     "get_placeholder_references",
-    "get_referenced_placeholders",
     "has_aggregate_function",
     "has_column_references",
     "has_window_function",
