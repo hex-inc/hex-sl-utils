@@ -10,6 +10,7 @@ permissions:
 
 env:
   UV_VERSION: "0.12.2"
+  DEVBOX_VERSION: "0.18.0"
 
 jobs:
   check-and-build:
@@ -21,7 +22,7 @@ jobs:
       - name: Install Devbox
         uses: jetify-com/devbox-install-action@a0d2d53632934ae004f878c840055956d9f741b0 # v0.14.0
         with:
-          devbox-version: 0.17.5
+          devbox-version: ${{ env.DEVBOX_VERSION }}
           enable-cache: "true"
       - name: Sync workspace
         run: devbox run setup

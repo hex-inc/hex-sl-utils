@@ -9,7 +9,7 @@ license-files = ["LICENSE", "VENDORED_LICENSES"]
 
 [dependency-groups]
 dev = [
-  "inline-snapshot>=0.31.1",
+  "inline-snapshot>=0.35.4",
   "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
   "pyright>=1.1.411",
@@ -17,8 +17,8 @@ dev = [
   "pytest-cov>=7.1.0",
   "pyyaml>=6.0.3",
   "requests>=2.34.2,<3; python_version >= '3.14'",
-  "ruff>=0.16.1",
-  "rumdl>=0.2.52",
+  "ruff>=0.16.3",
+  "rumdl>=0.2.58",
 ]
 
 [tool.uv]
