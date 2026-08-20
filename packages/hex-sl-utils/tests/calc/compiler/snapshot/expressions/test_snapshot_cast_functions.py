@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date, datetime
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -172,3 +174,25 @@ def test_snapshot_cast_functions_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_cast_functions_result():
+    """Test cast functions result output."""
+    dialect = Dialect.from_name("duckdb")
+    result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
+
+    assert result_str == snapshot("""\
+shape: (4, 14)
+┌─────┬──────┬───────┬───────┬────────────┬─────────────────────┬───────┬───────┬──────┬──────┬────────────┬─────────────────────┬────────────────────────────────┬────────────────────────────────┐
+│ row ┆ col1 ┆ col2  ┆ col3  ┆ col4       ┆ col5                ┆ col6  ┆ col7  ┆ col8 ┆ col9 ┆ col10      ┆ col11               ┆ col12                          ┆ col13                          │
+│ --- ┆ ---  ┆ ---   ┆ ---   ┆ ---        ┆ ---                 ┆ ---   ┆ ---   ┆ ---  ┆ ---  ┆ ---        ┆ ---                 ┆ ---                            ┆ ---                            │
+│ i32 ┆ str  ┆ str   ┆ str   ┆ str        ┆ str                 ┆ bool  ┆ bool  ┆ f64  ┆ i32  ┆ date       ┆ datetime[μs]        ┆ datetime[μs, America/New_York] ┆ datetime[μs, America/New_York] │
+╞═════╪══════╪═══════╪═══════╪════════════╪═════════════════════╪═══════╪═══════╪══════╪══════╪════════════╪═════════════════════╪════════════════════════════════╪════════════════════════════════╡
+│ 0   ┆ -1   ┆ 2.500 ┆ true  ┆ 2021-01-01 ┆ 2021-01-01 10:10:10 ┆ true  ┆ false ┆ 0.0  ┆ 1    ┆ 2021-01-01 ┆ 2021-01-01 10:10:10 ┆ 2021-01-01 05:10:10 EST        ┆ 2021-01-01 10:10:10 EST        │
+│ 1   ┆ 10   ┆ 2     ┆ false ┆ 2021-01-02 ┆ 2021-01-02 11:11:11 ┆ true  ┆ false ┆ null ┆ 0    ┆ null       ┆ 2021-01-02 11:11:11 ┆ 2021-01-02 06:11:11 EST        ┆ 2021-01-02 11:11:11 EST        │
+│ 2   ┆ 0    ┆ -12   ┆ true  ┆ 2021-01-03 ┆ 2021-01-03 12:12:12 ┆ false ┆ null  ┆ 1.5  ┆ 1    ┆ 2021-01-03 ┆ null                ┆ null                           ┆ null                           │
+│ 3   ┆ 2    ┆ 2.001 ┆ false ┆ 2021-01-04 ┆ 2021-01-04 13:13:13 ┆ true  ┆ true  ┆ null ┆ 0    ┆ 2021-01-04 ┆ 2021-01-04 13:13:13 ┆ 2021-01-04 08:13:13 EST        ┆ 2021-01-04 13:13:13 EST        │
+└─────┴──────┴───────┴───────┴────────────┴─────────────────────┴───────┴───────┴──────┴──────┴────────────┴─────────────────────┴────────────────────────────────┴────────────────────────────────┘\
+""")

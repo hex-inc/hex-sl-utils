@@ -4,6 +4,8 @@ import zoneinfo
 from datetime import datetime
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -78,3 +80,26 @@ def test_snapshot_cast_timestamptz_to_date_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_cast_timestamptz_to_date_result():
+    """Test cast timestamptz to date expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
+
+    assert result_str == snapshot("""\
+shape: (4, 3)
+┌─────┬────────────┬────────────┐
+│ row ┆ col1       ┆ col2       │
+│ --- ┆ ---        ┆ ---        │
+│ i32 ┆ date       ┆ date       │
+╞═════╪════════════╪════════════╡
+│ 0   ┆ 2020-12-31 ┆ 2021-01-01 │
+│ 1   ┆ 2021-01-02 ┆ 2021-01-02 │
+│ 2   ┆ null       ┆ null       │
+│ 3   ┆ 2021-01-04 ┆ 2021-01-04 │
+└─────┴────────────┴────────────┘\
+""")

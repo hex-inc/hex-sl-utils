@@ -4,6 +4,8 @@ from datetime import date
 
 import polars as pl
 import polars.testing as pl_testing
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -94,3 +96,26 @@ def test_snapshot_datetrunc_date_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_datetrunc_date_result():
+    """Test datetrunc date expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 12)
+┌─────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────────┐
+│ row ┆ col1       ┆ col2       ┆ col3       ┆ col4       ┆ col5       ┆ col6       ┆ col7       ┆ col8       ┆ col9       ┆ col10      ┆ col11      │
+│ --- ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        ┆ ---        │
+│ i32 ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       ┆ date       │
+╞═════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╪════════════╡
+│ 0   ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2020-12-27 ┆ 2020-12-28 ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2021-01-01 ┆ 2021-01-01 │
+│ 1   ┆ 2022-05-15 ┆ 2022-01-01 ┆ 2022-04-01 ┆ 2022-05-01 ┆ 2022-05-15 ┆ 2022-05-09 ┆ 2022-05-15 ┆ 2022-05-15 ┆ 2022-05-15 ┆ 2022-05-15 ┆ 2022-05-15 │
+│ 2   ┆ 2023-12-30 ┆ 2023-01-01 ┆ 2023-10-01 ┆ 2023-12-01 ┆ 2023-12-24 ┆ 2023-12-25 ┆ 2023-12-30 ┆ 2023-12-30 ┆ 2023-12-30 ┆ 2023-12-30 ┆ 2023-12-30 │
+│ 3   ┆ 2024-09-12 ┆ 2024-01-01 ┆ 2024-07-01 ┆ 2024-09-01 ┆ 2024-09-08 ┆ 2024-09-09 ┆ 2024-09-12 ┆ 2024-09-12 ┆ 2024-09-12 ┆ 2024-09-12 ┆ 2024-09-12 │
+└─────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────────┘\
+""")

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -68,3 +70,25 @@ def test_snapshot_binary_comparison_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_binary_comparison_result():
+    """Test binary comparison result output."""
+    dialect = Dialect.from_name("duckdb")
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 10)
+┌─────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┬───────┐
+│ row ┆ col1  ┆ col2  ┆ col3  ┆ col4  ┆ col5  ┆ col6  ┆ col7  ┆ col8  ┆ col9  │
+│ --- ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   │
+│ i32 ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  │
+╞═════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╡
+│ 0   ┆ true  ┆ true  ┆ true  ┆ false ┆ false ┆ false ┆ false ┆ true  ┆ true  │
+│ 1   ┆ false ┆ true  ┆ true  ┆ false ┆ true  ┆ true  ┆ true  ┆ false ┆ false │
+│ 2   ┆ false ┆ false ┆ false ┆ true  ┆ true  ┆ true  ┆ false ┆ true  ┆ true  │
+│ 3   ┆ false ┆ true  ┆ true  ┆ false ┆ true  ┆ true  ┆ true  ┆ false ┆ false │
+└─────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┴───────┘\
+""")

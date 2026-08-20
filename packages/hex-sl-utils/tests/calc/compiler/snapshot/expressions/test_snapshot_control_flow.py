@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -90,3 +92,25 @@ def test_snapshot_control_functions_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_control_functions_result():
+    """Test control flow result output."""
+    dialect = Dialect.from_name("duckdb")
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 7)
+┌─────┬──────┬───────┬───────┬──────┬──────┬───────┐
+│ row ┆ col1 ┆ col2  ┆ col3  ┆ col4 ┆ col5 ┆ col6  │
+│ --- ┆ ---  ┆ ---   ┆ ---   ┆ ---  ┆ ---  ┆ ---   │
+│ i32 ┆ i32  ┆ bool  ┆ bool  ┆ bool ┆ str  ┆ str   │
+╞═════╪══════╪═══════╪═══════╪══════╪══════╪═══════╡
+│ 0   ┆ -100 ┆ true  ┆ false ┆ true ┆ A    ┆ A     │
+│ 1   ┆ 10   ┆ false ┆ false ┆ true ┆ B    ┆ B     │
+│ 2   ┆ -100 ┆ false ┆ false ┆ true ┆ C    ┆ C     │
+│ 3   ┆ 2    ┆ false ┆ true  ┆ true ┆ null ┆ Other │
+└─────┴──────┴───────┴───────┴──────┴──────┴───────┘\
+""")

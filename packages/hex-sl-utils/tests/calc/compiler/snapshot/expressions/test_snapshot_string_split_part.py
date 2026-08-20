@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -82,3 +84,31 @@ def test_snapshot_string_split_part_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_string_split_part_result():
+    """Test string split part expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (9, 5)
+┌─────┬─────────────┬──────┬──────┬──────┐
+│ row ┆ col1        ┆ col2 ┆ col3 ┆ col4 │
+│ --- ┆ ---         ┆ ---  ┆ ---  ┆ ---  │
+│ i32 ┆ str         ┆ str  ┆ i32  ┆ str  │
+╞═════╪═════════════╪══════╪══════╪══════╡
+│ 0   ┆ a-b-c       ┆ -    ┆ 1    ┆ a    │
+│ 1   ┆ a-b-c       ┆ -    ┆ 2    ┆ b    │
+│ 2   ┆ a-b-c       ┆ -    ┆ 3    ┆ c    │
+│ 3   ┆ a-b-c-d-e-f ┆ -    ┆ 3    ┆ c    │
+│ 4   ┆ a b c       ┆      ┆ 2    ┆ b    │
+│ 5   ┆ a<>b<>c     ┆ <>   ┆ 2    ┆ b    │
+│ 6   ┆             ┆ -    ┆ 1    ┆      │
+│ 7   ┆ a-b         ┆ -    ┆ 4    ┆      │
+│ 8   ┆ null        ┆ -    ┆ 1    ┆ null │
+└─────┴─────────────┴──────┴──────┴──────┘\
+""")

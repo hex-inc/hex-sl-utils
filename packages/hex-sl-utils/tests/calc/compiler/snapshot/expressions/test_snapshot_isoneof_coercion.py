@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -84,3 +86,25 @@ def test_snapshot_isoneof_coercion_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_isoneof_coercion_result():
+    """Test isoneof coercion result output."""
+    dialect = Dialect.from_name("duckdb")
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 7)
+┌─────┬───────┬───────┬───────┬───────┬───────┬───────┐
+│ row ┆ col1  ┆ col2  ┆ col3  ┆ col4  ┆ col5  ┆ col6  │
+│ --- ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   ┆ ---   │
+│ i32 ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  ┆ bool  │
+╞═════╪═══════╪═══════╪═══════╪═══════╪═══════╪═══════╡
+│ 0   ┆ true  ┆ true  ┆ true  ┆ true  ┆ true  ┆ false │
+│ 1   ┆ true  ┆ true  ┆ true  ┆ true  ┆ false ┆ false │
+│ 2   ┆ false ┆ false ┆ true  ┆ false ┆ true  ┆ false │
+│ 3   ┆ false ┆ false ┆ false ┆ false ┆ false ┆ false │
+└─────┴───────┴───────┴───────┴───────┴───────┴───────┘\
+""")

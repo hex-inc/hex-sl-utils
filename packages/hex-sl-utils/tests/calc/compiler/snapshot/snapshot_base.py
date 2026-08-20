@@ -144,6 +144,12 @@ class SnapshotTestBase(ABC):
             check_column_order=True,
         )
 
+    @classmethod
+    def get_result_df_str(cls, dialect: Dialect, timezone: str | None = None) -> str:
+        """Render a database result dataframe without truncating its columns."""
+        with pl.Config(tbl_cols=-1, tbl_width_chars=200):
+            return str(cls.get_result_df(dialect, timezone))
+
 
 class SelectionSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.PROJECTION

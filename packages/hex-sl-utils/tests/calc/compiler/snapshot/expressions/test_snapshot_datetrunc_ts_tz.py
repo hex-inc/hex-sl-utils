@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 import polars.testing as pl_testing
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -125,3 +127,36 @@ def test_snapshot_datetrunc_ts_tz_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_datetrunc_ts_tz_result():
+    """Test datetrunc timestamp with timezone expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
+
+    assert result_str == snapshot("""\
+shape: (4, 12)
+┌─────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┬─────────────────┬────────────────┬────────────────┬────────────────┬────────────────┬────────────────┐
+│ row ┆ col1            ┆ col2            ┆ col3            ┆ col4            ┆ col5            ┆ col6            ┆ col7           ┆ col8           ┆ col9           ┆ col10          ┆ col11          │
+│ --- ┆ ---             ┆ ---             ┆ ---             ┆ ---             ┆ ---             ┆ ---             ┆ ---            ┆ ---            ┆ ---            ┆ ---            ┆ ---            │
+│ i32 ┆ datetime[μs,    ┆ datetime[μs,    ┆ datetime[μs,    ┆ datetime[μs,    ┆ datetime[μs,    ┆ datetime[μs,    ┆ datetime[μs,   ┆ datetime[μs,   ┆ datetime[μs,   ┆ datetime[μs,   ┆ datetime[μs,   │
+│     ┆ America/New_Yor ┆ America/New_Yor ┆ America/New_Yor ┆ America/New_Yor ┆ America/New_Yor ┆ America/New_Yor ┆ America/New_Yo ┆ America/New_Yo ┆ America/New_Yo ┆ America/New_Yo ┆ America/New_Yo │
+│     ┆ k]              ┆ k]              ┆ k]              ┆ k]              ┆ k]              ┆ k]              ┆ rk]            ┆ rk]            ┆ rk]            ┆ rk]            ┆ rk]            │
+╞═════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪═════════════════╪════════════════╪════════════════╪════════════════╪════════════════╪════════════════╡
+│ 0   ┆ 2020-12-31      ┆ 2020-01-01      ┆ 2020-10-01      ┆ 2020-12-01      ┆ 2020-12-27      ┆ 2020-12-28      ┆ 2020-12-31     ┆ 2020-12-31     ┆ 2020-12-31     ┆ 2020-12-31     ┆ 2020-12-31     │
+│     ┆ 19:00:00.123456 ┆ 00:00:00 EST    ┆ 00:00:00 EDT    ┆ 00:00:00 EST    ┆ 00:00:00 EST    ┆ 00:00:00 EST    ┆ 00:00:00 EST   ┆ 19:00:00 EST   ┆ 19:00:00 EST   ┆ 19:00:00 EST   ┆ 19:00:00.123   │
+│     ┆ EST             ┆                 ┆                 ┆                 ┆                 ┆                 ┆                ┆                ┆                ┆                ┆ EST            │
+│ 1   ┆ 2022-05-15      ┆ 2022-01-01      ┆ 2022-04-01      ┆ 2022-05-01      ┆ 2022-05-15      ┆ 2022-05-09      ┆ 2022-05-15     ┆ 2022-05-15     ┆ 2022-05-15     ┆ 2022-05-15     ┆ 2022-05-15     │
+│     ┆ 10:45:30.456123 ┆ 00:00:00 EST    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT   ┆ 10:00:00 EDT   ┆ 10:45:00 EDT   ┆ 10:45:30 EDT   ┆ 10:45:30.456   │
+│     ┆ EDT             ┆                 ┆                 ┆                 ┆                 ┆                 ┆                ┆                ┆                ┆                ┆ EDT            │
+│ 2   ┆ 2023-12-30      ┆ 2023-01-01      ┆ 2023-10-01      ┆ 2023-12-01      ┆ 2023-12-24      ┆ 2023-12-25      ┆ 2023-12-30     ┆ 2023-12-30     ┆ 2023-12-30     ┆ 2023-12-30     ┆ 2023-12-30     │
+│     ┆ 13:20:15.789345 ┆ 00:00:00 EST    ┆ 00:00:00 EDT    ┆ 00:00:00 EST    ┆ 00:00:00 EST    ┆ 00:00:00 EST    ┆ 00:00:00 EST   ┆ 13:00:00 EST   ┆ 13:20:00 EST   ┆ 13:20:15 EST   ┆ 13:20:15.789   │
+│     ┆ EST             ┆                 ┆                 ┆                 ┆                 ┆                 ┆                ┆                ┆                ┆                ┆ EST            │
+│ 3   ┆ 2024-09-12      ┆ 2024-01-01      ┆ 2024-07-01      ┆ 2024-09-01      ┆ 2024-09-08      ┆ 2024-09-09      ┆ 2024-09-12     ┆ 2024-09-12     ┆ 2024-09-12     ┆ 2024-09-12     ┆ 2024-09-12     │
+│     ┆ 19:59:59.987456 ┆ 00:00:00 EST    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT    ┆ 00:00:00 EDT   ┆ 19:00:00 EDT   ┆ 19:59:00 EDT   ┆ 19:59:59 EDT   ┆ 19:59:59.987   │
+│     ┆ EDT             ┆                 ┆                 ┆                 ┆                 ┆                 ┆                ┆                ┆                ┆                ┆ EDT            │
+└─────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┴─────────────────┴────────────────┴────────────────┴────────────────┴────────────────┴────────────────┘\
+""")

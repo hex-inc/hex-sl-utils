@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import polars as pl
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -50,8 +52,6 @@ class SnapshotTest(AggregationSnapshotTestBase):
 
 def test_snapshot_median_agg_validate(dialect_name):
     """Test median aggregation validation for each dialect."""
-    import pytest
-
     dialect = Dialect.from_name(dialect_name)
 
     # Skip tests for dialects that don't support median
@@ -61,3 +61,22 @@ def test_snapshot_median_agg_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_median_agg_result():
+    """Test median aggregation result output."""
+    dialect = Dialect.from_name("duckdb")
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (1, 2)
+┌──────┬──────┐
+│ col1 ┆ col2 │
+│ ---  ┆ ---  │
+│ f64  ┆ f64  │
+╞══════╪══════╡
+│ 4.0  ┆ 2.75 │
+└──────┴──────┘\
+""")

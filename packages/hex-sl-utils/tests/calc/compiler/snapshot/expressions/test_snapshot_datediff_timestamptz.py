@@ -4,7 +4,9 @@ from datetime import datetime
 
 import polars as pl
 import polars.testing as pl_testing
+import pytest
 import pytz
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -94,3 +96,26 @@ def test_snapshot_datediff_timestamptz_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_datediff_timestamptz_result():
+    """Test datediff timestamptz expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
+
+    assert result_str == snapshot("""\
+shape: (4, 7)
+┌─────┬────────────┬─────────────┬──────────────┬────────────────┬────────────┬──────────────┐
+│ row ┆ col1       ┆ col2        ┆ col3         ┆ col4           ┆ col5       ┆ col6         │
+│ --- ┆ ---        ┆ ---         ┆ ---          ┆ ---            ┆ ---        ┆ ---          │
+│ i32 ┆ f64        ┆ f64         ┆ f64          ┆ f64            ┆ f64        ┆ f64          │
+╞═════╪════════════╪═════════════╪══════════════╪════════════════╪════════════╪══════════════╡
+│ 0   ┆ 0.178641   ┆ 1.250485    ┆ 30.011629    ┆ 1800.697733    ┆ 108041.864 ┆ 1.08041864e8 │
+│ 1   ┆ -14.434428 ┆ -101.040999 ┆ -2424.983981 ┆ -145499.038883 ┆ -8.7299e6  ┆ -8.7299e9    │
+│ 2   ┆ 0.142857   ┆ 1.0         ┆ 24.000007    ┆ 1440.0004      ┆ 86400.024  ┆ 8.6400024e7  │
+│ 3   ┆ 4.428506   ┆ 30.999542   ┆ 743.989019   ┆ 44639.341133   ┆ 2.6784e6   ┆ 2.6784e9     │
+└─────┴────────────┴─────────────┴──────────────┴────────────────┴────────────┴──────────────┘\
+""")

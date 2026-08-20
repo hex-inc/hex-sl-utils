@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 import polars.testing as pl_testing
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -122,3 +124,26 @@ def test_snapshot_datepart_ts_tz_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_datepart_ts_tz_result():
+    """Test datepart timestamp with timezone expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 10)
+┌─────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
+│ row ┆ col1 ┆ col2 ┆ col3 ┆ col4 ┆ col5 ┆ col6 ┆ col7 ┆ col8 ┆ col9 │
+│ --- ┆ ---  ┆ ---  ┆ ---  ┆ ---  ┆ ---  ┆ ---  ┆ ---  ┆ ---  ┆ ---  │
+│ i32 ┆ i64  ┆ i64  ┆ i64  ┆ i64  ┆ i64  ┆ i64  ┆ i64  ┆ i64  ┆ i64  │
+╞═════╪══════╪══════╪══════╪══════╪══════╪══════╪══════╪══════╪══════╡
+│ 0   ┆ 2020 ┆ 4    ┆ 12   ┆ 31   ┆ 5    ┆ 19   ┆ 0    ┆ 0    ┆ 123  │
+│ 1   ┆ 2022 ┆ 2    ┆ 5    ┆ 15   ┆ 1    ┆ 10   ┆ 45   ┆ 30   ┆ 456  │
+│ 2   ┆ 2023 ┆ 4    ┆ 12   ┆ 30   ┆ 7    ┆ 13   ┆ 20   ┆ 15   ┆ 789  │
+│ 3   ┆ 2024 ┆ 3    ┆ 9    ┆ 12   ┆ 5    ┆ 19   ┆ 59   ┆ 59   ┆ 999  │
+└─────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘\
+""")

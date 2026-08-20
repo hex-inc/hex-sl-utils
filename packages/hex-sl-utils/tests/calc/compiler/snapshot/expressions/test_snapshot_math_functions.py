@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import polars as pl
 import polars.testing as pl_testing
+import pytest
+from inline_snapshot import snapshot
 
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -98,3 +100,26 @@ def test_snapshot_math_functions_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect)
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+@pytest.mark.database
+@pytest.mark.database_local
+def test_snapshot_math_functions_result():
+    """Test math functions expressions for each dialect separately."""
+    dialect_name = "duckdb"
+    dialect = Dialect.from_name(dialect_name)
+    result_str = SnapshotTest.get_result_df_str(dialect)
+
+    assert result_str == snapshot("""\
+shape: (4, 11)
+┌─────┬──────┬──────────────┬──────┬──────┬──────────┬───────────┬──────────┬───────────┬───────────┬───────────┐
+│ row ┆ col1 ┆ col2         ┆ col3 ┆ col4 ┆ col5     ┆ col6      ┆ col7     ┆ col8      ┆ col9      ┆ col10     │
+│ --- ┆ ---  ┆ ---          ┆ ---  ┆ ---  ┆ ---      ┆ ---       ┆ ---      ┆ ---       ┆ ---       ┆ ---       │
+│ i32 ┆ i32  ┆ decimal[2,0] ┆ f64  ┆ f64  ┆ f64      ┆ f64       ┆ f64      ┆ f64       ┆ f64       ┆ f64       │
+╞═════╪══════╪══════════════╪══════╪══════╪══════════╪═══════════╪══════════╪═══════════╪═══════════╪═══════════╡
+│ 0   ┆ 1    ┆ 1            ┆ 2.0  ┆ 1.0  ┆ 0.0      ┆ 1.0       ┆ 0.0      ┆ 1.0       ┆ 0.0       ┆ null      │
+│ 1   ┆ 1    ┆ 2            ┆ 2.0  ┆ 1.0  ┆ 1.0      ┆ 2.718282  ┆ 0.841471 ┆ 0.540302  ┆ 1.557408  ┆ 0.642093  │
+│ 2   ┆ 2    ┆ 2            ┆ 3.0  ┆ 2.0  ┆ 1.414214 ┆ 7.389056  ┆ 0.909297 ┆ -0.416147 ┆ -2.18504  ┆ -0.457658 │
+│ 3   ┆ 2    ┆ 3            ┆ 3.0  ┆ 2.0  ┆ 1.732051 ┆ 20.085537 ┆ 0.14112  ┆ -0.989992 ┆ -0.142547 ┆ -7.015253 │
+└─────┴──────┴──────────────┴──────┴──────┴──────────┴───────────┴──────────┴───────────┴───────────┴───────────┘\
+""")
