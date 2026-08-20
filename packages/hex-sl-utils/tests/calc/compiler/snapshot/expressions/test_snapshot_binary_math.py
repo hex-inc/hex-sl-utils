@@ -120,7 +120,7 @@ def test_snapshot_binary_math_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_binary_math_result():
     """Test binary math result output."""
-    dialect = Dialect.from_name("duckdb")
+    dialect = Dialect.from_name(SnapshotTest.result_dialect)
     result_str = SnapshotTest.get_result_df_str(dialect)
 
     assert result_str == snapshot("""\

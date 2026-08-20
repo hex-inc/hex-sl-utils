@@ -66,7 +66,7 @@ def test_snapshot_percentile_exact_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_percentile_exact_result():
     """Test exact percentile aggregation result output."""
-    dialect = Dialect.from_name("duckdb")
+    dialect = Dialect.from_name(SnapshotTest.result_dialect)
     result_str = SnapshotTest.get_result_df_str(dialect)
 
     assert result_str == snapshot("""\

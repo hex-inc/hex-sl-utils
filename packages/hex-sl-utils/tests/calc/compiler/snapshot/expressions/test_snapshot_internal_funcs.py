@@ -199,7 +199,7 @@ def test_snapshot_internal_funcs_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_internal_funcs_result():
     """Test internal functions result for duckdb."""
-    dialect_name = "duckdb"
+    dialect_name = SnapshotTest.result_dialect
     dialect = Dialect.from_name(dialect_name)
     result_str = SnapshotTest.get_result_df_str(dialect)
 

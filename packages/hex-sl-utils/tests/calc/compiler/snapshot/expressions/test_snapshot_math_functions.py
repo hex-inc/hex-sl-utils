@@ -106,7 +106,7 @@ def test_snapshot_math_functions_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_math_functions_result():
     """Test math functions expressions for each dialect separately."""
-    dialect_name = "duckdb"
+    dialect_name = SnapshotTest.result_dialect
     dialect = Dialect.from_name(dialect_name)
     result_str = SnapshotTest.get_result_df_str(dialect)
 

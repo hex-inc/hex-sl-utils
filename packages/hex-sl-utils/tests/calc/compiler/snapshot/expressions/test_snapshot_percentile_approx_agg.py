@@ -66,6 +66,8 @@ class SnapshotTest(AggregationSnapshotTestBase):
             check_column_order=True,
         )
 
+    result_dialect = "clickhouse"
+
 
 # Database result tests
 
@@ -86,7 +88,7 @@ def test_snapshot_percentile_approx_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_percentile_approx_result():
     """Test approximate percentile aggregation result output."""
-    dialect = Dialect.from_name("clickhouse")
+    dialect = Dialect.from_name(SnapshotTest.result_dialect)
     result_str = SnapshotTest.get_result_df_str(dialect)
 
     assert result_str == snapshot("""\

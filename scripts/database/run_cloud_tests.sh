@@ -11,6 +11,8 @@ if [[ -f "$script_dir/.env" ]]; then
 fi
 
 uv run --locked --all-packages --group database-cloud \
-  pytest packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions \
+  pytest \
+  packages/hex-sl-utils/tests/database \
+  packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions \
   -m 'database and database_cloud' \
   "$@"

@@ -24,8 +24,6 @@ from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
 from hex_sl_utils.placeholder import PlaceholderStyle
 
-pytestmark = pytest.mark.database
-
 
 def _query() -> ExecutableQuery:
     return ExecutableQuery(
@@ -115,6 +113,8 @@ def test_local_port_rejects_an_invalid_port(monkeypatch: pytest.MonkeyPatch) -> 
         get_local_port("postgres", 5437)
 
 
+@pytest.mark.database
+@pytest.mark.database_cloud
 def test_bigquery_parameter_types_match_the_source_driver() -> None:
     pytest.importorskip("google.cloud.bigquery")
     from database.driver.bigquery import _bigquery_type
@@ -124,6 +124,8 @@ def test_bigquery_parameter_types_match_the_source_driver() -> None:
     assert _bigquery_type(DataType.TIMESTAMPTZ) == "TIMESTAMP"
 
 
+@pytest.mark.database
+@pytest.mark.database_local
 def test_duckdb_driver_executes_a_rendered_query() -> None:
     pytest.importorskip("duckdb")
     from database.driver.duckdb import DuckDBDriver

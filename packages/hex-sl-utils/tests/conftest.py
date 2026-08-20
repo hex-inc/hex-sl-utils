@@ -67,6 +67,33 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         )
 
 
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Deselect fixed-dialect dataframe snapshots outside ``--dialect``."""
+    requested_dialects = set(_requested_dialects(config))
+    deselected: list[pytest.Item] = []
+    selected: list[pytest.Item] = []
+    for item in items:
+        is_result_snapshot = (
+            _EXPRESSION_RESULTS in item.path.as_posix()
+            and item.name.endswith("_result")
+        )
+        snapshot_test = getattr(getattr(item, "module", None), "SnapshotTest", None)
+        if (
+            is_result_snapshot
+            and snapshot_test is not None
+            and snapshot_test.result_dialect not in requested_dialects
+        ):
+            deselected.append(item)
+        else:
+            selected.append(item)
+
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = selected
+
+
 def _requested_dialects(config: pytest.Config) -> tuple[str, ...]:
     values = cast(list[str], config.getoption("dialect") or [])
     if not values:

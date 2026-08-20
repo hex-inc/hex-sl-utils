@@ -150,6 +150,8 @@ class SnapshotTestBase(ABC):
         with pl.Config(tbl_cols=-1, tbl_width_chars=200):
             return str(cls.get_result_df(dialect, timezone))
 
+    result_dialect: ClassVar[str] = "duckdb"
+
 
 class SelectionSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.PROJECTION

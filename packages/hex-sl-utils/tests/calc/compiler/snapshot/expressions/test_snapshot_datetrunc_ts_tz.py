@@ -133,7 +133,7 @@ def test_snapshot_datetrunc_ts_tz_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_datetrunc_ts_tz_result():
     """Test datetrunc timestamp with timezone expressions for each dialect separately."""
-    dialect_name = "duckdb"
+    dialect_name = SnapshotTest.result_dialect
     dialect = Dialect.from_name(dialect_name)
     result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
 

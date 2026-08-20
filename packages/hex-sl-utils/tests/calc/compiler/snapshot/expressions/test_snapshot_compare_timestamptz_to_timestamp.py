@@ -86,7 +86,7 @@ def test_snapshot_compare_timestamptz_to_timestamp_validate(dialect_name):
 @pytest.mark.database_local
 def test_snapshot_compare_timestamptz_to_timestamp_result():
     """Test compare timestamptz to timestamp expressions for each dialect separately."""
-    dialect_name = "duckdb"
+    dialect_name = SnapshotTest.result_dialect
     dialect = Dialect.from_name(dialect_name)
     result_str = SnapshotTest.get_result_df_str(dialect, timezone="America/New_York")
 
