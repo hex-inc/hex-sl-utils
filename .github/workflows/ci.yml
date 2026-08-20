@@ -28,8 +28,10 @@ jobs:
         run: devbox run setup
       - name: Check packages
         run: devbox run check
+      - name: Run package tests
+        run: devbox run test:packages
       - name: Run workspace tests
-        run: devbox run test
+        run: devbox run test:workspace
       - name: Check generated artifacts
         run: devbox run verify
       - name: Build package distributions
@@ -37,6 +39,8 @@ jobs:
       - name: Smoke-test package distributions
         run: devbox run smoke-test
 
+  # Devbox pins Python 3.14 and does not support Windows runners; keep the
+  # compatibility matrix on uv's selected interpreter instead.
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
@@ -74,4 +78,4 @@ jobs:
       - name: Sync workspace
         run: uv sync --locked --all-packages
       - name: Run package tests
-        run: uv run --locked --all-packages pytest packages
+        run: uv run --locked --all-packages pytest packages/hex-sl-utils/tests -m 'not database'

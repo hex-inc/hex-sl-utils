@@ -5,11 +5,18 @@ from __future__ import annotations
 import inspect
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
+import polars as pl
+import polars.testing as pl_testing
 import pytest
+from database.driver.query import ExecutableQuery
+from database.driver.registry import create_driver
+from database.query_builder import build_values_query_for_df
 
+from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.calc import parse_calc_expression
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect import Dialect
@@ -103,6 +110,48 @@ class SnapshotTestBase(ABC):
     def test_sql(self, dialect_name: str) -> None:
         assert self.compile_sql(dialect_name) == self.get_expected_sql()[dialect_name]
 
+    @classmethod
+    def get_result_df(
+        cls, dialect: Dialect, timezone: str | None = None
+    ) -> pl.DataFrame:
+        """Compile and execute this case through its canonical test driver."""
+        query_timezone = timezone or cls.timezone
+        query = cls.get_executable_query(dialect, query_timezone)
+        with create_driver(dialect.name()) as driver:
+            return driver.execute(query, timezone=query_timezone)
+
+    @classmethod
+    def get_executable_query(cls, dialect: Dialect, timezone: str) -> ExecutableQuery:
+        raise NotImplementedError
+
+    @classmethod
+    def validate(
+        cls, expected_df: pl.DataFrame, result_df: pl.DataFrame, dialect: Dialect
+    ) -> None:
+        """Compare a normalized database result with the retained baseline."""
+        if dialect.name() == "redshift":
+            expected_df = expected_df.select(
+                **{
+                    column.lower(): expected_df[column]
+                    for column in expected_df.columns
+                }
+            )
+        pl_testing.assert_frame_equal(
+            result_df,
+            expected_df,
+            check_dtypes=False,
+            abs_tol=1e-6,
+            check_column_order=True,
+        )
+
+    @classmethod
+    def get_result_df_str(cls, dialect: Dialect, timezone: str | None = None) -> str:
+        """Render a database result dataframe without truncating its columns."""
+        with pl.Config(tbl_cols=-1, tbl_width_chars=200):
+            return str(cls.get_result_df(dialect, timezone))
+
+    result_dialect: ClassVar[str] = "duckdb"
+
 
 class SelectionSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.PROJECTION
@@ -113,6 +162,53 @@ class SelectionSnapshotTestBase(SnapshotTestBase):
         """Get the list of expressions to calculate."""
         ...
 
+    @classmethod
+    def get_expression_input_data(cls) -> pl.DataFrame:
+        raise NotImplementedError
+
+    @classmethod
+    def get_expected_df_from_input(
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
+    ) -> pl.DataFrame:
+        raise NotImplementedError
+
+    @classmethod
+    def get_expected_df(cls, dialect: Dialect) -> pl.DataFrame:
+        expression_input_data = cls.get_expression_input_data()
+        return cls.get_expected_df_from_input(expression_input_data, dialect)
+
+    @classmethod
+    def get_executable_query(cls, dialect: Dialect, timezone: str) -> ExecutableQuery:
+        input_data = cls.get_expression_input_data()
+        input_columns = _input_columns(input_data, cls.columns)
+        values_data = input_data.with_row_index("row")
+        values_columns = {"row": DataType.NUMBER, **input_columns}
+        values_query = build_values_query_for_df(values_data, values_columns, dialect)
+        compiled = _compile_expressions(cls, dialect, timezone)
+        query = (
+            exp.select(
+                exp.alias_(
+                    exp.column("row", quoted=True),
+                    "row",
+                    quoted=True,
+                ),
+                *[
+                    exp.alias_(expression.expression, f"col{index}", quoted=True)
+                    for index, expression in enumerate(compiled, start=1)
+                ],
+            )
+            .from_(values_query.subquery("input"))
+            .order_by(exp.column("row", quoted=True))
+        )
+        result_types = {
+            "row": DataType.NUMBER,
+            **{
+                f"col{index}": expression.data_type
+                for index, expression in enumerate(compiled, start=1)
+            },
+        }
+        return ExecutableQuery(query, {}, {}, result_types)
+
 
 class AggregationSnapshotTestBase(SnapshotTestBase):
     context = ExpressionContext.AGGREGATION
@@ -122,6 +218,74 @@ class AggregationSnapshotTestBase(SnapshotTestBase):
     def get_calc_expressions(cls) -> list[str]:
         """Get the list of expressions to calculate."""
         ...
+
+    @classmethod
+    def get_expression_input_data(cls) -> pl.DataFrame:
+        raise NotImplementedError
+
+    @classmethod
+    def get_expected_df_from_input(
+        cls, expression_input_data: pl.DataFrame, dialect: Dialect
+    ) -> pl.DataFrame:
+        raise NotImplementedError
+
+    @classmethod
+    def get_expected_df(cls, dialect: Dialect) -> pl.DataFrame:
+        expression_input_data = cls.get_expression_input_data()
+        return cls.get_expected_df_from_input(expression_input_data, dialect)
+
+    @classmethod
+    def get_executable_query(cls, dialect: Dialect, timezone: str) -> ExecutableQuery:
+        input_data = cls.get_expression_input_data()
+        values_query = build_values_query_for_df(
+            input_data, _input_columns(input_data, cls.columns), dialect
+        )
+        compiled = _compile_expressions(cls, dialect, timezone)
+        query = exp.select(
+            *[
+                exp.alias_(expression.expression, f"col{index}", quoted=True)
+                for index, expression in enumerate(compiled, start=1)
+            ]
+        ).from_(values_query.subquery("input"))
+        result_types = {
+            f"col{index}": expression.data_type
+            for index, expression in enumerate(compiled, start=1)
+        }
+        return ExecutableQuery(query, {}, {}, result_types)
+
+
+def _input_columns(
+    input_data: pl.DataFrame,
+    declared_columns: Mapping[str, DataType],
+) -> dict[str, DataType]:
+    missing_columns = set(declared_columns).difference(input_data.columns)
+    if missing_columns:
+        msg = (
+            "Calc case column declarations are absent from its input dataframe: "
+            f"{sorted(missing_columns)!r}"
+        )
+        raise ValueError(msg)
+    return {
+        column: declared_columns.get(column, _data_type_from_polars(dtype))
+        for column, dtype in input_data.schema.items()
+    }
+
+
+def _data_type_from_polars(dtype: object) -> DataType:
+    """Map fixture-only Polars dtypes for columns unused by the calc expression."""
+    if dtype == pl.Boolean:
+        return DataType.BOOLEAN
+    if dtype == pl.Date:
+        return DataType.DATE
+    if dtype == pl.Time:
+        return DataType.TIME
+    if isinstance(dtype, pl.Datetime):
+        return DataType.TIMESTAMPTZ if dtype.time_zone else DataType.TIMESTAMP
+    if dtype == pl.String:
+        return DataType.STRING
+    if dtype == pl.Null:
+        return DataType.NULL
+    return DataType.NUMBER
 
 
 _DIALECT_HEADER = re.compile(r"^-- === ([A-Z0-9_]+) ===$")
@@ -210,3 +374,21 @@ def _render_sql_snapshot(snapshot_test: type[SnapshotTestBase]) -> str:
             lines.extend(sql_lines)
 
     return "\n".join(lines) + "\n"
+
+
+def _compile_expressions(
+    snapshot_test: type[SnapshotTestBase],
+    dialect: Dialect,
+    timezone: str,
+) -> list[Any]:
+    return [
+        dialect.compile_calc_expr(
+            parse_calc_expression(expression),
+            context=snapshot_test.context,
+            columns=snapshot_test.columns,
+            timezone=timezone,
+            parameters={},
+            skip_mangle=True,
+        )
+        for expression in snapshot_test.get_calc_expressions()
+    ]

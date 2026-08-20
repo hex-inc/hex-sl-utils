@@ -1,0 +1,106 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.7.3.42-alpine
+    ports:
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_CLICKHOUSE_PORT:-8123}:8123" # http port
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_CLICKHOUSE_NATIVE_PORT:-9019}:9000" # native protocol port
+    healthcheck:
+      interval: 1s
+      retries: 10
+      test:
+        - CMD-SHELL
+        - wget -qO- 'http://127.0.0.1:8123/?query=SELECT%201' # SELECT 1
+    networks:
+      - clickhouse
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hex_sl_testing
+    ports:
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_POSTGRES_PORT:-5437}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d hex_sl_testing"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - postgres
+    tmpfs:
+      - /var/run/postgresql
+
+  mysql:
+    image: mariadb:11.5.2
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      MYSQL_PASSWORD: mysql
+      MYSQL_USER: mysql
+    ports:
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      interval: 1s
+      retries: 20
+      test:
+        - CMD
+        - mariadb-admin
+        - ping
+    networks:
+      - mysql
+    command:
+      - --local-infile=1
+    tmpfs:
+      - /run/mysqld
+
+  mssql:
+    # image: mcr.microsoft.com/mssql/server:2019-latest
+    # image: usildevops/mssql-docker-enhanced:latest
+    build:
+      context: ./docker/mssql
+    platform: linux/amd64
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=yourStrong(!)Password
+      - MSSQL_USER=sa
+    ports:
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_MSSQL_PORT:-1433}:1433"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          /opt/mssql-tools/bin/sqlcmd -S localhost -U "$${MSSQL_USER}" -P "$${MSSQL_SA_PASSWORD}" -Q "SELECT 1" -b -o /dev/null
+          && ! grep -q '\[db_init_failed\]' /var/log/docker/sqlserver_db_init.log
+          && grep -q '\[db_init_completed\]' /var/log/docker/sqlserver_db_init.log
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    networks:
+      - mssql
+
+  trino:
+    # This is that last trino image released before this blog post https://trino.io/blog/2022/12/01/athena.html,
+    # where it's announced that Athena engine 3 (https://docs.aws.amazon.com/athena/latest/ug/engine-versions-reference-0003.html),
+    # has been updated to use a recent Trino version.
+    # So this is a best guess at what version of Trino is compatible with Athena engine 3.
+    image: trinodb/trino:403
+    ports:
+      - "127.0.0.1:${HEX_SL_UTILS_DATABASE_TRINO_PORT:-8093}:8093"
+    networks:
+      - trino
+    volumes:
+      - ./docker/trino/etc/catalog/hive.properties:/etc/trino/catalog/hive.properties
+      - ./docker/trino/etc/config.properties:/etc/trino/config.properties
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8093/v1/info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  clickhouse:
+  postgres:
+  mysql:
+  mssql:
+  trino:

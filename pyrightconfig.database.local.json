@@ -1,0 +1,20 @@
+{
+  "include": ["packages/hex-sl-utils/tests/database"],
+  "exclude": [
+    "**/_vendor",
+    "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
+    "packages/hex-sl-utils/tests/database/driver/bigquery.py",
+    "packages/hex-sl-utils/tests/database/driver/redshift.py",
+    "packages/hex-sl-utils/tests/database/driver/snowflake.py"
+  ],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "standard",
+  "venv": ".venv",
+  "venvPath": ".",
+  "executionEnvironments": [
+    {
+      "root": "packages/hex-sl-utils",
+      "pythonVersion": "3.9"
+    }
+  ]
+}

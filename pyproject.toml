@@ -13,6 +13,7 @@ dev = [
   "lark>=1.3.1 ; python_full_version >= '3.14'",
   "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
+  "polars>=1.5",
   "pyright>=1.1.411",
   "pytest>=8.4.2",
   "pytest-cov>=7.1.0",
@@ -20,6 +21,30 @@ dev = [
   "requests>=2.34.2,<3; python_version >= '3.14'",
   "ruff>=0.16.3",
   "rumdl>=0.2.58",
+  "pytz>=2025.2",
+]
+database-local = [
+  "clickhouse-connect>=0.7",
+  "duckdb>=1.0",
+  "numpy>=2.2; python_version >= '3.10'",
+  "pandas>=2.3,<3",
+  "pyarrow",
+  "pyarrow-hotfix",
+  "psycopg2>=2.9.11,<3",
+  "pymssql>=2.3.0,<3",
+  "pymysql",
+  "pyspark[sql]",
+  "sqlalchemy>=1.4,<2",
+  "trino",
+]
+database-cloud = [
+  "google-cloud-bigquery>=3.0.0,<4",
+  "google-cloud-bigquery-storage>=2.0.0,<3",
+  "pandas>=2.3,<3",
+  "pyarrow",
+  "redshift-connector>=2.1.3",
+  "snowflake-connector-python",
+  "sqlalchemy-redshift>=0.8.14",
 ]
 
 [tool.uv]
@@ -36,6 +61,8 @@ pythonpath = ["."]
 testpaths = ["packages", "tests"]
 markers = [
   "database: requires a database service or database-specific client",
+  "database_cloud: requires a credentialed cloud warehouse",
+  "database_local: requires a local database engine or service",
   "integration: crosses a process or external-service boundary",
 ]
 
@@ -56,6 +83,7 @@ include = ["packages", "scripts", "tests"]
 exclude = [
   "**/_vendor",
   "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
+  "packages/hex-sl-utils/tests/database",
 ]
 ignore = ["packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py"]
 pythonVersion = "3.14"
@@ -86,8 +114,10 @@ known-first-party = ["hex_sl_utils"]
 
 [tool.ruff.lint.per-file-ignores]
 "packages/hex-sl-utils/tests/calc/compiler/snapshot/expressions/test_snapshot_*.py" = [
+  "DTZ001",
   "RUF012",
 ]
+"packages/hex-sl-utils/tests/database/driver/base.py" = ["UP045"]
 
 [tool.rumdl]
 exclude = ["**/_vendor/**"]
