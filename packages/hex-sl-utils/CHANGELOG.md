@@ -5,6 +5,7 @@ Notable changes to `hex-sl-utils` are documented here.
 ## Unreleased
 
 - Add utilities for parsing semantic references (`${...}`) in SQL strings
+- Add syntax and parsing/compilation utilities for the Hex calculation language
 
 ## 0.1.0
 

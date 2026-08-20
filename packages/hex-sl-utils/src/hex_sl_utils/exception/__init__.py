@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Iterable
 
 
 class UserFacingError(Exception):
@@ -54,3 +55,25 @@ class TypeCheckError(UserFacingError):
 
 class UnsupportedByDialectError(UserFacingError):
     """Feature not supported by the target SQL dialect."""
+
+
+class ColumnNotFoundError(UserFacingError):
+    """A column required to compile an expression was not found."""
+
+    def __init__(
+        self,
+        message: str = "",
+        *,
+        column_name: str | None = None,
+        case_insensitive_matches: list[str] | None = None,
+        details: str | None = None,
+    ) -> None:
+        super().__init__(message, details=details)
+        self.column_name = column_name
+        self.case_insensitive_matches = case_insensitive_matches
+
+    @staticmethod
+    def find_case_insensitive_matches(name: str, available: Iterable[str]) -> list[str]:
+        """Return names from *available* that match *name* case-insensitively."""
+        lower = name.lower()
+        return [n for n in available if n.lower() == lower]

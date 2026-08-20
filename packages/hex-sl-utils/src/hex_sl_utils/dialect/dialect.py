@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import datetime
 import math
-from typing import Any, ClassVar, Literal
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.datatype import DataType, datatype_to_sqlglot
@@ -12,6 +13,9 @@ from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpr
 from hex_sl_utils.expr.expr_substitution import _needs_parens_for_substitution
 from hex_sl_utils.time import TimeTruncUnit
 from hex_sl_utils.utils import assert_unreachable
+
+if TYPE_CHECKING:
+    from hex_sl_utils.calc.ast.expr import CalcExpr
 
 # Time part units for the time_part function
 TimePartUnit = Literal["hour", "minute", "second", "millisecond"]
@@ -938,6 +942,96 @@ class Dialect:
             result = self.wrap_expression_for_context(result, context)
 
         return result
+
+    def compile_calc_expr(
+        self,
+        expr: CalcExpr,
+        context: ExpressionContext,
+        columns: Mapping[str, DataType],
+        timezone: str,
+        parameters: Mapping[str, DataType] | None,
+        substitutions: Mapping[str, TypedSelectExpression] | None = None,
+        wrap_for_context: bool = True,
+        skip_mangle: bool | list[str] | None = None,
+    ) -> TypedSelectExpression:
+        """
+        Compile a Calc expression into a TypedSelectExpression within an
+        expression context and column type mapping.
+
+        Args:
+            expr: The Calc expression to compile.
+            context: The context of the expression.
+            columns: The column types available to the expression.
+            timezone: The local timezone to use for the compilation.
+            parameters: A mapping of parameter names to data types.
+            substitutions: A mapping of column names to expressions to substitute
+                           for in the expression.
+            wrap_for_context: Whether to wrap the resulting expression for the context.
+            skip_mangle: Whether to skip mangling the column names. If a list of column
+                         names is provided, only those column names skip mangling. If
+                         True, all column names skip mangling. If False or None, column
+                         names are mangled according to the dialect.
+
+        Returns:
+            TypedSelectExpression: The compiled typed select expression.
+        """
+        from hex_sl_utils.calc.compiler import CalcToTypedSelectVisitor
+
+        visitor = CalcToTypedSelectVisitor(
+            self,
+            context,
+            columns,
+            timezone,
+            parameters,
+            substitutions,
+            skip_mangle,
+        )
+        compiled = expr.root.accept(visitor)
+        if wrap_for_context:
+            compiled = self.wrap_expression_for_context(compiled, context)
+        return compiled
+
+    def resolve_calc_placeholders(
+        self,
+        sqlglot_expr: exp.Expression,
+        columns: Mapping[str, DataType],
+        timezone: str,
+        context: ExpressionContext,
+        parameters: Mapping[str, DataType] | None = None,
+        substitutions: Mapping[str, TypedSelectExpression] | None = None,
+    ) -> exp.Expression:
+        """
+        Resolve _hexsl_calc() placeholder functions by compiling the embedded
+        calc expressions with full context.
+        """
+        from hex_sl_utils.calc.ast.expr import CalcExpr
+        from hex_sl_utils.calc.visitor import _extract_hexsl_calc_string
+
+        def transform(node: exp.Expression) -> exp.Expression:
+            if calc_str := _extract_hexsl_calc_string(node):
+                # Parse the calc expression from JSON
+                calc_expr = CalcExpr.model_validate_json(calc_str)
+
+                # Compile it with full context
+                typed_expr = self.compile_calc_expr(
+                    calc_expr,
+                    context=context,
+                    columns=columns,
+                    timezone=timezone,
+                    parameters=parameters or {},
+                    substitutions=substitutions or {},
+                    wrap_for_context=False,
+                )
+
+                # Wrap in parens if needed
+                result_expr = typed_expr.expression
+                if _needs_parens_for_substitution(result_expr):
+                    result_expr = exp.Paren(this=result_expr)
+
+                return result_expr
+            return node
+
+        return sqlglot_expr.transform(transform)
 
     def wrap_expression_for_context(
         self, expr: TypedSelectExpression, context: ExpressionContext
