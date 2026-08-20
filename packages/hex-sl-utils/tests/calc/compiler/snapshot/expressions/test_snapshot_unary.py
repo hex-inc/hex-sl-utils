@@ -84,3 +84,91 @@ shape: (4, 5)
 │ 3   ┆ -2   ┆ 2    ┆ true  ┆ false │
 └─────┴──────┴──────┴───────┴───────┘\
 """)
+
+
+# SQL expression snapshots
+
+
+def test_snapshot_unary_sql():
+    """Snapshot directly compiled calc SQL for every supported dialect."""
+    assert SnapshotTest.render_sql_snapshot() == snapshot("""\
+-- === BIGQUERY ===
+-`numeric_col`;
+`numeric_col`;
+NOT `bool_col`;
+NOT (
+  NOT `bool_col`
+);
+
+-- === CLICKHOUSE ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+
+-- === DUCKDB ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+
+-- === MSSQL ===
+-[numeric_col];
+[numeric_col];
+IIF(NOT [bool_col] <> 0, 1, 0);
+IIF(NOT (
+  NOT [bool_col] <> 0
+), 1, 0);
+
+-- === MYSQL ===
+-`numeric_col`;
+`numeric_col`;
+NOT `bool_col`;
+NOT (
+  NOT `bool_col`
+);
+
+-- === POSTGRES ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+
+-- === REDSHIFT ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+
+-- === SNOWFLAKE ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+
+-- === SPARK ===
+-`numeric_col`;
+`numeric_col`;
+NOT `bool_col`;
+NOT (
+  NOT `bool_col`
+);
+
+-- === TRINO ===
+-"numeric_col";
+"numeric_col";
+NOT "bool_col";
+NOT (
+  NOT "bool_col"
+);
+""")

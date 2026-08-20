@@ -99,3 +99,121 @@ shape: (4, 10)
 │ 3   ┆ 2024 ┆ 3    ┆ 9    ┆ 12   ┆ 5    ┆ 0    ┆ 0    ┆ 0    ┆ 0    │
 └─────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘\
 """)
+
+
+# SQL expression snapshots
+
+
+def test_snapshot_datepart_date_sql():
+    """Snapshot directly compiled calc SQL for every supported dialect."""
+    assert SnapshotTest.render_sql_snapshot() == snapshot("""\
+-- === BIGQUERY ===
+EXTRACT(YEAR FROM `d`);
+EXTRACT(QUARTER FROM `d`);
+EXTRACT(MONTH FROM `d`);
+EXTRACT(DAY FROM `d`);
+EXTRACT(DAYOFWEEK FROM `d`);
+0;
+0;
+0;
+0;
+
+-- === CLICKHOUSE ===
+EXTRACT(YEAR FROM "d");
+EXTRACT(QUARTER FROM "d");
+EXTRACT(MONTH FROM "d");
+EXTRACT(DAY FROM "d");
+toDayOfWeek("d", 3);
+0;
+0;
+0;
+0;
+
+-- === DUCKDB ===
+EXTRACT(YEAR FROM "d");
+EXTRACT(QUARTER FROM "d");
+EXTRACT(MONTH FROM "d");
+EXTRACT(DAY FROM "d");
+EXTRACT(DAYOFWEEK FROM "d") + 1;
+0;
+0;
+0;
+0;
+
+-- === MSSQL ===
+DATEPART(YEAR, [d]);
+DATEPART(QUARTER, [d]);
+DATEPART(MONTH, [d]);
+DATEPART(DAY, [d]);
+DATEPART(DW, [d]);
+0;
+0;
+0;
+0;
+
+-- === MYSQL ===
+EXTRACT(YEAR FROM `d`);
+EXTRACT(QUARTER FROM `d`);
+EXTRACT(MONTH FROM `d`);
+EXTRACT(DAY FROM `d`);
+DAYOFWEEK(`d`);
+0;
+0;
+0;
+0;
+
+-- === POSTGRES ===
+EXTRACT(YEAR FROM "d");
+EXTRACT(QUARTER FROM "d");
+EXTRACT(MONTH FROM "d");
+EXTRACT(DAY FROM "d");
+EXTRACT(dow FROM "d") + 1;
+0;
+0;
+0;
+0;
+
+-- === REDSHIFT ===
+EXTRACT(YEAR FROM "d");
+EXTRACT(QUARTER FROM "d");
+EXTRACT(MONTH FROM "d");
+EXTRACT(DAY FROM "d");
+EXTRACT(dow FROM "d") + 1;
+0;
+0;
+0;
+0;
+
+-- === SNOWFLAKE ===
+DATE_PART(YEAR, "d");
+DATE_PART(QUARTER, "d");
+DATE_PART(MONTH, "d");
+DATE_PART(DAY, "d");
+DATE_PART(DAYOFWEEK, "d") + 1;
+0;
+0;
+0;
+0;
+
+-- === SPARK ===
+EXTRACT(YEAR FROM `d`);
+EXTRACT(QUARTER FROM `d`);
+EXTRACT(MONTH FROM `d`);
+EXTRACT(DAY FROM `d`);
+DAYOFWEEK(TO_DATE(`d`));
+0;
+0;
+0;
+0;
+
+-- === TRINO ===
+EXTRACT(YEAR FROM "d");
+EXTRACT(QUARTER FROM "d");
+EXTRACT(MONTH FROM "d");
+EXTRACT(DAY FROM "d");
+DAY_OF_WEEK("d") % 7 + 1;
+0;
+0;
+0;
+0;
+""")

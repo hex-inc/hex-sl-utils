@@ -4,6 +4,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import polars as pl
+from inline_snapshot import snapshot
 
 from hex_sl_utils.dialect import Dialect
 
@@ -83,3 +84,51 @@ def test_snapshot_instant_validate(dialect_name):
     result_df = SnapshotTest.get_result_df(dialect, timezone="America/New_York")
     expected_df = SnapshotTest.get_expected_df(dialect)
     SnapshotTest.validate(expected_df, result_df, dialect)
+
+
+# SQL expression snapshots
+
+
+def test_snapshot_instant_sql():
+    """Snapshot directly compiled calc SQL for every supported dialect."""
+    assert SnapshotTest.render_sql_snapshot() == snapshot("""\
+-- === BIGQUERY ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP();
+
+-- === CLICKHOUSE ===
+CURRENT_DATE();
+toTimeZone(CURRENT_TIMESTAMP(), 'America/New_York');
+
+-- === DUCKDB ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP;
+
+-- === MSSQL ===
+CAST(GETDATE() AS DATE);
+GETDATE();
+
+-- === MYSQL ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP();
+
+-- === POSTGRES ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP;
+
+-- === REDSHIFT ===
+CURRENT_DATE;
+GETDATE();
+
+-- === SNOWFLAKE ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP();
+
+-- === SPARK ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP();
+
+-- === TRINO ===
+CURRENT_DATE;
+CURRENT_TIMESTAMP;
+""")

@@ -66,6 +66,9 @@ markers = [
   "integration: crosses a process or external-service boundary",
 ]
 
+[tool.inline-snapshot]
+format-command = "ruff format --stdin-filename {filename} -"
+
 [tool.coverage.run]
 branch = true
 omit = ["*/tests/*"]
