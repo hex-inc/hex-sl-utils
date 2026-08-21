@@ -40,21 +40,21 @@ class Model(BaseModel):
     )
 
     type: Literal["model"] = Field(
-        "model",
+        default="model",
         description=(
             "The type of this resource. `model` for data models, `view` for views."
         ),
     )
 
     base_sql_table: str | None = Field(
-        None,
+        default=None,
         description=(
             "A table or view in the data connection to use as the base for this model.\n"
             "One of `base_sql_query` or `base_sql_table` must be provided."
         ),
     )
     base_sql_query: str | None = Field(
-        None,
+        default=None,
         description=(
             "A SQL statement that produces a table to use as the base of this model.\n"
             "One of `base_sql_query` or `base_sql_table` must be provided."
@@ -100,12 +100,12 @@ class Model(BaseModel):
     )
 
     description: str = Field(
-        "",
+        default="",
         description="The user-facing description of this model.",
     )
 
     visibility: Visibility = Field(
-        Visibility.PUBLIC,
+        default=Visibility.PUBLIC,
         description="The visibility of this model.",
     )
 

@@ -45,7 +45,7 @@ class View(BaseModel):
     )
 
     type: Literal["view"] = Field(
-        "view",
+        default="view",
         description=(
             "The type of this resource. `model` for data models, `view` for views."
         ),
@@ -70,7 +70,7 @@ class View(BaseModel):
     )
 
     description: str = Field(
-        "",
+        default="",
         description="The user-facing description of this view.",
     )
 
@@ -89,7 +89,7 @@ class ViewContentsGroup(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     relation: str | None = Field(
-        None,
+        default=None,
         description=(
             "The relation path acting as a base for this content group.\n"
             "When omitted, references the base model."
@@ -97,7 +97,7 @@ class ViewContentsGroup(BaseModel):
     )
 
     name: str | None = Field(
-        None,
+        default=None,
         description=(
             "User-facing display name for this content group.\n"
             "If omitted, defaults to the name of the `relation` or `base`."
@@ -105,7 +105,7 @@ class ViewContentsGroup(BaseModel):
     )
 
     description: str | None = Field(
-        None,
+        default=None,
         description=(
             "User-facing description for this content group.\n"
             "If omitted, defaults to the description of the `relation` or `base`."
@@ -149,12 +149,12 @@ class ViewContentDimensionItem(BaseModel):
     )
 
     name: str | None = Field(
-        None,
+        default=None,
         description="Override the user-facing display name for this dimension.",
     )
 
     description: str | None = Field(
-        None,
+        default=None,
         description="Override the user-facing description for this dimension.",
     )
 
@@ -175,12 +175,12 @@ class ViewContentMeasureItem(BaseModel):
     )
 
     name: str | None = Field(
-        None,
+        default=None,
         description="Override the user-facing display name for this measure.",
     )
 
     description: str | None = Field(
-        None,
+        default=None,
         description="Override the user-facing description for this measure.",
     )
 

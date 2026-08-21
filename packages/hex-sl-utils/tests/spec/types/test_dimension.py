@@ -1,7 +1,15 @@
+from typing import assert_type
+
 import pytest
 from pydantic import ValidationError
 
-from hex_sl_utils.spec.types import Dimension
+from hex_sl_utils.spec.types import DataType, Dimension
+
+
+def test_dimension_without_optional_fields() -> None:
+    # should not fail pyright type checking
+    dimension = Dimension(id="order_id", type=DataType.STRING)
+    assert_type(dimension, Dimension)
 
 
 def test_dimension_rejects_conflicting_expressions() -> None:
