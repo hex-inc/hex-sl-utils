@@ -54,7 +54,7 @@ class Dimension(ScalarExpression):
         },
     )
 
-    id: EntityId = Field(  # pyright: ignore[reportGeneralTypeIssues] underlying `id` field is not meant for runtime
+    id: EntityId = Field(  # pyright: ignore[reportGeneralTypeIssues]
         ...,
         description=(
             "The unique identifier for this dimension.\n"

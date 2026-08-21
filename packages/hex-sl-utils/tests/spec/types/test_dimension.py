@@ -1,7 +1,6 @@
-from typing import assert_type
-
 import pytest
 from pydantic import ValidationError
+from typing_extensions import assert_type
 
 from hex_sl_utils.spec.types import DataType, Dimension
 
