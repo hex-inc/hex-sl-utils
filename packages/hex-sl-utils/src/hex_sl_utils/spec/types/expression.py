@@ -28,14 +28,14 @@ class ScalarExpression(BaseModel):
     # subclasses which affects serialization and JSON schema ordering. In this
     # base class, it is marked as 'Any' and skipped since it should not
     # actually be loaded into instances of the base class.
-    id: SkipJsonSchema[Any] = Field(None, exclude=True)
+    id: SkipJsonSchema[Any] = Field(default=None, exclude=True)
 
     type: DataType = Field(
         ..., description="The abstract data type of this expression."
     )
 
     expr_sql: str | None = Field(
-        None,
+        default=None,
         description=(
             "A sql select column expression that produces a scalar for each row. "
             "This is often a column name.\n"
@@ -45,7 +45,7 @@ class ScalarExpression(BaseModel):
     )
 
     expr_calc: str | None = Field(
-        None,
+        default=None,
         description=(
             "A [Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations)"
             " which produces a scalar for each row."

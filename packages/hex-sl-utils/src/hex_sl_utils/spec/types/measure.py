@@ -61,7 +61,7 @@ class Measure(BaseModel):
     )
 
     func: MeasureFuncName | None = Field(
-        None,
+        default=None,
         description=(
             "A standard aggregation function to use.\n"
             "One of `func`+`of`, `func_sql` or `func_calc` must be provided."
@@ -69,7 +69,7 @@ class Measure(BaseModel):
     )
 
     of: str | ScalarExpressionDefaultNumber | None = Field(
-        None,
+        default=None,
         description=(
             "Specifies the dimension over which the `func` aggregation is applied.\n"
             "This dimension can be specified as a referenced dimension ID, or "
@@ -79,7 +79,7 @@ class Measure(BaseModel):
     )
 
     func_sql: str | None = Field(
-        None,
+        default=None,
         description=(
             "An aggregating sql select expression that produces a scalar "
             "over a set of rows."
@@ -87,7 +87,7 @@ class Measure(BaseModel):
     )
 
     func_calc: str | None = Field(
-        None,
+        default=None,
         description=(
             "An aggregating "
             "[Hex calc formula](https://learn.hex.tech/docs/explore-data/cells/calculations) "
@@ -96,7 +96,7 @@ class Measure(BaseModel):
     )
 
     type: DataType = Field(
-        DataType.NUMBER,
+        default=DataType.NUMBER,
         description=(
             "The abstract data type of this measure.\nIf omitted, defaults to `number`."
         ),
@@ -168,17 +168,17 @@ class Measure(BaseModel):
     )
 
     description: str = Field(
-        "",
+        default="",
         description="The user-facing description of this measure.",
     )
 
     visibility: Visibility = Field(
-        Visibility.PUBLIC,
+        default=Visibility.PUBLIC,
         description="The visibility of this measure.",
     )
 
     semi_additive: SemiAdditive | None = Field(
-        None,
+        default=None,
         description=(
             "Semi-additive aggregation that selects specific rows before calculation.\n"
             "Filters to minimum or maximum values of the specified dimension, then "

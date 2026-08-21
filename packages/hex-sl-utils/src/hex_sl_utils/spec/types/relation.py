@@ -88,7 +88,7 @@ class Relation(BaseModel):
     )
 
     visibility: Visibility = Field(
-        Visibility.PUBLIC,
+        default=Visibility.PUBLIC,
         description="The visibility of this relation.",
     )
 

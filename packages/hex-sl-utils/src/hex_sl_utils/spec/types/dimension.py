@@ -54,7 +54,7 @@ class Dimension(ScalarExpression):
         },
     )
 
-    id: EntityId = Field(
+    id: EntityId = Field(  # pyright: ignore[reportGeneralTypeIssues]
         ...,
         description=(
             "The unique identifier for this dimension.\n"
@@ -80,7 +80,7 @@ class Dimension(ScalarExpression):
         return self
 
     unique: bool = Field(
-        False,
+        default=False,
         description=(
             "If true, this dimension is unique for all rows in this model.\n"
             "This dimension may be used in the construction of primary keys."
@@ -96,12 +96,12 @@ class Dimension(ScalarExpression):
     )
 
     description: str = Field(
-        "",
+        default="",
         description="The user-facing description of this dimension.",
     )
 
     visibility: Visibility = Field(
-        Visibility.PUBLIC,
+        default=Visibility.PUBLIC,
         description="The visibility of this dimension.",
     )
 
