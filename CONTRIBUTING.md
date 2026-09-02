@@ -262,7 +262,7 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
 
    Pull requests from `release/` branches also run the publishing workflow as a
    dry run. It validates that at least one package has a non-development
-   version, then checks, tests, builds, and smoke-tests the workspace without
+   version, then builds and smoke-tests the workspace without
    uploading or publishing artifacts.
 
 2. Merge the release pull request to `main`.
