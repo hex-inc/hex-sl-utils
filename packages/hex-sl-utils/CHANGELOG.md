@@ -4,6 +4,8 @@ Notable changes to `hex-sl-utils` are documented here.
 
 ## Unreleased
 
+## 0.2.0
+
 - Add utilities for parsing semantic references (`${...}`) in SQL strings
 - Add syntax and parsing/compilation utilities for the Hex calculation language
 - Fix type errors when omitting optional fields of spec models
