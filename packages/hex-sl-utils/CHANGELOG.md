@@ -4,6 +4,8 @@ Notable changes to `hex-sl-utils` are documented here.
 
 ## Unreleased
 
+- Prevent loading files from outside the project directory
+
 ## 0.2.0
 
 - Add utilities for parsing semantic references (`${...}`) in SQL strings

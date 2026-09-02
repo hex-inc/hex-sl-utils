@@ -25,36 +25,26 @@ def load_project(
     ctx = LoadContext()
     dialect = _load_dialect(dialect_name, ctx=ctx)
 
-    project_dir = Path(project_dir)
-    project_dir_is_valid = True
-    if not project_dir.exists():
-        project_dir_is_valid = False
-        ctx.report_problem(
-            severity="fatal",
-            message=f"Project directory does not exist: `{project_dir}`",
-            path=[],
-        )
-    elif not project_dir.is_dir():
-        project_dir_is_valid = False
-        ctx.report_problem(
-            severity="fatal",
-            message=f"Project path is not a directory: `{project_dir}`",
-            path=[],
-        )
-
+    resolved_project_dir = _resolve_project_dir(project_dir, ctx=ctx)
     loaded_resources: list[Resource] = []
     loaded_source_files: list[SourceFile] = []
 
-    for yml_file_path in get_all_yml_file_paths(project_dir):
-        relative_path = yml_file_path.relative_to(project_dir)
-        parse_result = parse_yml_file(
-            full_path=yml_file_path,
-            relative_path=relative_path,
-            ctx=ctx,
-        )
-        resources, source_file = parse_result
-        loaded_source_files.append(source_file)
-        loaded_resources.extend(resources)
+    if resolved_project_dir is not None:
+        require_model = True
+        for yml_file_path in get_all_yml_file_paths(resolved_project_dir):
+            relative_path = yml_file_path.relative_to(resolved_project_dir)
+            file_path = _resolve_file_path(yml_file_path, resolved_project_dir, ctx=ctx)
+            if file_path is None:
+                continue
+            resources, source_file = parse_yml_file(
+                full_path=file_path,
+                relative_path=relative_path,
+                ctx=ctx,
+            )
+            loaded_source_files.append(source_file)
+            loaded_resources.extend(resources)
+    else:
+        require_model = False
 
     return _finish_load(
         ctx=ctx,
@@ -62,7 +52,7 @@ def load_project(
         dialect=dialect,
         resources=loaded_resources,
         source_files=loaded_source_files,
-        require_model=project_dir_is_valid,
+        require_model=require_model,
     )
 
 
@@ -147,6 +137,55 @@ def get_all_yml_file_paths(base_dir: Path) -> list[Path]:
     yml_file_paths = list(base_dir.rglob("*.yml"))
     yml_file_paths.extend(base_dir.rglob("*.yaml"))
     return sorted(yml_file_paths)
+
+
+def _resolve_project_dir(project_dir: Path | str, *, ctx: LoadContext) -> Path | None:
+    project_dir = Path(project_dir)
+    if not project_dir.exists():
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Project directory does not exist: `{project_dir}`",
+            path=[],
+        )
+        return None
+    if not project_dir.is_dir():
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Project path is not a directory: `{project_dir}`",
+            path=[],
+        )
+        return None
+    try:
+        return project_dir.resolve()
+    except (OSError, ValueError) as e:
+        ctx.report_problem(
+            severity="fatal",
+            message=f"Failed to resolve project directory: {e}",
+            path=[],
+        )
+        return None
+
+
+def _resolve_file_path(
+    file_path: Path, project_dir: Path, *, ctx: LoadContext
+) -> Path | None:
+    try:
+        resolved_file_path = file_path.resolve()
+    except Exception as e:  # noqa: BLE001
+        ctx.report_problem(
+            severity="error",
+            message=f"Failed to resolve file path: {e}",
+            path=[str(file_path.relative_to(project_dir))],
+        )
+        return None
+    if not resolved_file_path.is_relative_to(project_dir):
+        ctx.report_problem(
+            severity="error",
+            message="File would be read from outside the project directory",
+            path=[str(file_path.relative_to(project_dir))],
+        )
+        return None
+    return resolved_file_path
 
 
 def parse_yml_file(
