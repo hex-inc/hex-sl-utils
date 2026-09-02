@@ -125,7 +125,7 @@ def placeholder_sql(generator: Generator, expression: exp.Placeholder) -> str:
             return f"{{{{{name}}}}}"
         elif mode in (PlaceholderStyle.NUMERIC, PlaceholderStyle.ASYNCPG):
             # These formats use placeholders with 1-based indices.
-            # When there are repititions, the indices should repeat,
+            # When there are repetitions, the indices should repeat,
             # But only one element per parameter should be added to the
             # order list
             if record_order:

@@ -1,10 +1,12 @@
-"""Extract semantic placeholder references from SQL strings."""
+"""Extract and rewrite semantic placeholder references in SQL expressions."""
 
 from __future__ import annotations
 
 import re
 import sys
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Optional
 
 if sys.version_info >= (3, 10):
     from typing import TypeAlias
@@ -13,8 +15,13 @@ else:
 
 from hex_sl_utils._vendor.sqlglot import exp, parse_one
 from hex_sl_utils._vendor.sqlglot.errors import ParseError, TokenError
+from hex_sl_utils.exception import UserFacingError
 from hex_sl_utils.expr.expr_substitution import replace_dialect_agnostic_quotes
-from hex_sl_utils.placeholder import PLACEHOLDER_KIND_SEMANTIC
+from hex_sl_utils.placeholder.placeholder_analysis import (
+    get_placeholder_name,
+    is_semantic_placeholder,
+    parse_placeholder_reference,
+)
 
 if TYPE_CHECKING:
     from hex_sl_utils.dialect import Dialect
@@ -92,7 +99,7 @@ def get_placeholder_references(
 
     for placeholder in parsed.find_all(exp.Placeholder):
         # Only process semantic placeholders (${...} style, not {{...}})
-        if placeholder.args.get("kind") != PLACEHOLDER_KIND_SEMANTIC:
+        if not is_semantic_placeholder(placeholder):
             continue
 
         name = str(placeholder.name)
@@ -163,3 +170,75 @@ def _get_placeholder_references_regex(
     re.sub(r"\$\{(?P<placeholder>[^}]+)\}", process_placeholder, sql_expression)
 
     return references
+
+
+@dataclass(frozen=True)
+class ReferenceRewriteResult:
+    """The rewritten SQL and any semantic references that were not resolved."""
+
+    sql: str
+    unresolved_references: tuple[tuple[str, str], ...] = ()
+
+
+ResolveReference: TypeAlias = Callable[[str, str], Optional[tuple[Optional[str], str]]]
+
+
+def rewrite_placeholder_references(
+    sql_expression: str,
+    *,
+    resource: str,
+    dialect: Dialect,
+    resolve: ResolveReference,
+    marker: str | None = None,
+) -> ReferenceRewriteResult:
+    """Rewrite Hex semantic placeholders as SQL column references.
+
+    Bare placeholders are resolved relative to ``resource``. The resolver maps
+    each authored ``(resource, item)`` pair to a destination ``(qualifier, item)``
+    pair. Returning ``None`` leaves that placeholder unresolved and records it in
+    the result.
+
+    The containing expression is parsed and rendered with ``dialect``. Reference
+    mapping itself is dialect-independent.
+
+    Args:
+        sql_expression: a SQL expression string
+        resolve: a function that resolves a placeholder reference to a SQL column reference
+        resource: a resource identifier to use for placeholders without a qualifier or with the configured marker.
+        dialect: a dialect to use for parsing
+        marker: an optional marker to use for placeholders with a qualifier
+
+    Returns:
+        A ReferenceRewriteResult containing the rewritten SQL and any unresolved references
+    """
+    sqlglot_dialect = dialect.sqlglot_dialect()
+    normalized_sql = replace_dialect_agnostic_quotes(sql_expression, dialect=dialect)
+    try:
+        parsed = parse_one(normalized_sql, dialect=sqlglot_dialect)
+    except (ParseError, TokenError) as error:
+        raise UserFacingError(f"Could not parse SQL expression: {error}") from error
+
+    unresolved: list[tuple[str, str]] = []
+
+    def rewrite(node: exp.Expression) -> exp.Expression:
+        if not isinstance(node, exp.Placeholder) or not is_semantic_placeholder(node):
+            return node
+
+        reference = parse_placeholder_reference(
+            get_placeholder_name(node),
+            resource=resource,
+            marker=marker,
+        )
+        replacement = resolve(*reference)
+        if replacement is None:
+            unresolved.append(reference)
+            return node
+
+        qualifier, item = replacement
+        return exp.column(item, table=qualifier)
+
+    rewritten = parsed.transform(rewrite)
+    return ReferenceRewriteResult(
+        sql=rewritten.sql(dialect=sqlglot_dialect),
+        unresolved_references=tuple(unresolved),
+    )

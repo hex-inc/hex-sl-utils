@@ -5,7 +5,12 @@ from .expr_inspection import (
     has_window_function,
 )
 from .expr_kind import ExpressionKind
-from .expr_references import QualifiedReference, get_placeholder_references
+from .expr_references import (
+    QualifiedReference,
+    ReferenceRewriteResult,
+    get_placeholder_references,
+    rewrite_placeholder_references,
+)
 from .select_expr import (
     SelectExpression,
     SelectExpressionTypes,
@@ -16,6 +21,7 @@ __all__ = [
     "ExpressionContext",
     "ExpressionKind",
     "QualifiedReference",
+    "ReferenceRewriteResult",
     "SelectExpression",
     "SelectExpressionTypes",
     "TypedSelectExpression",
@@ -23,4 +29,5 @@ __all__ = [
     "has_aggregate_function",
     "has_column_references",
     "has_window_function",
+    "rewrite_placeholder_references",
 ]
