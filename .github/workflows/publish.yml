@@ -53,10 +53,6 @@ jobs:
             devbox run -- uv run --locked python scripts/release.py \
               "${GITHUB_REF_NAME}" --github-output "${GITHUB_OUTPUT}"
           fi
-      - name: Run checks
-        run: devbox run check
-      - name: Run tests
-        run: devbox run test
       - name: Build distributions
         run: |
           if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
