@@ -271,8 +271,8 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
 3. Create an annotated tag at that merge commit and push it:
 
    ```bash
-   git tag -a hex-sl-utils-v0.1.0 -m "hex-sl-utils 0.1.0"
-   git push origin hex-sl-utils-v0.1.0
+   git tag -a hex-sl-utils-vX.Y.Z -m "hex-sl-utils X.Y.Z"
+   git push origin hex-sl-utils-vX.Y.Z
    ```
 
    A release pull request may prepare multiple packages. Create and push one tag
@@ -283,7 +283,7 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
    `PYPI_API_TOKEN` environment secret downloads and publishes those exact
    artifacts.
 5. Open a follow-up pull request setting the next development version, such as
-   `0.2.0.dev0`, and restore an empty `Unreleased` section.
+   `X.Y.Z.dev0`, and restore an empty `Unreleased` section.
 
 Published files are immutable. If publishing fails after any artifact reaches
 PyPI, fix the issue and release a new version; never move or reuse a release
