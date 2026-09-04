@@ -7,13 +7,13 @@ when HexSL introduced the mapping, so builds remain reproducible.
 Regenerate the mapping from the repository root:
 
 ```bash
-devbox run build:timezones
+just build-timezones
 ```
 
 Check that the committed artifact matches the pinned CLDR source:
 
 ```bash
-devbox run verify:timezones
+just verify-timezones
 ```
 
 Both commands require network access to the pinned Unicode CLDR source. To

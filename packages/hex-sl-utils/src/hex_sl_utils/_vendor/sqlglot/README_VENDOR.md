@@ -9,7 +9,7 @@ Original repository: <https://github.com/tobymao/sqlglot>
 Run the vendoring script:
 
 ```bash
-devbox run build:vendoring
+just build-vendoring
 ```
 
 This will download sqlglot and update all imports.
