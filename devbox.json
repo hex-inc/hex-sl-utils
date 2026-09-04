@@ -4,13 +4,13 @@
     "nodejs": "24",
     "jdk": "22",
     "libpq": "18.4",
-    "oxfmt": "0.59.0",
-    "oxlint": "1.75.0",
+    "oxfmt": "0.61.0",
+    "oxlint": "1.79.0",
     "python": {
       "version": "3.14",
       "disable_plugin": true
     },
-    "uv": "0.12.1",
+    "uv": "0.12.5",
     "just": "latest"
   },
   "env": {
