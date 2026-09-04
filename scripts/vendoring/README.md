@@ -38,7 +38,7 @@ To update a vendored library:
 2. Run the vendoring script:
 
    ```bash
-   devbox run build:vendoring
+   just build-vendoring
    ```
 
 3. Copy the upstream license to `VENDORED_LICENSES` at the root of the
@@ -48,7 +48,7 @@ To update a vendored library:
 4. Run tests to ensure everything works:
 
    ```bash
-   devbox run test
+   just test
    ```
 
 5. Commit the changes

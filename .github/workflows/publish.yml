@@ -43,7 +43,7 @@ jobs:
           devbox-version: ${{ env.DEVBOX_VERSION }}
           enable-cache: "true"
       - name: Sync workspace
-        run: devbox run setup
+        run: devbox run -- just setup
       - name: Validate release metadata
         id: release
         run: |
@@ -56,7 +56,7 @@ jobs:
       - name: Build distributions
         run: |
           if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
-            devbox run build
+            devbox run -- just build-packages
           else
             devbox run -- uv build --package "${{ steps.release.outputs.package }}" \
               --out-dir dist --no-sources
@@ -64,9 +64,9 @@ jobs:
       - name: Smoke-test distributions
         run: |
           if [[ "${RELEASE_DRY_RUN}" == "true" ]]; then
-            devbox run smoke-test
+            devbox run -- just smoke-test-packages
           else
-            devbox run smoke-test -- --package "${{ steps.release.outputs.package }}"
+            devbox run -- just smoke-test-packages --package "${{ steps.release.outputs.package }}"
           fi
       - name: Upload distributions
         if: github.event_name == 'push'

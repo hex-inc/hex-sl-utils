@@ -7,7 +7,7 @@ committed and distributed as package data by `hex-sl-utils`.
 From the repository root, generate the artifacts with:
 
 ```text
-devbox run build
+just build-schema
 ```
 
 This writes the JSON Schema and TypeScript declarations beneath
@@ -17,5 +17,5 @@ Regenerate the artifacts and check that the checked-in copies are current
 with:
 
 ```text
-devbox run verify:schema
+just verify-schema
 ```

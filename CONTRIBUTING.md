@@ -9,38 +9,40 @@ install each toolchain independently.
 Install [direnv][direnv] and configure its hook for your shell. Then authorize
 the repository environment and install the workspace dependencies:
 
+[Just][just] is the source of truth for workspace commands.
+
 ```bash
 direnv allow
-devbox run setup
+just setup
 ```
 
 - Run `direnv allow` again after `.envrc` changes.
-- Run `devbox run setup` again when dependency lockfiles change.
+- Run `just setup` again when dependency lockfiles change.
 
 Run the complete local CI workflow after setup:
 
 ```bash
-devbox run ci
+just ci
 ```
 
 ## Common commands
 
-Run workspace commands from the repository root. Devbox scripts are the public
+Run workspace commands from the repository root. Just recipes are the public
 interface for routine development tasks, regardless of which underlying
 toolchain they invoke.
 
 ```bash
-devbox run check       # lint, format-check, and type-check
-devbox run format      # apply automatic formatting and fixes
-devbox run test        # run all tests
-devbox run test-cov    # run tests and write coverage reports
-devbox run build       # build every publishable package, artifact
-devbox run smoke-test  # test package distributions in isolation
-devbox run verify      # check generated artifacts are up to date
-devbox run ci          # run (almost) all of the above
+just check       # lint, format-check, and type-check
+just format      # apply automatic formatting and fixes
+just test        # run all tests
+just test-cov    # run tests and write coverage reports
+just build       # build every publishable package, artifact
+just smoke-test  # test package distributions in isolation
+just verify      # check generated artifacts are up to date
+just ci          # run (almost) all of the above
 ```
 
-Add or update a Devbox script when a command is useful across the workspace.
+Add or update a Just recipe when a command is useful across the workspace.
 Keep narrowly scoped package or tool commands in that component's own
 documentation.
 
@@ -74,7 +76,7 @@ and avoid splitting one import namespace across multiple distributions.
   setup instructions.
 - Keep runtime dependencies with the package that imports them. Root dependency
   configuration is for shared development tooling only.
-- Add workspace-wide commands to `devbox.json`. Package-only commands belong
+- Add workspace-wide commands to `justfile`. Package-only commands belong
   with the package or tool that uses them.
 - Keep the default development environment lightweight. Optional integrations
   and external services should use dedicated dependency groups and CI jobs.
@@ -153,17 +155,17 @@ repository root:
 
 ```bash
 # all dialects
-devbox run test:database:local
+just test-database-local
 
 # specific dialect(s)
-devbox run test:database:local -- --dialect duckdb
+just test-database-local --dialect duckdb
 
 # manually start/stop local services
-devbox run database:local:up
-devbox run database:local:down
+just database-local-up
+just database-local-down
 
 # smoke test database connection / query execution
-devbox run database:local:smoke
+just database-local-smoke
 ```
 
 #### Cloud targets
@@ -176,10 +178,10 @@ credentials fails rather than skipping.
 
 ```bash
 # all dialects
-devbox run test:database:cloud
+just test-database-cloud
 
 # specific dialect(s)
-devbox run test:database:cloud -- --dialect bigquery
+just test-database-cloud --dialect bigquery
 ```
 
 ## Generated artifacts
@@ -198,7 +200,7 @@ or troubleshooting steps.
 Run the same aggregate workflow used for local validation:
 
 ```bash
-devbox run ci
+just ci
 ```
 
 The build command creates every publishable artifact. The smoke-test command
@@ -258,7 +260,7 @@ rejects any version for which PEP 440 reports `is_devrelease`. Tests in
    - moves each package's changes from `Unreleased` to that version in its
      `CHANGELOG.md`;
    - refreshes `uv.lock`; and
-   - passes `devbox run ci`.
+   - passes `just ci`.
 
    Pull requests from `release/` branches also run the publishing workflow as a
    dry run. It validates that at least one package has a non-development
@@ -289,6 +291,7 @@ tag.
 
 [devbox]: https://www.jetify.com/docs/devbox/
 [direnv]: https://direnv.net/docs/hook.html
+[just]: https://github.com/casey/just
 [uv-publish]: https://docs.astral.sh/uv/guides/integration/github/#publishing-to-pypi
 [uv-workspaces]: https://docs.astral.sh/uv/concepts/projects/workspaces/
 [pep-440]: https://packaging.python.org/en/latest/specifications/version-specifiers/

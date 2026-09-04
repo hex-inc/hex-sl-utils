@@ -25,19 +25,19 @@ jobs:
           devbox-version: ${{ env.DEVBOX_VERSION }}
           enable-cache: "true"
       - name: Sync workspace
-        run: devbox run setup
+        run: devbox run -- just setup
       - name: Check packages
-        run: devbox run check
+        run: devbox run -- just check
       - name: Run package tests
-        run: devbox run test:packages
+        run: devbox run -- just test-packages
       - name: Run workspace tests
-        run: devbox run test:workspace
+        run: devbox run -- just test-workspace
       - name: Check generated artifacts
-        run: devbox run verify
+        run: devbox run -- just verify-artifacts
       - name: Build package distributions
-        run: devbox run build
+        run: devbox run -- just build-packages
       - name: Smoke-test package distributions
-        run: devbox run smoke-test
+        run: devbox run -- just smoke-test-packages
 
   # Devbox pins Python 3.14 and does not support Windows runners; keep the
   # compatibility matrix on uv's selected interpreter instead.

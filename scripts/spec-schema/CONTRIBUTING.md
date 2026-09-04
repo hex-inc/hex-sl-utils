@@ -9,7 +9,7 @@ configuration pins all four tools.
 From the repository root:
 
 ```shell
-devbox run setup
+just setup
 devbox shell
 ```
 
@@ -18,11 +18,11 @@ workspace dependencies.
 
 ## Generate and check artifacts
 
-Run the workspace Devbox scripts from the repository root:
+Run the workspace Just recipes from the repository root:
 
 ```shell
-devbox run build:schema
-devbox run verify:schema
+just build-schema
+just verify-schema
 ```
 
 `build:schema` builds the Python distributions, then runs
@@ -47,8 +47,8 @@ Run the workspace checks after changing the generator or its TypeScript
 transforms:
 
 ```shell
-devbox run verify:schema
-devbox run format
+just verify-schema
+just format
 ```
 
 To invoke only the TypeScript stage while iterating on its transforms, first
@@ -83,5 +83,5 @@ Devbox environment as well.
 Verify the schema artifact matches regeneration.
 
 ```shell
-devbox run verify:schema
+just verify-schema
 ```

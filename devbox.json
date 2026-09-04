@@ -10,101 +10,12 @@
       "version": "3.14",
       "disable_plugin": true
     },
-    "uv": "0.12.1"
+    "uv": "0.12.1",
+    "just": "latest"
   },
   "env": {
     "DEVBOX_COREPACK_ENABLED": "true",
     "UV_PYTHON_DOWNLOADS": "never",
     "UV_PYTHON_PREFERENCE": "only-system"
-  },
-  "shell": {
-    "scripts": {
-      "setup": ["uv sync --locked --all-packages", "pnpm install --frozen-lockfile"],
-      "check": [
-        "uv run --locked --all-packages ruff check .",
-        "uv run --locked --all-packages ruff format --check .",
-        "uv run --locked --all-packages pyright",
-        "uv run --locked --all-packages rumdl check .",
-        "uv run --locked --all-packages rumdl fmt --check .",
-        "pnpm --recursive --if-present run check",
-        "oxlint . --deny-warnings --no-error-on-unmatched-pattern",
-        "oxfmt --check --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
-      ],
-      "format": [
-        "uv run --locked --all-packages ruff check --fix .",
-        "uv run --locked --all-packages ruff format .",
-        "uv run --locked --all-packages rumdl fmt .",
-        "oxlint . --fix --deny-warnings --no-error-on-unmatched-pattern",
-        "oxfmt --write --no-error-on-unmatched-pattern '**/*.{ts,tsx,mts,cts,json,jsonc}'"
-      ],
-      "test": [
-        "devbox run test:packages",
-        "devbox run test:workspace",
-        "devbox run test:database:local",
-        "devbox run test:database:cloud"
-      ],
-      "test:packages": ["uv run --locked --all-packages pytest packages -m 'not database'"],
-      "test:workspace": ["uv run --locked --all-packages pytest tests -m 'not database'"],
-      "test-cov": [
-        "uv run --locked --all-packages pytest packages tests -m 'not database' --cov=packages --cov-report=term-missing --cov-report=xml"
-      ],
-      "build": ["uv build --all-packages --no-sources"],
-      "verify": [
-        "devbox run verify:schema",
-        "devbox run verify:timezones",
-        "devbox run verify:vendoring",
-        "devbox run verify:calc-parser"
-      ],
-      "smoke-test": ["uv run --locked --all-packages python scripts/smoke_test_packages.py \"$@\""],
-      "ci": [
-        "devbox run check",
-        "devbox run test",
-        "devbox run verify",
-        "devbox run build",
-        "devbox run smoke-test"
-      ],
-      "build:schema": [
-        "uv run --locked --all-packages python scripts/spec-schema/generate_schema.py"
-      ],
-      "verify:schema": [
-        "uv run --locked --all-packages python scripts/spec-schema/check_generated_schema.py"
-      ],
-      "build:timezones": [
-        "uv run --locked --all-packages python scripts/timezones/generate_iana_to_windows.py"
-      ],
-      "verify:timezones": [
-        "uv run --locked --all-packages python scripts/timezones/generate_iana_to_windows.py --check"
-      ],
-      "build:vendoring": [
-        "uv run --locked --all-packages python scripts/vendoring/vendor_sqlglot.py"
-      ],
-      "verify:vendoring": [
-        "uv run --locked --all-packages python scripts/vendoring/check_vendored_sqlglot.py"
-      ],
-      "build:calc-parser": [
-        "uv run --locked --all-packages python scripts/calc-parser/generate_standalone_parser.py"
-      ],
-      "verify:calc-parser": [
-        "uv run --locked --all-packages python scripts/calc-parser/check_standalone_parser.py"
-      ],
-      "check:database": ["devbox run check:database:local", "devbox run check:database:cloud"],
-      "check:database:local": [
-        "uv run --locked --all-packages --group database-local pyright --project pyrightconfig.database.local.json"
-      ],
-      "check:database:cloud": [
-        "uv run --locked --all-packages --group database-cloud pyright --project pyrightconfig.database.cloud.json"
-      ],
-      "test:database": ["devbox run test:database:local", "devbox run test:database:cloud"],
-      "test:database:local": ["bash scripts/database/run_local_tests.sh \"$@\""],
-      "test:database:cloud": ["bash scripts/database/run_cloud_tests.sh \"$@\""],
-      "database:local:up": [
-        "docker compose down --volumes --remove-orphans",
-        "docker compose up --build --wait -d"
-      ],
-      "database:local:down": ["docker compose down --volumes --remove-orphans"],
-      "database:local:smoke": [
-        "bash scripts/database/run_local_tests.sh -k connection_smoke \"$@\""
-      ]
-    }
   }
 }
