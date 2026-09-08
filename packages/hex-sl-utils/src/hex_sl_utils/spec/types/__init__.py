@@ -7,11 +7,6 @@ from .entity_id import (
     EntityId,
     id_to_name,
 )
-from .expression import (
-    ScalarExpression,
-    ScalarExpressionDefaultBoolean,
-    ScalarExpressionDefaultNumber,
-)
 from .loaded_project import LoadedProject
 from .measure import Measure, MeasureFuncName, SemiAdditive, SemiAdditiveOverMember
 from .model import Model
@@ -19,6 +14,11 @@ from .problems import KeyPath, Problem, ProblemSeverity
 from .project import Project
 from .relation import Relation, RelationType
 from .resource import DEFAULT_RESOURCE_TYPE, Resource, parse_resource
+from .scalar_expression import (
+    ScalarExpression,
+    ScalarExpressionDefaultBoolean,
+    ScalarExpressionDefaultNumber,
+)
 from .source_file import SourceFile, SourceFileResource
 from .view import (
     View,

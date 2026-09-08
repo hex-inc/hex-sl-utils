@@ -12,7 +12,7 @@ from typing_extensions import Self
 
 from .common import DataType, Visibility
 from .entity_id import EntityId, name_from_id_default_factory
-from .expression import ScalarExpression
+from .scalar_expression import ScalarExpression
 
 if TYPE_CHECKING:
     from ._context import RecoveryContext
