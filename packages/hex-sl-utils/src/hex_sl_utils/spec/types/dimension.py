@@ -2,13 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from pydantic import (
-    ConfigDict,
-    Field,
-    model_validator,
-)
-from pydantic_core import PydanticCustomError
-from typing_extensions import Self
+from pydantic import ConfigDict, Field
 
 from .common import DataType, Visibility
 from .entity_id import EntityId, name_from_id_default_factory
@@ -66,18 +60,6 @@ class Dimension(ScalarExpression):
 
     # redeclared to update the description to say `dimension` instead of `expression`
     type: DataType = Field(..., description="The abstract data type of this dimension.")
-
-    @model_validator(mode="after")
-    def _expr_validator(self) -> Self:
-        if self.expr_sql and self.expr_calc:
-            raise PydanticCustomError(
-                "custom.extra_forbidden",
-                "Only one of `expr_sql` or `expr_calc` can be provided",
-                {"conflict_keys": ["expr_sql", "expr_calc"]},
-            )
-        elif not self.expr_sql and not self.expr_calc:
-            self.expr_sql = self.id
-        return self
 
     unique: bool = Field(
         default=False,
