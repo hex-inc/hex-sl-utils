@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.exception import UserFacingError
+from hex_sl_utils.placeholder import PLACEHOLDER_KIND_SEMANTIC
 
 
 def get_placeholder_name(placeholder: exp.Placeholder) -> str:
@@ -24,7 +25,7 @@ def get_placeholder_name(placeholder: exp.Placeholder) -> str:
 
 def is_semantic_placeholder(placeholder: exp.Placeholder) -> bool:
     """Check if a placeholder is a semantic placeholder (${...} style)."""
-    return placeholder.args.get("kind") == "semantic"
+    return placeholder.args.get("kind") == PLACEHOLDER_KIND_SEMANTIC
 
 
 def get_semantic_placeholders(expr: exp.Expression) -> list[exp.Placeholder]:

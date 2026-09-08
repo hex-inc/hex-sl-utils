@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from hex_sl_utils.dialect import Dialect
-from hex_sl_utils.expr import get_placeholder_references
+from hex_sl_utils.exception import UserFacingError
+from hex_sl_utils.expr import (
+    ReferenceRewriteResult,
+    get_placeholder_references,
+    rewrite_placeholder_references,
+)
 
 
 @pytest.fixture
@@ -197,3 +202,55 @@ def test_get_placeholder_references_all_dialects(dialect_name: str) -> None:
             marker="ABC",
         )
     ) == {("my_resource", "col1"), ("other", "col2")}
+
+
+def test_rewrite_placeholder_references(dialect: Dialect) -> None:
+    replacements = {
+        ("orders", "amount"): ("orders", "amount"),
+        ("buyer", "tax"): ("customers", "tax"),
+    }
+
+    result = rewrite_placeholder_references(
+        "${amount} + ${buyer.tax}",
+        resource="orders",
+        dialect=dialect,
+        resolve=lambda resource, item: replacements.get((resource, item)),
+    )
+
+    assert result == ReferenceRewriteResult(
+        sql="orders.amount + customers.tax",
+    )
+
+
+def test_rewrite_placeholder_references_reports_unresolved_and_ignores_other_text(
+    dialect: Dialect,
+) -> None:
+    result = rewrite_placeholder_references(
+        "COALESCE('${literal}', ${amount}, ${missing}, {{fallback}}) "
+        "/* ${commented} */",
+        resource="orders",
+        dialect=dialect,
+        resolve=lambda resource, item: (
+            ("orders", "amount") if (resource, item) == ("orders", "amount") else None
+        ),
+    )
+
+    assert result == ReferenceRewriteResult(
+        sql=(
+            "COALESCE('${literal}', orders.amount, ${missing}, {{fallback}}) "
+            "/* ${commented} */"
+        ),
+        unresolved_references=(("orders", "missing"),),
+    )
+
+
+def test_rewrite_placeholder_references_rejects_unparseable_sql(
+    dialect: Dialect,
+) -> None:
+    with pytest.raises(UserFacingError, match="Could not parse SQL expression"):
+        rewrite_placeholder_references(
+            "${amount} +",
+            resource="orders",
+            dialect=dialect,
+            resolve=lambda resource, item: (resource, item),
+        )
