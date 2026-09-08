@@ -1,3 +1,4 @@
+from .aggregate_expression import AggregateExpression, AggregateFuncName
 from .common import DataType, Dialect, DialectName, Visibility
 from .dimension import Dimension
 from .entity_id import (
@@ -8,7 +9,7 @@ from .entity_id import (
     id_to_name,
 )
 from .loaded_project import LoadedProject
-from .measure import Measure, MeasureFuncName, SemiAdditive, SemiAdditiveOverMember
+from .measure import Measure, SemiAdditive, SemiAdditiveOverMember
 from .model import Model
 from .problems import KeyPath, Problem, ProblemSeverity
 from .project import Project
@@ -34,6 +35,8 @@ __all__ = [
     "ID_PATTERN",
     "RESERVED_IDS",
     "RESERVED_ID_PREFIX",
+    "AggregateExpression",
+    "AggregateFuncName",
     "DataType",
     "Dialect",
     "DialectName",
@@ -42,7 +45,6 @@ __all__ = [
     "KeyPath",
     "LoadedProject",
     "Measure",
-    "MeasureFuncName",
     "Model",
     "Problem",
     "ProblemSeverity",

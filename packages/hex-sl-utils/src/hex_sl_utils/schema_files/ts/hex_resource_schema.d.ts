@@ -51,7 +51,7 @@ export type Visibility = "public" | "private" | "internal";
 /**
  * An aggregation function.
  */
-export type MeasureFuncName =
+export type AggregateFuncName =
   | "count"
   | "count_distinct"
   | "sum"
@@ -188,21 +188,21 @@ export interface Dimension {
  */
 export interface Measure {
   id: EntityId;
+  type?: DataType;
   /**
    * A standard aggregation function to use.
    * One of `func`+`of`, `func_sql` or `func_calc` must be provided.
    */
-  func?: MeasureFuncName | null;
+  func?: AggregateFuncName | null;
   of?: Of;
-  func_sql?: FuncSql;
-  func_calc?: FuncCalc;
-  type?: DataType;
   /**
    * A list of boolean dimensions which must be true for a row to be included in the measure's aggregation.
    * Only supported for `func` measures.
    * These dimensions can be specified as a referenced dimension ID, or an inline dimension. If `type` is unspecified in an inline dimension, it is assumed to be `boolean`.
    */
   filters?: (string | ScalarExpressionDefaultBoolean)[];
+  func_sql?: FuncSql;
+  func_calc?: FuncCalc;
   /**
    * The user-facing display name for this measure.
    * If omitted, defaults to the sentence-case value of `id`.
