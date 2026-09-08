@@ -24,9 +24,43 @@ DialectName = Literal[
     "spark",
     "starburst",
 ]
+"""Dialect name (case-insensitive, may include aliases)"""
 
-# Canonical dialect names (after alias resolution)
-SUPPORTED_DIALECTS: frozenset[str] = frozenset(
+DIALECT_NAMES: list[DialectName] = [
+    "athena",
+    "alloydb",
+    "bigquery",
+    "clickhouse",
+    "databricks",
+    "duckdb",
+    "motherduck",
+    "mssql",
+    "tsql",
+    "mysql",
+    "prestodb",
+    "postgres",
+    "redshift",
+    "snowflake",
+    "trino",
+    "spark",
+    "starburst",
+]
+
+CanonicalDialectName = Literal[
+    "bigquery",
+    "clickhouse",
+    "duckdb",
+    "mssql",
+    "mysql",
+    "postgres",
+    "redshift",
+    "snowflake",
+    "spark",
+    "trino",
+]
+"""Canonical dialect name (after alias resolution)"""
+
+SUPPORTED_DIALECTS = frozenset[CanonicalDialectName](
     [
         "bigquery",
         "clickhouse",
@@ -42,7 +76,7 @@ SUPPORTED_DIALECTS: frozenset[str] = frozenset(
 )
 
 # Mapping from dialect aliases to canonical names
-DIALECT_ALIASES: dict[str, str] = {
+DIALECT_ALIASES: dict[str, CanonicalDialectName] = {
     "athena": "trino",
     "starburst": "trino",
     "prestodb": "trino",
