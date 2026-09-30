@@ -2,14 +2,18 @@
 
 set -eu
 
-REPO_URL="https://github.com/hex-inc/apache-ossie.git"
-REF="ossie-hex-preview"
+# Full commits only. The same Hex commit supplies the converter and utilities.
+# Overrides support testing candidate commits and local Git clones.
+OSSIE_REPO_URL="${OSSIE_PREVIEW_OSSIE_REPO_URL:-https://github.com/hex-inc/apache-ossie.git}"
+OSSIE_REV="${OSSIE_PREVIEW_OSSIE_REV:-8b1b894c90b57d9727ee8153893ec7fd35124959}"
+HEX_REPO_URL="${OSSIE_PREVIEW_HEX_REPO_URL:-https://github.com/hex-inc/hex-sl-utils.git}"
+HEX_REV="${OSSIE_PREVIEW_HEX_REV:-368a7710c6d1fb9ee4127caa7f7eeedba1113e83}"
 COMMAND="${1:-install}"
 DATA_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}"
 PREVIEW_ROOT="${DATA_HOME}/ossie-preview"
 PREVIEW_TOOL_DIR="${PREVIEW_ROOT}/tools"
 PREVIEW_BIN_DIR="${PREVIEW_ROOT}/bin"
-EXECUTABLES="ossie-hex ossie-databricks ossie-dbt honeydew-osi ossie-nvidia-gsf osi-omni ossie-orionbelt ossie-wisdom"
+EXECUTABLES="ossie-hex ossie-databricks ossie-dbt ossie-honeydew ossie-nvidia-gsf ossie-omni ossie-orionbelt ossie-wisdom"
 DISPATCHER_MARKER="# Managed by the Ossie preview installer."
 
 usage() {
@@ -35,24 +39,43 @@ run_uv() {
     uv "$@"
 }
 
-install_suite() {
-  git_source="git+${REPO_URL}@${REF}"
+require_commit() {
+  pin_name="$1"
+  pin_value="$2"
+  case "${pin_value}" in
+    *[!0-9a-f]* | "")
+      printf "Error: %s must be a full lowercase Git commit SHA.\n" "${pin_name}" >&2
+      exit 1
+      ;;
+  esac
+  if [ "${#pin_value}" -ne 40 ]; then
+    printf "Error: %s must be a full lowercase Git commit SHA.\n" "${pin_name}" >&2
+    exit 1
+  fi
+}
 
-  printf "Installing preview of Ossie converter suite from '%s'...\n" "${REF}"
+install_suite() {
+  require_commit OSSIE_REV "${OSSIE_REV}"
+  require_commit HEX_REV "${HEX_REV}"
+  ossie_source="git+${OSSIE_REPO_URL}@${OSSIE_REV}"
+  hex_source="git+${HEX_REPO_URL}@${HEX_REV}"
+
+  printf "Installing preview: Hex %s, Ossie %s...\n" "${HEX_REV}" "${OSSIE_REV}"
 
   run_uv tool install \
     --quiet \
     --reinstall \
     --python 3.12 \
-    --with "apache-ossie @ ${git_source}#subdirectory=python" \
-    --with-executables-from "apache-ossie-databricks @ ${git_source}#subdirectory=converters/databricks" \
-    --with-executables-from "apache-ossie-dbt @ ${git_source}#subdirectory=converters/dbt" \
-    --with-executables-from "honeydew-osi @ ${git_source}#subdirectory=converters/honeydew" \
-    --with-executables-from "apache-ossie-nvidia-gsf @ ${git_source}#subdirectory=converters/nvidia" \
-    --with-executables-from "osi-omni @ ${git_source}#subdirectory=converters/omni" \
-    --with-executables-from "apache-ossie-orionbelt @ ${git_source}#subdirectory=converters/orionbelt" \
-    --with-executables-from "apache-ossie-wisdom @ ${git_source}#subdirectory=converters/wisdom" \
-    "ossie-hex @ ${git_source}#subdirectory=converters/hex"
+    --with "apache-ossie @ ${ossie_source}#subdirectory=python" \
+    --with "hex-sl-utils @ ${hex_source}#subdirectory=packages/hex-sl-utils" \
+    --with-executables-from "apache-ossie-databricks @ ${ossie_source}#subdirectory=converters/databricks/python" \
+    --with-executables-from "apache-ossie-dbt @ ${ossie_source}#subdirectory=converters/dbt" \
+    --with-executables-from "apache-ossie-honeydew @ ${ossie_source}#subdirectory=converters/honeydew" \
+    --with-executables-from "apache-ossie-nvidia-gsf @ ${ossie_source}#subdirectory=converters/nvidia" \
+    --with-executables-from "ossie-omni @ ${ossie_source}#subdirectory=converters/omni" \
+    --with-executables-from "apache-ossie-orionbelt @ ${ossie_source}#subdirectory=converters/orionbelt" \
+    --with-executables-from "apache-ossie-wisdom @ ${ossie_source}#subdirectory=converters/wisdom" \
+    "ossie-hex @ ${hex_source}#subdirectory=packages/ossie-hex"
 
   for executable in ${EXECUTABLES}; do
     "${PREVIEW_BIN_DIR}/${executable}" --help >/dev/null
@@ -128,9 +151,9 @@ case "${converter}" in
   hex) executable="ossie-hex" ;;
   databricks) executable="ossie-databricks" ;;
   dbt) executable="ossie-dbt" ;;
-  honeydew) executable="honeydew-osi" ;;
+  honeydew) executable="ossie-honeydew" ;;
   nvidia) executable="ossie-nvidia-gsf" ;;
-  omni) executable="osi-omni" ;;
+  omni) executable="ossie-omni" ;;
   orionbelt) executable="ossie-orionbelt" ;;
   wisdom) executable="ossie-wisdom" ;;
   *)

@@ -59,7 +59,7 @@ members = ["packages/*"]
 [tool.pytest.ini_options]
 addopts = ["--strict-config", "--strict-markers"]
 pythonpath = ["."]
-testpaths = ["packages", "tests"]
+testpaths = ["packages", "scripts", "tests"]
 markers = [
   "database: requires a database service or database-specific client",
   "database_cloud: requires a credentialed cloud warehouse",

@@ -116,6 +116,9 @@ test-workspace: test-python-workspace
 test-python-workspace:
     uv run --locked --all-packages pytest tests -m 'not database'
 
+test-scripts:
+    uv run --locked --all-packages pytest scripts
+
 # ---
 # Test Coverage
 test-cov: test-cov-python

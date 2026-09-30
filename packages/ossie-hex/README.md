@@ -35,8 +35,8 @@ converter suite and its Ossie dependency. The installed command is
 `ossie-preview hex`; the examples below use the underlying `ossie-hex` command,
 which is also available through `uv run --package ossie-hex` in this workspace.
 
-Requires Python 3.11 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for
-workspace development and the workflow for exporting changes to Apache.
+Requires Python 3.11 or newer. See the
+[workspace contributing guide](../../CONTRIBUTING.md) for development setup.
 
 ## Usage
 
