@@ -124,9 +124,9 @@ The stage of processing that the problem occurred in.
           validating data from the file system into memory.
 
 - `convert`: The problem occurred during the conversion phase: transforming
-             representation from the source specification into the target 
+             representation from the source specification into the target
              specification.
 
-- `dump`: The problem occurred during the dumping phase: serializing and writing 
+- `dump`: The problem occurred during the dumping phase: serializing and writing
           data in-memory to the file system.
 """

@@ -37,6 +37,7 @@ authors = [{ name = "Apache Software Foundation", email = "dev@ossie.apache.org"
 requires-python = ">=3.11"
 readme = "README.md"
 license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
 keywords = [
     "Apache Ossie",
     "Ossie",
@@ -56,7 +57,7 @@ ossie-hex = "ossie_hex.cli:main"
 
 [project.urls]
 homepage = "https://ossie.apache.org/"
-repository = "https://github.com/apache/ossie/"
+repository = "https://github.com/hex-inc/hex-sl-utils/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ossie_hex"]
@@ -80,13 +81,23 @@ flavor = "gfm"
 [tool.rumdl.MD013]
 reflow = true
 
+[tool.rumdl.per-file-ignores]
+# Preserve the upstream guide, including links into the Apache repository.
+"**/CONTRIBUTING.md" = ["MD057"]
+
 [tool.ty.environment]
 python-version = "3.11"
 
 [tool.ty.src]
 include = ["src", "tests"]
 
-# apache-ossie is not yet published to PyPI; resolve it from the in-repo
-# package for now. Remove this block once apache-ossie is published to PyPI.
+# Development sources; the installer supplies Git dependencies explicitly.
 [tool.uv.sources]
-apache-ossie = { path = "../../python", editable = true }
+apache-ossie = { git = "https://github.com/hex-inc/apache-ossie.git", rev = "8b1b894c90b57d9727ee8153893ec7fd35124959", subdirectory = "python" }
+hex-sl-utils = { workspace = true }
+
+[tool.release]
+publish = false
+
+[tool.smoke-test]
+python-versions = ["3.11", "3.14"]

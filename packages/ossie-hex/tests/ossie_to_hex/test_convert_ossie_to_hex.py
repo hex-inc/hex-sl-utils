@@ -22,7 +22,7 @@ from inline_snapshot import snapshot
 from ossie_hex.ossie_to_hex.convert_ossie_to_hex import convert_ossie_to_hex
 from tests.utils import hex_project_snapshot, problems_snapshot
 
-TPCDS = Path(__file__).resolve().parents[4] / "examples" / "tpcds_semantic_model.yaml"
+TPCDS = Path(__file__).resolve().parents[1] / "fixtures" / "tpcds_semantic_model.yaml"
 
 
 def test_convert_tpcds() -> None:

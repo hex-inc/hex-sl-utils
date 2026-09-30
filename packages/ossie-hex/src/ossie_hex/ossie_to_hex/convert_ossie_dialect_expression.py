@@ -26,7 +26,7 @@ from .context import ExportContext
 from .load_ossie_dialect_expression import parse_ossie_dialect_expression
 
 OssieRefResolver = Callable[[str, str], tuple[str | None, str]]
-"""A function that resolves components of an Ossie field expression (i.e. 
+"""A function that resolves components of an Ossie field expression (i.e.
 reference) to components of a Hex semantic reference.
 
 In this case, only qualified field expressions (e.g. `dataset.field`) are supported.

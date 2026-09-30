@@ -32,5 +32,5 @@ python_versions=(3.11 3.12 3.13 3.14)
 uv python install "${python_versions[@]}"
 
 for python_version in "${python_versions[@]}"; do
-  uv run --isolated --python "${python_version}" pytest "$@"
+  uv run --locked --isolated --python "${python_version}" pytest "$@"
 done

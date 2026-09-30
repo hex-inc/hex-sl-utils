@@ -7,6 +7,8 @@ integrations.
 
 - [`hex-sl-utils`](packages/hex-sl-utils/README.md): Python models and loaders
   for Hex semantic resources.
+- [`ossie-hex`](packages/ossie-hex/README.md): Apache Ossie converter for the
+  Hex semantic layer format.
 
 For workspace setup, development commands, package structure, and the release
 process, see [CONTRIBUTING.md](CONTRIBUTING.md). Package-specific documentation

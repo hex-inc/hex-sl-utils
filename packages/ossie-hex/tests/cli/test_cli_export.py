@@ -24,7 +24,7 @@ from ossie_hex.cli import main
 from ossie_hex.cli.report import format_export_report
 from ossie_hex.util.problem import Problem
 
-TPCDS = Path(__file__).resolve().parents[4] / "examples" / "tpcds_semantic_model.yaml"
+TPCDS = Path(__file__).resolve().parents[1] / "fixtures" / "tpcds_semantic_model.yaml"
 
 
 def test_error_report_is_failed() -> None:
@@ -191,7 +191,10 @@ def test_invalid_dialect(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> 
 
     assert exc.value.code == 2
     message = capsys.readouterr().err
+    # argparse changed choice quoting between supported Python versions.
+    prefix, choices = message.split("(choose from ", 1)
+    message = prefix + "(choose from " + choices.replace("'", "")
     assert message == snapshot("""\
 usage: ossie-hex export [-h] -i INPUT [-o OUTPUT] [-d DIALECT] [-v]
-ossie-hex export: error: argument -d/--dialect: invalid choice: 'invalid' (choose from 'ansi_sql', 'snowflake', 'mdx', 'maql', 'tableau', 'databricks', 'bigquery', 'sigma', 'thoughtspot', 'dax', 'ossie_sql_2026')
+ossie-hex export: error: argument -d/--dialect: invalid choice: 'invalid' (choose from ansi_sql, snowflake, mdx, maql, tableau, databricks, bigquery, sigma, thoughtspot, dax, ossie_sql_2026)
 """)

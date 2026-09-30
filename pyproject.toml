@@ -2,7 +2,7 @@
 name = "hex-sl-utils-workspace"
 version = "0.0.0"
 description = "Development workspace for Hex semantic-layer utility packages"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = []
 license = "Apache-2.0"
 license-files = ["LICENSE", "VENDORED_LICENSES"]
@@ -22,6 +22,7 @@ dev = [
   "ruff>=0.16.3",
   "rumdl>=0.2.58",
   "pytz>=2025.2",
+  "ty>=0.0.77",
 ]
 database-local = [
   "clickhouse-connect>=0.7",
@@ -87,6 +88,7 @@ exclude = [
   "**/_vendor",
   "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
   "packages/hex-sl-utils/tests/database",
+  "packages/ossie-hex", # Checked with ty using the converter configuration.
 ]
 ignore = ["packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py"]
 pythonVersion = "3.14"
@@ -128,3 +130,7 @@ flavor = "gfm"
 
 [tool.rumdl.MD013]
 reflow = true
+
+[tool.rumdl.per-file-ignores]
+# The converter guide is preserved from Apache and links into that repository.
+"packages/ossie-hex/CONTRIBUTING.md" = ["MD057"]

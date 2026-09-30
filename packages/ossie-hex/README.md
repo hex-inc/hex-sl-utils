@@ -28,17 +28,15 @@ Bidirectional, offline conversion between
 
 ## Installation
 
-This converter is distributed as a Python package. Install it with `uv` or
-`pip`:
+This is Hex's development copy of the Apache Ossie converter. It is installed
+from pinned Git commits and is **not published to PyPI from this repository**.
+Use the [preview installer](../../scripts/ossie-hex/README.md) to install the
+converter suite and its Ossie dependency. The installed command is
+`ossie-preview hex`; the examples below use the underlying `ossie-hex` command,
+which is also available through `uv run --package ossie-hex` in this workspace.
 
-```bash
-uv tool install ossie-hex
-
-# Alternatively
-pip install ossie-hex
-```
-
-Requires Python 3.11 or newer.
+Requires Python 3.11 or newer. See [CONTRIBUTING.md](CONTRIBUTING.md) for
+workspace development and the workflow for exporting changes to Apache.
 
 ## Usage
 

@@ -21,8 +21,8 @@ HexSql = Annotated[
     str,
     """A SQL expression in the context of a Hex entity.
 
-    Possibly contains Hex semantic references. 
-    
+    Possibly contains Hex semantic references.
+
     Dimension `expr_sql` examples:
         - local logical, unqualified: `${dimension}`
         - foreign logical, qualified: `${relation.dimension}`
