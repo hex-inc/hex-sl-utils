@@ -56,7 +56,7 @@ def test_tpcds(tmp_path: Path) -> None:
 
     assert code == 0
     output_paths = sorted(
-        str(p.relative_to(tmp_path)) for p in output_dir.rglob("*.yml")
+        p.relative_to(tmp_path).as_posix() for p in output_dir.rglob("*.yml")
     )
     assert output_paths == snapshot(
         [
@@ -76,7 +76,9 @@ def test_missing_output(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None
     code = main(["export", "-i", str(TPCDS)])
 
     assert code == 0
-    output_paths = sorted(str(p.relative_to(tmp_path)) for p in tmp_path.rglob("*.yml"))
+    output_paths = sorted(
+        p.relative_to(tmp_path).as_posix() for p in tmp_path.rglob("*.yml")
+    )
     assert output_paths == snapshot(
         [
             "tpcds_retail_model/customer.yml",
@@ -102,6 +104,7 @@ def test_default_dialect(capsys: pytest.CaptureFixture[str], tmp_path: Path) -> 
         capsys.readouterr()
         .err.replace(str(output_dir), "OUTPUT")
         .replace(str(input_file), "INPUT")
+        .replace("\\", "/")
     )
     assert message == snapshot("""\
 Success!
@@ -123,6 +126,7 @@ def test_verbose_problem_summary(
         capsys.readouterr()
         .err.replace(str(output_dir), "OUTPUT")
         .replace(str(TPCDS), "INPUT")
+        .replace("\\", "/")
     )
     assert message == snapshot("""\
 Success!
