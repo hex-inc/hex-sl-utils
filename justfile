@@ -2,7 +2,7 @@ check: lint format-check type-check
 
 fix: lint-fix format
 
-ci: setup check test verify-artifacts build-packages smoke-test-packages
+ci: setup check test verify-artifacts build-packages build-ossie-preview smoke-test-packages
 
 # ---
 # Setup
@@ -32,6 +32,10 @@ build-ossie-preview release="candidate" out_dir="dist/ossie-preview":
 # Refresh PyPI pins separately from workspace resolution; review the resulting lock.
 lock-ossie-preview:
     uv run --locked python scripts/ossie-hex/preview.py lock
+
+# Exercise a real consumer installation; builds a candidate unless CI supplies assets.
+test-ossie-preview:
+    uv run --locked python -m pytest scripts/ossie-hex/test_preview.py
 
 # ---
 # Format
