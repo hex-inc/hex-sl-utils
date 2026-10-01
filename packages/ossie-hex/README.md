@@ -30,8 +30,8 @@ Local conversion from [Apache Ossie][apache-ossie] semantic models to
 
 This is Hex's development copy of the Apache Ossie converter. Hex preview
 releases provide wheels for this package and upstream Ossie's Python package as
-[GitHub Release assets](https://github.com/hex-inc/hex-sl-utils/releases). It is
-**not published to PyPI from this repository**; Apache owns that release
+[Hex's Python package index](https://hex-internal-pypi-index.hex.tech/). It is
+**not published to public PyPI from this repository**; Apache owns that release
 process. See the [preview installation guide](../../scripts/ossie-hex/README.md)
 for installing a selected release and its pinned dependencies without Git or
 package compilation. Vendor-specific converters are outside this preview's
