@@ -108,14 +108,18 @@ def assert_success(result: subprocess.CompletedProcess[str]) -> None:
 
 
 def requirements_at(directory: Path, base: str) -> None:
-    """Point the release's direct wheel URLs at the local HTTP release server."""
+    """Point the preview's simple index at the real local HTTP server."""
     path = directory / "requirements.txt"
     text = path.read_text()
-    release_base = text.splitlines()[0].rsplit("/", 1)[0]
-    assert release_base.startswith(
-        "https://github.com/hex-inc/hex-sl-utils/releases/download/"
+    release_index = next(
+        line.removeprefix("--extra-index-url ")
+        for line in text.splitlines()
+        if line.startswith("--extra-index-url ")
     )
-    path.write_text(text.replace(release_base, base), encoding="utf-8")
+    assert release_index.startswith(
+        "https://hex-internal-pypi-index.hex.tech/ossie-preview/"
+    )
+    path.write_text(text.replace(release_index, f"{base}/simple/"), encoding="utf-8")
 
 
 def test_release_payload(assets: Path) -> None:
@@ -133,6 +137,8 @@ def test_release_payload(assets: Path) -> None:
     assert "hex-inc/apache-ossie" not in sources
     requirements = (assets / "requirements.txt").read_text()
     assert "hex-sl-utils==0.2.0" in requirements
+    assert "--index-url https://pypi.org/simple" in requirements
+    assert "--extra-index-url https://hex-internal-pypi-index.hex.tech/" in requirements
     assert "git+" not in requirements
     assert "file:" not in requirements
 
@@ -183,7 +189,8 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
             "-c",
             "import importlib.metadata as m, pathlib, sys; "
             "assert m.version('hex-sl-utils') == '0.2.0'; "
-            "assert m.distribution('hex-sl-utils').read_text('direct_url.json') is None; "
+            "assert all(m.distribution(n).read_text('direct_url.json') is None "
+            "for n in ('ossie-hex', 'apache-ossie', 'hex-sl-utils')); "
             f"assert pathlib.Path(sys.base_prefix).is_relative_to(pathlib.Path({str(tmp_path / 'python')!r}))",
         )
     )
@@ -260,6 +267,15 @@ def test_modified_wheel_is_rejected(assets: Path, tmp_path: Path) -> None:
         package.writestr(
             "tampered.txt", "Modified after the release checksums were generated"
         )
+    # Update only the index link so uv downloads the changed wheel before
+    # rejecting it against the original hash in the installation requirements.
+    index = served / "simple" / "apache-ossie" / "index.html"
+    text = index.read_text()
+    original = text.split("#sha256=", 1)[1].split('"', 1)[0]
+    index.write_text(
+        text.replace(original, hashlib.sha256(wheel.read_bytes()).hexdigest()),
+        encoding="utf-8",
+    )
     with serve(served) as base:
         requirements_at(served, base)
         result = run(

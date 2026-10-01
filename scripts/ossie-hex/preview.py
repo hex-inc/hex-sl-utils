@@ -1,7 +1,9 @@
 """Build the wheel assets consumed by the Hex CLI's Ossie preview installation."""
 
 import argparse
+import email
 import hashlib
+import html
 import re
 import shutil
 import subprocess
@@ -10,7 +12,6 @@ import tomllib
 import urllib.request
 import zipfile
 from pathlib import Path
-from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "packages" / "ossie-hex"
@@ -18,6 +19,8 @@ LOCK = Path(__file__).with_name("requirements.lock")
 UPSTREAM = "https://github.com/apache/ossie.git"
 REPOSITORY = "hex-inc/hex-sl-utils"
 PYTHON = "3.12"
+INDEX = "https://hex-internal-pypi-index.hex.tech"
+PREFIX = "ossie-preview"
 
 
 def run(*args: str | Path, cwd: Path = ROOT) -> None:
@@ -114,8 +117,44 @@ def lock_dependencies() -> None:
         )
 
 
+def write_index(directory: Path, wheels: list[Path]) -> list[str]:
+    """Create a release-scoped simple index without changing upstream versions."""
+    index = directory / "simple"
+    index.mkdir()
+    packages: list[str] = []
+    requirements: list[str] = []
+    for wheel in wheels:
+        with zipfile.ZipFile(wheel) as package:
+            metadata_files = [
+                name
+                for name in package.namelist()
+                if name.endswith(".dist-info/METADATA")
+            ]
+            if len(metadata_files) != 1:
+                raise ValueError(f"Expected one package metadata file in {wheel.name}")
+            metadata = email.message_from_bytes(package.read(metadata_files[0]))
+        name = re.sub(r"[-_.]+", "-", str(metadata["Name"])).lower()
+        version = str(metadata["Version"])
+        digest = sha256(wheel)
+        package_index = index / name
+        package_index.mkdir()
+        (package_index / "index.html").write_text(
+            "<!doctype html><html><body>\n"
+            f'<a href="../../{html.escape(wheel.name)}#sha256={digest}">'
+            f"{html.escape(wheel.name)}</a>\n</body></html>\n",
+            encoding="utf-8",
+        )
+        packages.append(f'<a href="{name}/">{name}</a>')
+        requirements.append(f"{name}=={version} \\\n    --hash=sha256:{digest}\n")
+    (index / "index.html").write_text(
+        "<!doctype html><html><body>\n" + "\n".join(packages) + "\n</body></html>\n",
+        encoding="utf-8",
+    )
+    return requirements
+
+
 def build_preview(release: str, output: Path, replace: bool = False) -> None:
-    """Assemble a versioned, independently installable GitHub Release payload."""
+    """Assemble an immutable preview and its own Python package index."""
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", release):
         raise ValueError(
             "Release identifier must contain only letters, numbers, '.', '_' or '-'"
@@ -132,11 +171,14 @@ def build_preview(release: str, output: Path, replace: bool = False) -> None:
         names = {
             line.split("  ", 1)[1] for line in checksums_file.read_text().splitlines()
         }
-        if names | {"SHA256SUMS"} != {asset.name for asset in output.iterdir()}:
+        assets = list(output.rglob("*"))
+        if names | {"SHA256SUMS"} != {
+            asset.relative_to(output).as_posix() for asset in assets if asset.is_file()
+        }:
             raise ValueError(
                 "Refusing to replace an output directory with unrelated files"
             )
-        if any(not asset.is_file() for asset in output.iterdir()) or not (
+        if any(asset.is_symlink() for asset in assets) or not (
             output / "SOURCES.txt"
         ).read_text().startswith(f"ossie-hex https://github.com/{REPOSITORY} "):
             raise ValueError(
@@ -157,15 +199,16 @@ def build_preview(release: str, output: Path, replace: bool = False) -> None:
         text=True,
     ).strip()
     revision = upstream_revision()
-    tag = f"ossie-preview/{release}"
-    base = f"https://github.com/{REPOSITORY}/releases/download/{quote(tag, safe='')}"
+    base = f"{INDEX}/{PREFIX}/{release}"
     with tempfile.TemporaryDirectory(prefix="ossie-preview-build-") as temporary:
         directory = Path(temporary) / "assets"
         wheels = build_wheels(directory, revision)
-        requirements = "".join(
-            f"{base}/{wheel.name} \\\n    --hash=sha256:{sha256(wheel)}\n"
-            for wheel in wheels
-        ) + LOCK.read_text(encoding="utf-8")
+        requirements = (
+            "--index-url https://pypi.org/simple\n"
+            f"--extra-index-url {base}/simple/\n\n"
+            + "".join(write_index(directory, wheels))
+            + LOCK.read_text(encoding="utf-8")
+        )
         (directory / "requirements.txt").write_text(requirements, encoding="utf-8")
         (directory / "SOURCES.txt").write_text(
             f"ossie-hex https://github.com/{REPOSITORY} {hex_revision} packages/ossie-hex\n"
@@ -176,27 +219,29 @@ def build_preview(release: str, output: Path, replace: bool = False) -> None:
             f"# Hex Ossie preview {release}\n\n"
             "Hex-managed preview artifacts built from pinned source commits. "
             "Apache owns the official Ossie and converter release process; "
-            "these assets are not published to PyPI.\n\n"
+            "these assets are hosted on Hex's Python package index, "
+            "not published to public PyPI.\n\n"
             f"- Hex converter: `{hex_revision}`\n"
             f"- Upstream Apache Ossie: `{revision}`\n"
             f"- Runtime: Python {PYTHON}\n"
             "- Published runtime dependencies: pinned and hashed in `requirements.txt`\n\n"
-            "Install both hosted wheels through `requirements.txt`; "
-            "GitHub Releases is not a package index. No Git or package compilation "
-            "is required on consumer machines.\n",
+            f"- Installation: {base}/requirements.txt\n\n"
+            "Each preview has a separate simple index and immutable wheel URLs, "
+            "so Apache's package versions remain unchanged. No Git or package "
+            "compilation is required on consumer machines.\n",
             encoding="utf-8",
         )
         checksums = "".join(
-            f"{sha256(asset)}  {asset.name}\n" for asset in sorted(directory.iterdir())
+            f"{sha256(asset)}  {asset.relative_to(directory).as_posix()}\n"
+            for asset in sorted(directory.rglob("*"))
+            if asset.is_file()
         )
         (directory / "SHA256SUMS").write_text(checksums, encoding="utf-8")
         output.parent.mkdir(parents=True, exist_ok=True)
         if output.exists():
-            for asset in output.iterdir():
-                asset.unlink()
-            output.rmdir()
+            shutil.rmtree(output)
         shutil.copytree(directory, output)
-    print(f"Built {tag} assets in {output}")
+    print(f"Built {base}/requirements.txt in {output}")
 
 
 def main() -> None:
@@ -205,10 +250,10 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("lock", help="Refresh pinned, hashed PyPI dependencies")
     build = commands.add_parser(
-        "build", help="Build wheels and GitHub Release metadata"
+        "build", help="Build wheels, a simple index, and release metadata"
     )
     build.add_argument(
-        "release", help="Preview identifier; tag is ossie-preview/<identifier>"
+        "release", help="Preview identifier; index path is ossie-preview/<identifier>"
     )
     build.add_argument("--out-dir", type=Path, default=ROOT / "dist" / "ossie-preview")
     build.add_argument(
