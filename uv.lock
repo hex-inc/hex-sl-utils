@@ -26,7 +26,7 @@ wheels = [
 [[package]]
 name = "apache-ossie"
 version = "0.2.0.dev0"
-source = { git = "https://github.com/hex-inc/apache-ossie.git?subdirectory=python&rev=8b1b894c90b57d9727ee8153893ec7fd35124959#8b1b894c90b57d9727ee8153893ec7fd35124959" }
+source = { git = "https://github.com/apache/ossie.git?subdirectory=python&rev=b6c702ed1c07e91382a69e870c875cbd19570828#b6c702ed1c07e91382a69e870c875cbd19570828" }
 dependencies = [
     { name = "pydantic" },
     { name = "pyyaml" },
@@ -1568,7 +1568,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "apache-ossie", git = "https://github.com/hex-inc/apache-ossie.git?subdirectory=python&rev=8b1b894c90b57d9727ee8153893ec7fd35124959" },
+    { name = "apache-ossie", git = "https://github.com/apache/ossie.git?subdirectory=python&rev=b6c702ed1c07e91382a69e870c875cbd19570828" },
     { name = "hex-sl-utils", editable = "packages/hex-sl-utils" },
     { name = "pydantic", specifier = ">=2.13.4" },
     { name = "pydantic-core", specifier = ">=2.46.4" },
