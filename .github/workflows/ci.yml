@@ -36,6 +36,8 @@ jobs:
         run: devbox run -- just verify-artifacts
       - name: Build package distributions
         run: devbox run -- just build-packages
+      - name: Build the upstream Ossie wheel for artifact smoke tests
+        run: devbox run -- just build-ossie-preview
       - name: Smoke-test package distributions
         run: devbox run -- just smoke-test-packages
 
