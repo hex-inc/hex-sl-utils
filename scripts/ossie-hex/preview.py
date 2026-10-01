@@ -74,6 +74,8 @@ def build_wheels(directory: Path, revision: str) -> list[Path]:
             "--out-dir",
             directory,
         )
+    # uv creates this local build marker; artifact uploads omit hidden files.
+    (directory / ".gitignore").unlink(missing_ok=True)
     wheels = sorted(directory.glob("*.whl"))
     if len(wheels) != 2 or any(
         not wheel.name.endswith("-py3-none-any.whl") for wheel in wheels
