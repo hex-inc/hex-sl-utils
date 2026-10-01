@@ -27,7 +27,7 @@ build-packages-python:
 
 # Build the two preview wheels and their pinned consumer installation requirements.
 build-ossie-preview release="candidate" out_dir="dist/ossie-preview":
-    uv run --locked python scripts/ossie-hex/preview.py build {{release}} --out-dir {{out_dir}}
+    uv run --locked python scripts/ossie-hex/preview.py build {{release}} --out-dir {{out_dir}} --replace
 
 # Refresh PyPI pins separately from workspace resolution; review the resulting lock.
 lock-ossie-preview:
