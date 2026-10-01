@@ -49,10 +49,7 @@ build-inspect-python:
 build-install: build-install-python
 
 build-install-python:
-    uv venv /tmp/ossie-hex-release-test
-    uv export --locked --package ossie-hex --no-dev --no-emit-workspace --no-hashes --output-file /tmp/ossie-hex-release-test/requirements.txt > /dev/null
-    uv pip install --python /tmp/ossie-hex-release-test/bin/python -r /tmp/ossie-hex-release-test/requirements.txt ../hex-sl-utils dist/*.whl
-    /tmp/ossie-hex-release-test/bin/ossie-hex --help
+    just --justfile ../../justfile test-ossie-preview
 
 # ---
 # Format

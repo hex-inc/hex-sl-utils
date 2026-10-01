@@ -129,9 +129,13 @@ just ossie build build-inspect build-install
 ```
 
 These forward to the package Justfile; the same recipes work directly from
-`packages/ossie-hex`. Both use the workspace environment and lockfile.
-Apache owns the converter's PyPI release process. This repository builds and
-tests `ossie-hex`, but distributes it through Git instead of publishing to PyPI.
+`packages/ossie-hex`. Development recipes use the workspace environment and
+lockfile; `build-install` exercises the preview's isolated consumer
+installation. Apache owns the converter's PyPI release process. This repository
+builds and tests `ossie-hex` and distributes preview wheels through GitHub
+Releases. The [preview guide](scripts/ossie-hex/README.md) covers artifact
+builds, consumer dependency pins, installation tests, and the separate release
+workflow.
 
 ## JavaScript and TypeScript toolchain
 

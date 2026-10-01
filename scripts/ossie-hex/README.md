@@ -1,158 +1,110 @@
-# Preview of Vendor → Ossie → Hex conversion
+# Ossie preview releases
 
-This installer provides the Git-only `ossie-hex` converter together with seven
-vendor converters through a single `ossie-preview` command. The converter and
-`hex-sl-utils` come from the **same pinned commit** of this repository. Ossie's
-Python models and the other converters come from a separate pinned commit of
-[Hex's Apache Ossie fork][hex-inc/apache-ossie]. The full commit IDs are
-recorded at the top of `install.sh` and printed during installation.
+Hex preview releases provide two Python wheels: `ossie-hex` from this repository
+and `apache-ossie` from a pinned commit of upstream `apache/ossie`. Published
+runtime dependencies, including `hex-sl-utils`, come from PyPI at pinned
+versions. Apache owns the official PyPI release process; these previews are
+distributed only through
+[GitHub Releases](https://github.com/hex-inc/hex-sl-utils/releases).
 
-This repository does not publish `ossie-hex` to PyPI; Apache owns that release
-process. Rerun the installer to pick up newly selected pins. Git source
-revisions are fixed; third-party registry dependencies are resolved at
-installation time.
+The initial scope is Ossie → Hex. Vendor → Ossie converters can be added later.
+The earlier Git-based, seven-vendor `ossie-preview` installer has been retired.
+Existing installations are independent; use the
+[previous installer's uninstall instructions][legacy-installer] to remove them.
 
-By default, the preview environment and its raw executables live under
-`~/.local/share/ossie-preview`. Only the `ossie-preview` dispatcher is added to
-the normal user-level executable directory. Installation stops if that command
-name is already owned by something else.
+## Install a selected preview
 
-## Install
+Hex CLI's automatic runtime provisioning is separate work. For now, developers
+can install a preview with [uv](https://docs.astral.sh/uv/). Git and a
+pre-existing Python installation are not required. Installation requires network
+access; conversion runs locally afterward.
 
-Ensure [`uv`](https://docs.astral.sh/uv/getting-started/installation/) is
-installed.
+Choose a release from GitHub and replace `RELEASE-ID` below with its identifier.
+Run these commands in a new, empty directory so the private environment does not
+replace a project's environment:
 
-On macOS and Linux, install the converter suite:
-
-```sh
-curl -LsSf \
-  https://raw.githubusercontent.com/hex-inc/hex-sl-utils/main/scripts/ossie-hex/install.sh |
-  sh
+```bash
+uv venv --managed-python --python 3.12 .venv
+uv pip install --python .venv --require-hashes --only-binary :all: \
+  -r 'https://github.com/hex-inc/hex-sl-utils/releases/download/ossie-preview%2FRELEASE-ID/requirements.txt'
+uv run --no-project --python .venv python -I -m ossie_hex.cli export \
+  -i model.ossie.yaml -o hex/
 ```
 
-This installs Hex together with the `databricks`, `dbt`, `honeydew`, `nvidia`,
-`omni`, `orionbelt`, and `wisdom` importers. Run the same command again to
-update.
+`requirements.txt` explicitly identifies both hosted wheels: GitHub Releases is
+not a package index. Its hashes cover those wheels and every pinned PyPI runtime
+dependency. `--only-binary :all:` prevents consumer-side compilation. Remove the
+private `.venv` directory to uninstall this manual installation.
 
-Use `ossie-preview <converter> --help` to inspect any converter. For example:
+Preview identifiers are independent of Python distribution versions. Select a
+specific release and its checksums, not a `latest` URL or the wheel's version
+alone: two previews may use the same upstream development version.
 
-```sh
-ossie-preview hex --help
-ossie-preview databricks --help
+## Build and test locally
+
+Commit converter changes first so the release notes identify the exact source
+used to build the wheel. Then, from the repository root:
+
+```bash
+just build-ossie-preview candidate
+just test-ossie-preview
+just build-packages
+just smoke-test-packages
 ```
 
-## Conversion
+The build recipe writes `dist/ossie-preview/` and replaces a previous local
+preview payload there. An optional second argument selects another output
+directory. The underlying builder requires a fresh output directory unless
+`--replace` is passed, and refuses to replace directories with unrelated files.
 
-Each workflow has two explicit stages. Keep the intermediate Ossie YAML when
-investigating warnings or information lost between formats.
+The payload contains:
 
-Import Vendor → Ossie
+- The `ossie-hex` and upstream `apache-ossie` wheels, with license notices.
+- `requirements.txt`: release wheel URLs and pinned, hashed PyPI dependencies.
+- `SOURCES.txt`: the repositories, commits, and package subdirectories.
+- `RELEASE_NOTES.md`: preview identity and source provenance.
+- `SHA256SUMS`: hashes of all the assets above.
 
-```sh
-# Databricks Metric View → Ossie
-ossie-preview databricks import \
-  -i metric_view.yaml \
-  -o model.ossie.yaml
+The integration tests use real uv and an HTTP release server, with no Git or
+Python on the consumer PATH. They provision private Python 3.12, install the
+wheels and PyPI dependencies, assert a real conversion, and reject a modified
+wheel. CI sets `OSSIE_PREVIEW_ASSETS` to test the exact payload it will publish.
 
-# dbt
-# first, generate the semantic manifest. then
-ossie-preview dbt msi-to-ossie \
-  -i target/semantic_manifest.json \
-  -o model.ossie.yaml
+## Update dependency pins
 
-# Honeydew
-ossie-preview honeydew honeydew-to-ossie \
-  -i honeydew-workspace/ \
-  -o model.ossie.yaml
+The converter's `pyproject.toml` pins upstream `apache/ossie` for development
+and preview builds. Update that commit and regenerate `uv.lock` when advancing
+Ossie.
 
-# Nvidia GSF
-ossie-preview nvidia import \
-  -i model.gsf.yaml \
-  -o model.ossie.yaml
+`requirements.in` selects the published `hex-sl-utils` version. To refresh the
+preview's runtime dependencies from the actual wheel metadata and PyPI, run:
 
-# Omni
-ossie-preview omni import \
-  -i omni-model/ \
-  -o model.ossie.yaml
-
-# Orionbelt
-ossie-preview orionbelt obml-to-ossie \
-  -i model.obml.yaml \
-  -o model.ossie.yaml
-
-# Snowflake does not provide an exporter yet.
-
-# Wisdom
-ossie-preview wisdom wisdom-to-ossie \
-  -i domain-export.json \
-  -o model.ossie.yaml
+```bash
+just lock-ossie-preview
 ```
 
-Export Ossie → Hex
+Review and commit `requirements.lock` with the corresponding source changes.
+This lock is deliberately independent of workspace resolution; preview installs
+must not use the local development copy of `hex-sl-utils`.
 
-```sh
-ossie-preview hex export \
-  -i model.ossie.yaml \
-  -o hex-output/
-```
+## Publish a preview
 
-See the [Ossie–Hex package README][ossie-hex-readme] for more details.
+The **Ossie preview artifacts** workflow builds and tests candidates on pull
+requests and relevant pushes to `main`. Installation is tested on Linux x64 and
+ARM64, macOS Intel and ARM64, and Windows x64, using private Python 3.12.
 
-## Uninstall
+After merging, manually run that workflow on `main` with:
 
-Uninstall the complete converter suite:
+- `release_id`: a new identifier, such as `2026.10.01.1`.
+- `publish`: checked to publish, unchecked to only build and test.
 
-```sh
-curl -LsSf \
-  https://raw.githubusercontent.com/hex-inc/hex-sl-utils/main/scripts/ossie-hex/install.sh |
-  sh -s -- uninstall
-```
+Publishing occurs only after every installation job passes. The workflow
+attaches the exact tested payload to the prerelease tag
+`ossie-preview/<release_id>`. Existing releases are not overwritten, previews
+are not marked as the repository's latest release, and their tags are excluded
+from the PyPI workflow. No PyPI credentials are used.
 
-## Current limitations
+Once Apache publishes compatible packages, installation can use those releases
+without changing the CLI's private-runtime approach.
 
-- GoodData has a Python conversion API but no command-line entry point.
-- Snowflake currently converts from Ossie to Snowflake, not the reverse.
-- Salesforce and Polaris use Java builds and are not installable as `uv` tools.
-
-If the tool directory is not already on `PATH`, follow the installer's prompt
-to run `uv tool update-shell` and restart the shell.
-
-[hex-inc/apache-ossie]: https://github.com/hex-inc/apache-ossie
-[ossie-hex-readme]: ../../packages/ossie-hex/README.md
-
-## Updating installation pins
-
-1. Commit and test the converter changes in Hex. Choose a full 40-character
-   commit containing both `packages/ossie-hex` and `packages/hex-sl-utils`.
-2. Update `HEX_REV` in `install.sh` in a subsequent commit. A commit cannot
-   contain its own hash. Ensure the selected commit is pushed and retained on a
-   durable branch or tag before distributing the installer. If a squash or
-   rebase changes its identity, select the resulting commit and update the pin.
-3. When updating Ossie, change the Git `rev` in the converter's
-   `pyproject.toml`, regenerate the root `uv.lock`, and update `OSSIE_REV` to
-   match. Recheck the vendor package paths and executable names at that
-   revision.
-4. Run `just test-scripts`, `just test-workspace`, `just test-ossie`, and the
-   artifact smoke tests.
-
-For local validation, `OSSIE_PREVIEW_HEX_REPO_URL` and
-`OSSIE_PREVIEW_OSSIE_REPO_URL` can point to local `file:///...` Git
-repositories. `OSSIE_PREVIEW_HEX_REV` and `OSSIE_PREVIEW_OSSIE_REV` select
-candidate commits; branches and abbreviated hashes are rejected. Set
-`XDG_DATA_HOME` and `UV_TOOL_BIN_DIR` to temporary directories to isolate the
-environment and the public dispatcher from an existing installation. For
-example, from this repo:
-
-```sh
-preview_test_dir="$(mktemp -d)"
-XDG_DATA_HOME="$preview_test_dir/data" \
-UV_TOOL_BIN_DIR="$preview_test_dir/commands" \
-OSSIE_PREVIEW_HEX_REPO_URL="file://$PWD" \
-sh scripts/ossie-hex/install.sh
-XDG_DATA_HOME="$preview_test_dir/data" \
-  "$preview_test_dir/commands/ossie-preview" hex --help
-```
-
-The installer verifies `--help` on every installed executable before exposing
-the dispatcher. The existing command-ownership checks also apply in test runs;
-use a PATH without a conflicting `ossie-preview` command.
+[legacy-installer]: https://github.com/hex-inc/hex-sl-utils/blob/d010422/scripts/ossie-hex/README.md#uninstall

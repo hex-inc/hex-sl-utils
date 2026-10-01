@@ -19,21 +19,26 @@
 
 <!-- markdownlint-disable MD033 -->
 
-# Ossie ↔ Hex converter
+# Ossie → Hex converter
 
-Bidirectional, offline conversion between
-[Apache Ossie][apache-ossie] and [Hex][hex-semantic-spec].
+Local conversion from [Apache Ossie][apache-ossie] semantic models to
+[Hex][hex-semantic-spec] semantic projects.
 
 - **Export** (`ossie-hex export`): Ossie → Hex
 
 ## Installation
 
-This is Hex's development copy of the Apache Ossie converter. It is installed
-from pinned Git commits and is **not published to PyPI from this repository**.
-Use the [preview installer](../../scripts/ossie-hex/README.md) to install the
-converter suite and its Ossie dependency. The installed command is
-`ossie-preview hex`; the examples below use the underlying `ossie-hex` command,
-which is also available through `uv run --package ossie-hex` in this workspace.
+This is Hex's development copy of the Apache Ossie converter. Hex preview
+releases provide wheels for this package and upstream Ossie's Python package as
+[GitHub Release assets](https://github.com/hex-inc/hex-sl-utils/releases). It is
+**not published to PyPI from this repository**; Apache owns that release
+process. See the [preview installation guide](../../scripts/ossie-hex/README.md)
+for installing a selected release and its pinned dependencies without Git or
+package compilation. Vendor-specific converters are outside this preview's
+scope.
+
+The examples below use the installed `ossie-hex` command, which is also
+available through `uv run --package ossie-hex` during workspace development.
 
 Requires Python 3.11 or newer. See the
 [workspace contributing guide](../../CONTRIBUTING.md) for development setup.
