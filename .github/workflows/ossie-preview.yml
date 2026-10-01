@@ -15,11 +15,11 @@ on:
   workflow_dispatch:
     inputs:
       release_id:
-        description: "Preview identifier (tag: ossie-preview/<identifier>)"
+        description: "Preview identifier (index path: ossie-preview/<identifier>)"
         required: true
         type: string
       publish:
-        description: "Publish the tested assets as a GitHub prerelease (main only)"
+        description: "Publish the tested assets to Hex's Python package index (main only)"
         default: false
         type: boolean
 
@@ -106,28 +106,49 @@ jobs:
           python -m pytest scripts/ossie-hex/test_preview.py -q
 
   publish:
-    name: Publish GitHub preview release
+    name: Publish to Hex's Python package index
     needs: [build, test]
     if: github.event_name == 'workflow_dispatch' && inputs.publish && github.repository == 'hex-inc/hex-sl-utils'
     runs-on: ubuntu-latest
+    environment: ossie-preview
     permissions:
-      contents: write
+      contents: read
+      id-token: write
     steps:
+      - name: Check out the publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Download the tested release payload
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ossie-preview
           path: assets/
-      - name: Verify the payload
-        working-directory: assets
-        run: sha256sum --check SHA256SUMS
-      - name: Create a new GitHub prerelease
+      - name: Require index publishing configuration
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          PREVIEW_ID: ${{ needs.build.outputs.release_id }}
+          AWS_ROLE: ${{ vars.PYPI_INDEX_AWS_IAM_ROLE_ARN }}
+          BUCKET: ${{ vars.PYPI_INDEX_AWS_S3_BUCKET_NAME }}
+          KMS_KEY: ${{ vars.PYPI_INDEX_AWS_KMS_KEY_ARN }}
+          DISTRIBUTION: ${{ vars.PYPI_INDEX_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
-          gh release create "ossie-preview/$PREVIEW_ID" \
-            --target "$GITHUB_SHA" --prerelease --latest=false \
-            --title "Hex Ossie preview $PREVIEW_ID" \
-            --notes-file assets/RELEASE_NOTES.md assets/*
+          for value in "$AWS_ROLE" "$BUCKET" "$KMS_KEY" "$DISTRIBUTION"; do
+            if [[ -z "$value" ]]; then
+              echo "::error::Configure the ossie-preview environment's index publishing variables"
+              exit 1
+            fi
+          done
+      - name: Assume the index publishing role
+        uses: aws-actions/configure-aws-credentials@61815dcd50bd041e203e49132bacad1fd04d2708 # v5
+        with:
+          role-to-assume: ${{ vars.PYPI_INDEX_AWS_IAM_ROLE_ARN }}
+          aws-region: us-east-2
+      - name: Upload immutable preview assets and invalidate CloudFront
+        env:
+          PREVIEW_ID: ${{ needs.build.outputs.release_id }}
+          BUCKET: ${{ vars.PYPI_INDEX_AWS_S3_BUCKET_NAME }}
+          KMS_KEY: ${{ vars.PYPI_INDEX_AWS_KMS_KEY_ARN }}
+          DISTRIBUTION: ${{ vars.PYPI_INDEX_AWS_CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          python3 scripts/ossie-hex/publish.py "$PREVIEW_ID" --assets assets \
+            --bucket "$BUCKET" --kms-key "$KMS_KEY" \
+            --distribution-id "$DISTRIBUTION" --execute
