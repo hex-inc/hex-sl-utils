@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import re
 import subprocess
 import tomllib
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ class Package:
     version: Version
     smoke_test: Path
     smoke_test_python_versions: tuple[str, ...]
+    pyproject: Path
 
 
 def smoke_test_python_versions(
@@ -77,6 +79,7 @@ def workspace_packages(packages_dir: Path = PACKAGES) -> list[Package]:
                 smoke_test_python_versions=smoke_test_python_versions(
                     pyproject_data, pyproject
                 ),
+                pyproject=pyproject,
             )
         )
     return packages
@@ -118,6 +121,34 @@ def package_artifacts(package: Package, dist_dir: Path = DIST) -> list[Path]:
     return artifacts
 
 
+def installation_requirements(package: Package, packages: list[Package]) -> list[str]:
+    """Supply explicit sources only for packages excluded from PyPI publishing.
+
+    Published artifacts must remain installable without development overrides.
+    Git-only packages use their pinned Git dependencies and built sibling wheels.
+    """
+    data = tomllib.loads(package.pyproject.read_text())
+    if data.get("tool", {}).get("release", {}).get("publish", True):
+        return []
+    requirements: list[str] = []
+    for name, source in data.get("tool", {}).get("uv", {}).get("sources", {}).items():
+        if "git" in source:
+            rev = source.get("rev", "")
+            if not re.fullmatch(r"[0-9a-f]{40}", rev):
+                raise ValueError(f"{name} must be pinned to a full Git commit")
+            requirement = f"{name} @ git+{source['git']}@{rev}"
+            if "subdirectory" in source:
+                requirement += f"#subdirectory={source['subdirectory']}"
+            requirements.append(requirement)
+        elif source.get("workspace") is True:
+            sibling = select_packages(packages, [name])[0]
+            wheel = next(p for p in package_artifacts(sibling) if p.suffix == ".whl")
+            requirements.append(str(wheel))
+        else:
+            raise ValueError(f"Unsupported smoke-test source for {name}: {source}")
+    return requirements
+
+
 def main() -> None:
     """Install and smoke-test each artifact in its own environment."""
     parser = argparse.ArgumentParser()
@@ -129,13 +160,19 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    packages = workspace_packages()
+    all_packages = workspace_packages()
+    packages = all_packages
     if not packages:
         raise SystemExit("No publishable packages found under packages/")
     if args.package:
         packages = select_packages(packages, args.package)
 
     for package in packages:
+        source_args = [
+            arg
+            for requirement in installation_requirements(package, all_packages)
+            for arg in ("--with", requirement)
+        ]
         if not package.smoke_test.is_file():
             raise FileNotFoundError(
                 f"Missing smoke test for {package.name}: {package.smoke_test}"
@@ -158,6 +195,7 @@ def main() -> None:
                         "--no-project",
                         "--with",
                         str(artifact),
+                        *source_args,
                         "--",
                         "python",
                         str(package.smoke_test),

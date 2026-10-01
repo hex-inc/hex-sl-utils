@@ -76,6 +76,16 @@ jobs:
           cache-dependency-glob: uv.lock
           prune-cache: true
       - name: Sync workspace
+        if: matrix.python != '3.9' && matrix.python != '3.10'
         run: uv sync --locked --all-packages
       - name: Run package tests
-        run: uv run --locked --all-packages pytest packages/hex-sl-utils/tests -m 'not database'
+        if: matrix.python != '3.9' && matrix.python != '3.10'
+        run: uv run --locked --all-packages pytest packages -m 'not database'
+      # The converter requires 3.11; test the utility package's older Python
+      # support outside workspace resolution, which intersects member floors.
+      - name: Test utilities on older Python
+        if: matrix.python == '3.9' || matrix.python == '3.10'
+        run: |
+          uv venv --python "${{ matrix.python }}" .venv
+          uv pip install --python .venv -e packages/hex-sl-utils --group dev
+          uv run --no-project --python .venv python -m pytest packages/hex-sl-utils/tests -m 'not database'

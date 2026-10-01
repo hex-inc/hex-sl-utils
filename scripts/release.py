@@ -32,6 +32,11 @@ def workspace_releases(packages_dir: Path = PACKAGES) -> list[PackageRelease]:
     releases: list[PackageRelease] = []
     for pyproject in sorted(packages_dir.glob("*/pyproject.toml")):
         data: dict[str, Any] = tomllib.loads(pyproject.read_text())
+        publish = data.get("tool", {}).get("release", {}).get("publish", True)
+        if not isinstance(publish, bool):
+            raise TypeError(f"{pyproject}: tool.release.publish must be a boolean")
+        if not publish:
+            continue
         project = data["project"]
         releases.append(PackageRelease(project["name"], project["version"]))
     return releases

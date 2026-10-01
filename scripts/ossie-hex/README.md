@@ -1,14 +1,16 @@
 # Preview of Vendor → Ossie → Hex conversion
 
-This installer provides a preview of the unpublished `ossie-hex` converter along
-with all other converters. The source is from
-[Hex's fork of Apache Ossie][hex-inc/apache-ossie], specifically the
-[`ossie-hex-preview` branch][ossie-hex-preview]. This branch will update with
-the latest progress and fixes.
+This installer provides the Git-only `ossie-hex` converter together with seven
+vendor converters through a single `ossie-preview` command. The converter and
+`hex-sl-utils` come from the **same pinned commit** of this repository. Ossie's
+Python models and the other converters come from a separate pinned commit of
+[Hex's Apache Ossie fork][hex-inc/apache-ossie]. The full commit IDs are
+recorded at the top of `install.sh` and printed during installation.
 
-through a single `ossie-preview` command. They do not replace published uv
-tools or claim the converters' eventual command names. Rerun the installer to
-pick up fixes pushed to the preview branch.
+This repository does not publish `ossie-hex` to PyPI; Apache owns that release
+process. Rerun the installer to pick up newly selected pins. Git source
+revisions are fixed; third-party registry dependencies are resolved at
+installation time.
 
 By default, the preview environment and its raw executables live under
 `~/.local/share/ossie-preview`. Only the `ossie-preview` dispatcher is added to
@@ -54,12 +56,12 @@ ossie-preview databricks import \
 
 # dbt
 # first, generate the semantic manifest. then
-ossie-preview dbt msi-to-osi \
+ossie-preview dbt msi-to-ossie \
   -i target/semantic_manifest.json \
   -o model.ossie.yaml
 
 # Honeydew
-ossie-preview honeydew honeydew-to-osi \
+ossie-preview honeydew honeydew-to-ossie \
   -i honeydew-workspace/ \
   -o model.ossie.yaml
 
@@ -74,14 +76,14 @@ ossie-preview omni import \
   -o model.ossie.yaml
 
 # Orionbelt
-ossie-preview orionbelt obml-to-osi \
+ossie-preview orionbelt obml-to-ossie \
   -i model.obml.yaml \
   -o model.ossie.yaml
 
 # Snowflake does not provide an exporter yet.
 
 # Wisdom
-ossie-preview wisdom wisdom-to-osi \
+ossie-preview wisdom wisdom-to-ossie \
   -i domain-export.json \
   -o model.ossie.yaml
 ```
@@ -116,5 +118,41 @@ If the tool directory is not already on `PATH`, follow the installer's prompt
 to run `uv tool update-shell` and restart the shell.
 
 [hex-inc/apache-ossie]: https://github.com/hex-inc/apache-ossie
-[ossie-hex-preview]: https://github.com/hex-inc/apache-ossie/tree/ossie-hex-preview
-[ossie-hex-readme]: https://github.com/hex-inc/apache-ossie/blob/ossie-hex-preview/converters/hex/README.md
+[ossie-hex-readme]: ../../packages/ossie-hex/README.md
+
+## Updating installation pins
+
+1. Commit and test the converter changes in Hex. Choose a full 40-character
+   commit containing both `packages/ossie-hex` and `packages/hex-sl-utils`.
+2. Update `HEX_REV` in `install.sh` in a subsequent commit. A commit cannot
+   contain its own hash. Ensure the selected commit is pushed and retained on a
+   durable branch or tag before distributing the installer. If a squash or
+   rebase changes its identity, select the resulting commit and update the pin.
+3. When updating Ossie, change the Git `rev` in the converter's
+   `pyproject.toml`, regenerate the root `uv.lock`, and update `OSSIE_REV` to
+   match. Recheck the vendor package paths and executable names at that
+   revision.
+4. Run `just test-scripts`, `just test-workspace`, `just test-ossie`, and the
+   artifact smoke tests.
+
+For local validation, `OSSIE_PREVIEW_HEX_REPO_URL` and
+`OSSIE_PREVIEW_OSSIE_REPO_URL` can point to local `file:///...` Git
+repositories. `OSSIE_PREVIEW_HEX_REV` and `OSSIE_PREVIEW_OSSIE_REV` select
+candidate commits; branches and abbreviated hashes are rejected. Set
+`XDG_DATA_HOME` and `UV_TOOL_BIN_DIR` to temporary directories to isolate the
+environment and the public dispatcher from an existing installation. For
+example, from this repo:
+
+```sh
+preview_test_dir="$(mktemp -d)"
+XDG_DATA_HOME="$preview_test_dir/data" \
+UV_TOOL_BIN_DIR="$preview_test_dir/commands" \
+OSSIE_PREVIEW_HEX_REPO_URL="file://$PWD" \
+sh scripts/ossie-hex/install.sh
+XDG_DATA_HOME="$preview_test_dir/data" \
+  "$preview_test_dir/commands/ossie-preview" hex --help
+```
+
+The installer verifies `--help` on every installed executable before exposing
+the dispatcher. The existing command-ownership checks also apply in test runs;
+use a PATH without a conflicting `ossie-preview` command.

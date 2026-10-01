@@ -52,7 +52,7 @@ The repository root owns shared development concerns: the Devbox environment,
 task entry points, CI configuration, workspace-level dependency configuration,
 and policies that apply to every package. The root project is not published.
 
-Publishable units live under `packages/`. Each package owns its runtime
+Installable units live under `packages/`. Each package owns its runtime
 dependencies, version, public documentation, source, tests, build metadata, and
 release lifecycle. Consult the README or contributing guide beside a package
 before changing its public behavior or package-specific workflow.
@@ -113,6 +113,25 @@ Update Python dependencies intentionally and commit `uv.lock`:
 ```bash
 uv lock --upgrade
 ```
+
+### Ossie converter
+
+`packages/ossie-hex` retains its Apache contributing guide and package Just
+recipes. Use the workspace setup above, then run converter recipes from the
+repository root:
+
+```bash
+just ossie check
+just ossie test
+just ossie snapshot-review
+just ossie test-python-matrix
+just ossie build build-inspect build-install
+```
+
+These forward to the package Justfile; the same recipes work directly from
+`packages/ossie-hex`. Both use the workspace environment and lockfile.
+Apache owns the converter's PyPI release process. This repository builds and
+tests `ossie-hex`, but distributes it through Git instead of publishing to PyPI.
 
 ## JavaScript and TypeScript toolchain
 
