@@ -1,0 +1,200 @@
+"""Build the wheel assets consumed by the Hex CLI's Ossie preview installation."""
+
+import argparse
+import hashlib
+import re
+import shutil
+import subprocess
+import tempfile
+import tomllib
+import urllib.request
+import zipfile
+from pathlib import Path
+from urllib.parse import quote
+
+ROOT = Path(__file__).resolve().parents[2]
+PACKAGE = ROOT / "packages" / "ossie-hex"
+LOCK = Path(__file__).with_name("requirements.lock")
+UPSTREAM = "https://github.com/apache/ossie.git"
+REPOSITORY = "hex-inc/hex-sl-utils"
+PYTHON = "3.12"
+
+
+def run(*args: str | Path, cwd: Path = ROOT) -> None:
+    """Run a real build or dependency-resolution command."""
+    subprocess.run([str(arg) for arg in args], cwd=cwd, check=True)
+
+
+def sha256(path: Path) -> str:
+    """Return the digest used to verify a release asset."""
+    with path.open("rb") as file:
+        return hashlib.file_digest(file, "sha256").hexdigest()
+
+
+def upstream_revision() -> str:
+    """Use the converter's development pin as the preview's upstream source."""
+    data = tomllib.loads((PACKAGE / "pyproject.toml").read_text())
+    source = data["tool"]["uv"]["sources"]["apache-ossie"]
+    if source.get("git") != UPSTREAM or source.get("subdirectory") != "python":
+        raise ValueError(
+            "Preview wheels must be built from upstream apache/ossie/python"
+        )
+    revision = source.get("rev", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("Apache Ossie must be pinned to a full Git commit")
+    return revision
+
+
+def build_wheels(directory: Path, revision: str) -> list[Path]:
+    """Build both unpublished packages; only CI/build machines need source code."""
+    directory.mkdir(parents=True)
+    run("uv", "build", PACKAGE, "--wheel", "--no-sources", "--out-dir", directory)
+    with tempfile.TemporaryDirectory(prefix="apache-ossie-source-") as temporary:
+        source = Path(temporary)
+        archive = source / "ossie.zip"
+        url = f"https://github.com/apache/ossie/archive/{revision}.zip"
+        with urllib.request.urlopen(url, timeout=120) as response:
+            archive.write_bytes(response.read())
+        with zipfile.ZipFile(archive) as snapshot:
+            snapshot.extractall(source)
+        checkout = source / f"ossie-{revision}"
+        # The upstream Python project does not include the repository notices.
+        # Preserve them in the standalone wheel without changing its source code.
+        for name in ("LICENSE", "NOTICE"):
+            shutil.copy2(checkout / name, checkout / "python" / name)
+        run(
+            "uv",
+            "build",
+            checkout / "python",
+            "--wheel",
+            "--no-sources",
+            "--out-dir",
+            directory,
+        )
+    wheels = sorted(directory.glob("*.whl"))
+    if len(wheels) != 2 or any(
+        not wheel.name.endswith("-py3-none-any.whl") for wheel in wheels
+    ):
+        raise ValueError("Expected two platform-independent Python wheels")
+    return wheels
+
+
+def lock_dependencies() -> None:
+    """Resolve consumer dependencies from wheel metadata and PyPI, not the workspace."""
+    with tempfile.TemporaryDirectory(prefix="ossie-preview-lock-") as temporary:
+        directory = Path(temporary)
+        wheels = build_wheels(directory / "wheels", upstream_revision())
+        inputs = directory / "requirements.in"
+        inputs.write_text(
+            "hex-sl-utils==0.2.0\n" + "".join(f"{wheel}\n" for wheel in wheels),
+            encoding="utf-8",
+        )
+        run(
+            "uv",
+            "pip",
+            "compile",
+            inputs,
+            "--quiet",
+            "--python-version",
+            PYTHON,
+            "--universal",
+            "--only-binary",
+            ":all:",
+            "--generate-hashes",
+            "--no-header",
+            "--no-annotate",
+            "--no-emit-package",
+            "ossie-hex",
+            "--no-emit-package",
+            "apache-ossie",
+            "--output-file",
+            LOCK,
+        )
+
+
+def build_preview(release: str, output: Path) -> None:
+    """Assemble a versioned, independently installable GitHub Release payload."""
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", release):
+        raise ValueError(
+            "Release identifier must contain only letters, numbers, '.', '_' or '-'"
+        )
+    if not LOCK.is_file():
+        raise ValueError("Run just lock-ossie-preview before building preview assets")
+    if output.exists():
+        raise ValueError(
+            f"Output already exists: {output}; choose a fresh output directory"
+        )
+    changes = subprocess.check_output(
+        ["git", "status", "--porcelain", "--", "packages/ossie-hex"],
+        cwd=ROOT,
+        text=True,
+    )
+    if changes:
+        raise ValueError(
+            "Commit converter changes before building a preview with source provenance"
+        )
+    hex_revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    revision = upstream_revision()
+    tag = f"ossie-preview/{release}"
+    base = f"https://github.com/{REPOSITORY}/releases/download/{quote(tag, safe='')}"
+    with tempfile.TemporaryDirectory(prefix="ossie-preview-build-") as temporary:
+        directory = Path(temporary) / "assets"
+        wheels = build_wheels(directory, revision)
+        requirements = "".join(
+            f"{base}/{wheel.name} \\\n    --hash=sha256:{sha256(wheel)}\n"
+            for wheel in wheels
+        ) + LOCK.read_text(encoding="utf-8")
+        (directory / "requirements.txt").write_text(requirements, encoding="utf-8")
+        (directory / "SOURCES.txt").write_text(
+            f"ossie-hex https://github.com/{REPOSITORY} {hex_revision} packages/ossie-hex\n"
+            f"apache-ossie {UPSTREAM.removesuffix('.git')} {revision} python\n",
+            encoding="utf-8",
+        )
+        (directory / "RELEASE_NOTES.md").write_text(
+            f"# Hex Ossie preview {release}\n\n"
+            "Hex-managed preview artifacts built from pinned source commits. "
+            "Apache owns the official Ossie and converter release process; "
+            "these assets are not published to PyPI.\n\n"
+            f"- Hex converter: `{hex_revision}`\n"
+            f"- Upstream Apache Ossie: `{revision}`\n"
+            f"- Runtime: Python {PYTHON}\n"
+            "- Published runtime dependencies: pinned and hashed in `requirements.txt`\n\n"
+            "Install both hosted wheels through `requirements.txt`; "
+            "GitHub Releases is not a package index. No Git or package compilation "
+            "is required on consumer machines.\n",
+            encoding="utf-8",
+        )
+        checksums = "".join(
+            f"{sha256(asset)}  {asset.name}\n" for asset in sorted(directory.iterdir())
+        )
+        (directory / "SHA256SUMS").write_text(checksums, encoding="utf-8")
+        output.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(directory, output)
+    print(f"Built {tag} assets in {output}")
+
+
+def main() -> None:
+    """Build release assets or explicitly refresh the published dependency lock."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("lock", help="Refresh pinned, hashed PyPI dependencies")
+    build = commands.add_parser(
+        "build", help="Build wheels and GitHub Release metadata"
+    )
+    build.add_argument(
+        "release", help="Preview identifier; tag is ossie-preview/<identifier>"
+    )
+    build.add_argument("--out-dir", type=Path, default=ROOT / "dist" / "ossie-preview")
+    args = parser.parse_args()
+    if args.command == "lock":
+        lock_dependencies()
+    else:
+        build_preview(args.release, args.out_dir.resolve())
+
+
+if __name__ == "__main__":
+    main()
