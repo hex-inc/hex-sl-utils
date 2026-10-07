@@ -6,6 +6,7 @@ on:
   push:
     tags:
       - "*-v*"
+      - "!ossie-preview/**"
 
 permissions:
   contents: read
