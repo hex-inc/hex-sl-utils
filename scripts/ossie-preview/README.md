@@ -44,6 +44,25 @@ A consumer selects a published preview using its identifier and the
 `requirements.txt` download URL, and verifies the file using its SHA-256 digest
 from `SHA256SUMS`.
 
+## Install and convert
+
+With uv installed, create an environment with managed Python 3.12 and install
+from the selected preview's `requirements.txt` download URL:
+
+```bash
+uv venv --managed-python --python 3.12 .venv
+uv pip install --python .venv --require-hashes --only-binary :all: \
+  -r "<requirements.txt download URL>"
+```
+
+Activate the environment with `source .venv/bin/activate` on macOS or Linux,
+or `.venv\Scripts\Activate.ps1` in Windows PowerShell. The installed command is
+`ossie-hex`; run it against an Ossie model to produce a Hex semantic project:
+
+```bash
+ossie-hex export -i model.ossie.yaml -o hex/
+```
+
 ## Develop and update locally
 
 Run these commands from the repository root. Make converter changes in

@@ -135,7 +135,7 @@ def _validate_build(release: str, output: Path) -> None:
 
 def _validate_output_directory(output: Path) -> None:
     """Allow replacing generated preview files, including a damaged old build."""
-    metadata = {"requirements.txt", "RELEASE_NOTES.md", "SHA256SUMS", "SOURCES.txt"}
+    metadata = {"requirements.txt", "RELEASE_NOTES.md", "SHA256SUMS"}
     if not output.is_dir():
         raise ValueError(f"Output is not a directory: {output}")
     for asset in output.iterdir():

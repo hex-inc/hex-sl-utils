@@ -94,14 +94,12 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
     document = tmp_path / "model.ossie.yaml"
     shutil.copy2(Path(__file__).with_name("model.ossie.yaml"), document)
     output = tmp_path / "hex"
+    command = venv / ("Scripts/ossie-hex.exe" if os.name == "nt" else "bin/ossie-hex")
     _assert_success(
         _run(
             tmp_path,
             environment,
-            python,
-            "-I",
-            "-m",
-            "ossie_hex.cli",
+            command,
             "export",
             "-i",
             document,
