@@ -119,8 +119,7 @@ test-python-workspace:
 # ---
 # Scripts
 
-test-scripts:
-    uv run --locked --all-packages pytest scripts
+test-scripts: scripts-ossie-preview-test
 
 # Ossie preview
 
@@ -132,6 +131,9 @@ scripts-ossie-preview-build *args:
 scripts-ossie-preview-lock:
     uv run --locked python scripts/ossie-preview/main.py lock
 
+# Build a local preview, then exercise its installation and conversion with real uv.
+scripts-ossie-preview-test: scripts-ossie-preview-build
+    uv run --locked python -m pytest scripts/ossie-preview/test_installation.py
 
 # ---
 # Test Coverage

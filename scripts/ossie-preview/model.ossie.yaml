@@ -1,0 +1,19 @@
+version: '0.2.0.dev0'
+name: smoke
+datasets:
+  - name: orders
+    source: analytics.public.orders
+    fields:
+      - name: order_id
+        datatype: Integer
+        expression:
+          dialects:
+            - dialect: ANSI_SQL
+              expression: order_id
+metrics:
+  - name: order_count
+    datatype: Integer
+    expression:
+      dialects:
+        - dialect: ANSI_SQL
+          expression: COUNT(orders.order_id)
