@@ -116,8 +116,22 @@ test-workspace: test-python-workspace
 test-python-workspace:
     uv run --locked --all-packages pytest tests -m 'not database'
 
+# ---
+# Scripts
+
 test-scripts:
     uv run --locked --all-packages pytest scripts
+
+# Ossie preview
+
+# Build the two preview wheels and their pinned consumer installation requirements.
+scripts-ossie-preview-build *args:
+    uv run --locked python scripts/ossie-preview/main.py build {{args}}
+
+# Refresh PyPI pins separately from workspace resolution; review the resulting lock.
+scripts-ossie-preview-lock:
+    uv run --locked python scripts/ossie-preview/main.py lock
+
 
 # ---
 # Test Coverage
