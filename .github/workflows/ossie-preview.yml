@@ -1,0 +1,137 @@
+name: Ossie preview artifacts
+
+on:
+  pull_request:
+    paths:
+      - "packages/ossie-hex/**"
+      - "scripts/ossie-preview/**"
+      - ".github/workflows/ossie-preview.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/ossie-hex/**"
+      - "scripts/ossie-preview/**"
+      - ".github/workflows/ossie-preview.yml"
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: "Preview identifier, e.g. v2026.10.06 or v2026.10.06-2"
+        required: true
+        type: string
+      publish:
+        description: "Publish the tested assets as a GitHub prerelease (main only)"
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ossie-preview-${{ inputs.release_id || github.run_id }}
+  cancel-in-progress: false
+
+env:
+  UV_VERSION: "0.12.5"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      release_id: ${{ steps.build.outputs.release_id }}
+    steps:
+      - name: Check out the source to release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require main for publishing
+        env:
+          PUBLISH: ${{ inputs.publish || false }}
+        run: |
+          if [[ "$PUBLISH" == "true" && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Publish preview releases from main"
+            exit 1
+          fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.14"
+          enable-cache: true
+          cache-dependency-glob: scripts/ossie-preview/requirements.lock
+      - name: Build the two wheels and release metadata
+        id: build
+        env:
+          PREVIEW_ID: ${{ inputs.release_id || format('candidate-{0}', github.sha) }}
+        run: |
+          uv run --no-project --python 3.14 python scripts/ossie-preview/main.py \
+            build "$PREVIEW_ID" --out-dir dist/ossie-preview --require-clean
+          printf 'release_id=%s\n' "$PREVIEW_ID" >> "$GITHUB_OUTPUT"
+      - name: Save the exact assets for testing and publishing
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ossie-preview
+          path: dist/ossie-preview/
+          if-no-files-found: error
+
+  test:
+    name: Install and convert (${{ matrix.os }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, macos-15-intel, windows-latest]
+    steps:
+      - name: Check out the tests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the release candidate
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ossie-preview
+          path: dist/ossie-preview/
+      - name: Install the test runner
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.14"
+          enable-cache: false
+      - name: Verify assets and install into private Python 3.12
+        env:
+          OSSIE_PREVIEW_ASSETS: ${{ github.workspace }}/dist/ossie-preview
+        run: >-
+          uv run --no-project --python 3.14
+          --with pytest==9.1.1 --with PyYAML==6.0.3
+          python -m pytest scripts/ossie-preview/test_installation.py -q
+
+  publish:
+    name: Publish GitHub preview release
+    needs: [build, test]
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.repository == 'hex-inc/hex-sl-utils'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the release verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the tested release payload
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ossie-preview
+          path: assets/
+      - name: Verify the payload
+        run: python3 scripts/ossie-preview/main.py verify --assets assets
+      - name: Upload to a draft release, then publish the complete preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREVIEW_ID: ${{ needs.build.outputs.release_id }}
+        run: |
+          gh release create "ossie-preview/$PREVIEW_ID" \
+            --target "$GITHUB_SHA" --draft --prerelease --latest=false \
+            --title "Hex Ossie preview $PREVIEW_ID" \
+            --notes-file assets/RELEASE_NOTES.md assets/*
+          gh release edit "ossie-preview/$PREVIEW_ID" --draft=false --latest=false
