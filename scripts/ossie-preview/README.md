@@ -1,53 +1,92 @@
-# Preview of Apache Ossie and Hex conversion
+# Python converter previews
 
-The Apache Ossie project, and specifically Hex's converter, are currently
-awaiting publication to a public registry. Apache controls this process, and
-presumably will release to PyPI. Until then, the necessary work can be made
-available here, through
-[GitHub Releases][github-releases].
+Build Apache Ossie's unpublished Python converters into wheels hosted by
+[GitHub Releases][github-releases]. Each preview contains the selected converter
+and its matching Apache Ossie SDK. Runtime dependencies come from PyPI.
 
-The goal is to make Ossie → Hex conversion installable by consumers while those
-packages remain unpublished.
+## Source pins
 
-## What gets published
+`sources.toml` declares the shared Apache commit, package identities, and source
+directories. A converter can override the shared pin:
 
-Each preview contains the Hex converter from this repository and Apache Ossie
-from a pinned upstream commit. They are built into wheels so consumers can
-install them without checking out source or compiling packages. Other runtime
-dependencies come from PyPI.
+```toml
+commit = "2b1f9bfccb558a98b21e4d4576e072fb14a5d952"
 
-The following artifacts are attached to a GitHub prerelease:
+[converters.omni]
+package = "ossie-omni"
+directory = "converters/omni"
+# commit = "<another full commit SHA>"
+```
 
-- Two wheels: `ossie-hex` and `apache-ossie`.
-- `requirements.txt`: the wheel URLs and pinned dependencies needed to install.
-- `RELEASE_NOTES.md`: the source commits used for the preview.
-- `SHA256SUMS`: checksums for verifying the downloaded files.
+An override selects both the converter and its SDK from that commit. Builds
+download the immutable snapshot and discard it after building. Local workspace
+packages and their development pins do not enter previews.
 
-## Publish and verify
+Supported Python packages:
 
-The [Ossie preview artifacts workflow][preview-workflow] builds and tests
-previews on pull requests and relevant changes to `main`. It installs the built
-artifacts with real uv and private Python, then checks that conversion works on
-Linux, macOS, and Windows. Checksums verify that the files being published match
-the tested artifacts. Publication proceeds only after every platform passes.
+| Converter | Wheel package | Interface |
+| --- | --- | --- |
+| Hex | `ossie-hex` | `ossie-hex` |
+| dbt | `apache-ossie-dbt` | `ossie-dbt` |
+| Cube | `apache-ossie-cube` | `ossie-cube` |
+| GoodData | `apache-ossie-gooddata` | Python API |
+| Holistics | `apache-ossie-holistics` | `ossie-holistics` |
+| Honeydew | `apache-ossie-honeydew` | `ossie-honeydew` |
+| Microsoft | `apache-ossie-microsoft` | `ossie-microsoft` |
+| NVIDIA | `apache-ossie-nvidia-auto-ontology` | `ossie-nvidia-auto-ontology` |
+| Omni | `ossie-omni` | `ossie-omni` |
+| Ontology | `apache-ossie-ontology` | Python API |
+| OrionBelt | `apache-ossie-orionbelt` | `ossie-orionbelt` |
+| Sigma | `apache-ossie-sigma` | `ossie-sigma` |
+| Snowflake | `apache-ossie-snowflake` | `ossie-snowflake` |
+| ThoughtSpot | `apache-ossie-thoughtspot` | `ossie-thoughtspot` |
+| Wisdom | `apache-ossie-wisdom` | `ossie-wisdom` |
+| Wisdom Semantic View | `apache-ossie-wisdom-semantic-view` | `ossie-wisdom-semantic-view` |
 
-To make a preview available to consumers, a maintainer merges the changes and
-runs that workflow on `main` with:
+## Build and test locally
 
-- `release_id`: a unique date version, such as `v2026.10.06` or `v2026.10.06-2`.
-- `publish`: enabled.
+From the repository root, select one converter (Hex is the default):
 
-CI builds, verifies, and uploads the artifacts to GitHub Releases. Maintainers
-do not need to build or upload files manually.
+```bash
+# Build without tests, or build and test real installation and conversion.
+just scripts-ossie-preview-build --converter omni
+just scripts-ossie-preview-test omni
+```
 
-A consumer selects a published preview using its identifier and the
-`requirements.txt` download URL, and verifies the file using its SHA-256 digest
-from `SHA256SUMS`.
+Each build resolves PyPI dependencies from the two built wheels and writes exact
+versions and hashes into the release's `requirements.txt`. CI tests and
+publishes that same payload. There are no checked-in converter dependency locks;
+rebuilding the same Apache commit can select newer dependencies. Published
+releases retain their original pins.
 
-## Install and convert
+Assets go to `dist/ossie-preview-<converter>/`, or `dist/ossie-preview/` for
+Hex.
 
-With uv installed, create an environment with managed Python 3.12 and install
-from the selected preview's `requirements.txt` download URL:
+Tests install the wheels into private managed Python 3.12 with real uv and
+hash-enforced requirements, without Git or system Python on PATH. They verify
+converted content, exercise reverse conversion where the packaged interface
+supports it, and reject modified wheels. GoodData and Ontology use their Python
+APIs; Holistics tests AML export without requiring the external Holistics CLI.
+Wisdom Semantic View uses its upstream finance fixture to test the supported
+subset of that format.
+
+## Publish
+
+Dispatch the [preview workflow][preview-workflow] on `main` with `converter`, a
+unique `release_id` such as `v2026.10.13`, and `publish=true`. The workflow
+tests that converter's exact artifacts on Linux, macOS, and Windows before
+publishing. Other converters run only when explicitly selected; automatic PR and
+`main` checks retain the existing Hex default.
+
+Each release contains two wheels, `requirements.txt`, `RELEASE_NOTES.md`, and
+`SHA256SUMS`. Release notes identify the publisher and Apache source commits.
+Checksums verify the tested payload before publication. Tags use
+`ossie-preview/<converter>/<release_id>`, with Hex retaining
+`ossie-preview/<release_id>` for existing consumers.
+
+## Consume
+
+Consumers install without a source checkout or local compilation:
 
 ```bash
 uv venv --managed-python --python 3.12 .venv
@@ -55,53 +94,13 @@ uv pip install --python .venv --require-hashes --only-binary :all: \
   -r "<requirements.txt download URL>"
 ```
 
-Activate the environment with `source .venv/bin/activate` on macOS or Linux,
-or `.venv\Scripts\Activate.ps1` in Windows PowerShell. The installed command is
-`ossie-hex`; run it against an Ossie model to produce a Hex semantic project:
+Activate the environment, then use the converter's native command or Python API.
+For example:
 
 ```bash
-ossie-hex export -i model.ossie.yaml -o hex/
+ossie-omni export -i model.ossie.yaml -o omni/
+ossie-omni import -i omni/ -o restored.ossie.yaml
 ```
-
-## Develop and update locally
-
-Run these commands from the repository root. Make converter changes in
-`packages/ossie-hex`, then build and test the resulting preview:
-
-```bash
-just scripts-ossie-preview-test
-```
-
-The recipe builds into `dist/ossie-preview/` and tests those artifacts. To build
-without running tests, using the current date as the preview label:
-
-```bash
-just scripts-ossie-preview-build
-```
-
-To advance Apache Ossie, update its source commit in the converter's
-`pyproject.toml`. Runtime dependency requirements are declared there too.
-Refresh the dependency locks to select exact versions for the preview:
-
-```bash
-uv lock
-just scripts-ossie-preview-lock
-```
-
-Review and commit the updated locks, then run `just scripts-ossie-preview-test`
-again. CI repeats the installation and conversion checks before a preview is
-published.
-
-## Scripts
-
-This process consists of the following scripts:
-
-- `main.py`: command-line entrypoint for building, locking, and verifying.
-- `constants.py`: shared paths, package sources, and runtime version.
-- `build_wheels.py`: builds both packages and reads the upstream source pin.
-- `release_artifacts.py`: writes release metadata and verifies the artifacts.
-- `test_installation.py`: verifies artifacts and tests installation and
-  conversion.
 
 [github-releases]: https://github.com/hex-inc/hex-sl-utils/releases
 [preview-workflow]: ../../.github/workflows/ossie-preview.yml

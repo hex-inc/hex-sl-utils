@@ -13,18 +13,18 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
-import yaml
 from constants import (
-    DEFAULT_ASSETS_DIRECTORY,
+    CONVERTERS,
     PYTHON_VERSION,
     RELEASE_REPOSITORY,
     SCRIPTS_DIRECTORY,
+    PreviewConverter,
 )
 
 pytestmark = pytest.mark.integration
 
 
-def test_release_payload(assets: Path) -> None:
+def test_release_payload(assets: Path, converter: PreviewConverter) -> None:
     for wheel in assets.glob("*.whl"):
         with zipfile.ZipFile(wheel) as package:
             for notice in ("LICENSE", "NOTICE"):
@@ -35,12 +35,15 @@ def test_release_payload(assets: Path) -> None:
     assert "https://github.com/apache/ossie/commit/" in sources
     assert "hex-inc/apache-ossie" not in sources
     requirements = (assets / "requirements.txt").read_text()
-    assert "hex-sl-utils==" in requirements
+    dependency = "pyyaml"
+    assert f"{dependency}==" in requirements
     assert "git+" not in requirements
     assert "file:" not in requirements
 
 
-def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
+def test_install_and_convert(
+    assets: Path, converter: PreviewConverter, tmp_path: Path
+) -> None:
     environment = _consumer_environment(tmp_path)
     venv = tmp_path / "venv"
     _assert_success(
@@ -78,6 +81,7 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
             )
         )
     python = venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    registry_dependency = "pyyaml"
     _assert_success(
         _run(
             tmp_path,
@@ -87,71 +91,81 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
             "-c",
             "import importlib.metadata as m, pathlib, sys; "
             f"assert '.'.join(map(str, sys.version_info[:2])) == {PYTHON_VERSION!r}; "
-            "assert m.distribution('hex-sl-utils').read_text('direct_url.json') is None; "
+            f"assert m.distribution({registry_dependency!r}).read_text('direct_url.json') is None; "
             f"assert pathlib.Path(sys.base_prefix).is_relative_to(pathlib.Path({str(tmp_path / 'python')!r}))",
         )
     )
     document = tmp_path / "model.ossie.yaml"
-    shutil.copy2(Path(__file__).with_name("model.ossie.yaml"), document)
-    output = tmp_path / "hex"
-    command = venv / ("Scripts/ossie-hex.exe" if os.name == "nt" else "bin/ossie-hex")
+    fixture = (
+        "semantic-view.yaml"
+        if converter.name == "wisdom-semantic-view"
+        else "model.ossie.yaml"
+    )
+    shutil.copy2(SCRIPTS_DIRECTORY / "fixtures" / fixture, document)
     _assert_success(
         _run(
             tmp_path,
             environment,
-            command,
-            "export",
-            "-i",
+            python,
+            "-I",
+            SCRIPTS_DIRECTORY / "check_conversion.py",
+            converter.name,
+            converter.package_name,
             document,
-            "-o",
-            output,
+            tmp_path,
         )
     )
-    resources = list(output.rglob("*.yml"))
-    assert len(resources) == 1
-    model = yaml.safe_load(resources[0].read_text())
-    assert model["id"] == "orders"
-    assert model["base_sql_table"] == "analytics.public.orders"
-    assert model["dimensions"][0]["expr_sql"] == "order_id"
-    assert model["measures"][0]["func_sql"] == "COUNT(${order_id})"
 
 
-def test_modified_wheel_is_rejected(assets: Path, tmp_path: Path) -> None:
+def test_modified_wheel_is_rejected(
+    assets: Path, converter: PreviewConverter, tmp_path: Path
+) -> None:
     payload = tmp_path / "release"
     shutil.copytree(assets, payload)
     wheel = next(payload.glob("apache_ossie*.whl"))
     with zipfile.ZipFile(wheel, "a") as package:
         package.writestr("tampered.txt", "Modified after the checksums were generated")
-    result = _verify_assets(payload)
+    result = _verify_assets(payload, converter)
     assert result.returncode != 0
     assert "Checksum mismatch" in result.stderr
 
 
-def test_unexpected_asset_is_rejected(assets: Path, tmp_path: Path) -> None:
+def test_unexpected_asset_is_rejected(
+    assets: Path, converter: PreviewConverter, tmp_path: Path
+) -> None:
     payload = tmp_path / "release"
     shutil.copytree(assets, payload)
     (payload / "unexpected.whl").write_bytes(b"An asset outside the tested payload")
-    result = _verify_assets(payload)
+    result = _verify_assets(payload, converter)
     assert result.returncode != 0
     assert "exactly the two wheels and release metadata" in result.stderr
 
 
 @pytest.fixture(scope="module")
-def assets() -> Path:
+def converter() -> PreviewConverter:
+    return CONVERTERS[os.environ.get("OSSIE_PREVIEW_CONVERTER", "hex")]
+
+
+@pytest.fixture(scope="module")
+def assets(converter: PreviewConverter) -> Path:
     """Consume artifacts built by the local recipe or downloaded by CI."""
     directory = Path(
-        os.environ.get("OSSIE_PREVIEW_ASSETS", str(DEFAULT_ASSETS_DIRECTORY))
+        os.environ.get("OSSIE_PREVIEW_ASSETS", str(converter.assets_directory))
     ).resolve()
-    _assert_success(_verify_assets(directory))
+    _assert_success(_verify_assets(directory, converter))
     return directory
 
 
-def _verify_assets(directory: Path) -> subprocess.CompletedProcess[str]:
+def _verify_assets(
+    directory: Path, converter: PreviewConverter
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
             sys.executable,
             str(SCRIPTS_DIRECTORY / "main.py"),
             "verify",
+            "--converter",
+            converter.name,
             "--assets",
             str(directory),
         ],

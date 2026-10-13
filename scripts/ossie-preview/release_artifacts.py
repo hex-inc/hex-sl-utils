@@ -5,7 +5,13 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from constants import APACHE_OSSIE_SOURCE, PYTHON_VERSION, RELEASE_REPOSITORY
+from constants import (
+    APACHE_OSSIE_SOURCE,
+    HEX_PREVIEW,
+    PYTHON_VERSION,
+    RELEASE_REPOSITORY,
+    PreviewConverter,
+)
 
 
 def write_release_metadata(
@@ -13,20 +19,25 @@ def write_release_metadata(
     wheels: list[Path],
     *,
     release: str,
-    hex_revision: str,
+    publisher_revision: str,
     apache_revision: str,
     dependencies: str,
+    converter: PreviewConverter = HEX_PREVIEW,
 ) -> None:
     """Write hashed installation requirements, source provenance, and checksums."""
-    _write_requirements(directory, wheels, release, dependencies)
-    _write_release_notes(directory, release, hex_revision, apache_revision)
+    _write_requirements(directory, wheels, release, dependencies, converter)
+    _write_release_notes(
+        directory, release, publisher_revision, apache_revision, converter
+    )
     _write_checksums(directory)
 
 
-def verify_release_artifacts(directory: Path) -> None:
+def verify_release_artifacts(
+    directory: Path, converter: PreviewConverter = HEX_PREVIEW
+) -> None:
     """Require the exact release inventory and verify every asset's checksum."""
     digests = _read_checksums(directory / "SHA256SUMS")
-    _verify_inventory(directory, set(digests))
+    _verify_inventory(directory, set(digests), converter)
     for name, digest in digests.items():
         asset = directory / name
         if asset.is_symlink() or not asset.is_file() or _sha256(asset) != digest:
@@ -34,9 +45,13 @@ def verify_release_artifacts(directory: Path) -> None:
 
 
 def _write_requirements(
-    directory: Path, wheels: list[Path], release: str, dependencies: str
+    directory: Path,
+    wheels: list[Path],
+    release: str,
+    dependencies: str,
+    converter: PreviewConverter,
 ) -> None:
-    tag = f"ossie-preview/{release}"
+    tag = f"{converter.tag_prefix}/{release}"
     base = f"https://github.com/{RELEASE_REPOSITORY}/releases/download/{quote(tag, safe='')}"
     requirements = (
         "".join(
@@ -51,19 +66,20 @@ def _write_requirements(
 def _write_release_notes(
     directory: Path,
     release: str,
-    hex_revision: str,
+    publisher_revision: str,
     apache_revision: str,
+    converter: PreviewConverter,
 ) -> None:
     (directory / "RELEASE_NOTES.md").write_text(
-        f"# Preview of Hex's Apache Ossie converter ({release})\n\n"
-        f"- Hex converter: [commit](https://github.com/{RELEASE_REPOSITORY}/commit/"
-        f"{hex_revision})\n"
+        f"# Preview of {converter.package_name} ({release})\n\n"
+        f"- Preview publisher: [commit](https://github.com/{RELEASE_REPOSITORY}/commit/"
+        f"{publisher_revision})\n"
         f"- Apache Ossie: [commit]({APACHE_OSSIE_SOURCE.removesuffix('.git')}/commit/"
         f"{apache_revision})\n"
         f"- Runtime: Python {PYTHON_VERSION}\n"
         "- Runtime dependencies: pinned and hashed in `requirements.txt`\n\n"
         f"See the [preview guide](https://github.com/{RELEASE_REPOSITORY}/blob/"
-        f"{hex_revision}/scripts/ossie-preview/README.md) for installation and "
+        f"{publisher_revision}/scripts/ossie-preview/README.md) for installation and "
         "release details.\n",
         encoding="utf-8",
     )
@@ -93,12 +109,15 @@ def _read_checksums(manifest: Path) -> dict[str, str]:
     return digests
 
 
-def _verify_inventory(directory: Path, listed: set[str]) -> None:
+def _verify_inventory(
+    directory: Path, listed: set[str], converter: PreviewConverter
+) -> None:
     wheels = list(directory.glob("*-py3-none-any.whl"))
+    converter_prefix = converter.package_name.replace("-", "_") + "-"
     if (
         len(wheels) != 2
         or sum(wheel.name.startswith("apache_ossie-") for wheel in wheels) != 1
-        or sum(wheel.name.startswith("ossie_hex-") for wheel in wheels) != 1
+        or sum(wheel.name.startswith(converter_prefix) for wheel in wheels) != 1
     ):
         raise ValueError("Expected exactly the two wheels and release metadata")
     expected = {"requirements.txt", "RELEASE_NOTES.md"} | {
