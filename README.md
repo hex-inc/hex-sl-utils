@@ -7,12 +7,16 @@ integrations.
 
 - [`hex-sl-utils`](packages/hex-sl-utils/README.md): Python models and loaders
   for Hex semantic resources.
-- [`ossie-hex`](packages/ossie-hex/README.md): Apache Ossie converter for the
-  Hex semantic layer format.
 
 For workspace setup, development commands, package structure, and the release
 process, see [CONTRIBUTING.md](CONTRIBUTING.md). Package-specific documentation
 lives alongside each package under [`packages/`](packages/).
+
+## Ossie converter previews
+
+The [preview publisher](scripts/ossie-preview/README.md) builds Python converter
+wheels from pinned Apache Ossie source commits and hosts them on GitHub
+Releases. Converter implementation and development live in Apache's repository.
 
 ## License
 

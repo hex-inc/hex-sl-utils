@@ -90,14 +90,14 @@ def test_release_candidates_allow_multiple_non_development_versions(
     ]
 
 
-def test_git_only_package_cannot_be_published_even_with_a_final_version(
+def test_non_publishable_package_is_excluded_even_with_a_final_version(
     tmp_path: Path,
 ) -> None:
-    write_package(tmp_path, "ossie-hex", "1.0.0")
-    path = tmp_path / "ossie-hex" / "pyproject.toml"
+    write_package(tmp_path, "unpublished-package", "1.0.0")
+    path = tmp_path / "unpublished-package" / "pyproject.toml"
     path.write_text(path.read_text() + "\n[tool.release]\npublish = false\n")
     assert workspace_releases(tmp_path) == []
     with pytest.raises(ValueError, match="Invalid release tag"):
-        release_from_tag("ossie-hex-v1.0.0", tmp_path)
+        release_from_tag("unpublished-package-v1.0.0", tmp_path)
     with pytest.raises(ValueError, match="at least one"):
         release_candidates(tmp_path)
