@@ -114,28 +114,25 @@ Update Python dependencies intentionally and commit `uv.lock`:
 uv lock --upgrade
 ```
 
-### Ossie converter
+### Ossie converter previews
 
-`packages/ossie-hex` retains its Apache contributing guide and package Just
-recipes. Use the workspace setup above, then run converter recipes from the
-repository root:
+Converter development takes place in [Apache Ossie][apache-ossie]. This
+repository builds the converters and SDK from pinned remote source commits,
+tests their consumer installation, and distributes preview wheels through GitHub
+Releases.
+
+Update `scripts/ossie-preview/sources.toml` to select a shared Apache commit or
+a per-converter override, then build and test the converter:
 
 ```bash
-just ossie check
-just ossie test
-just ossie snapshot-review
-just ossie test-python-matrix
-just ossie build build-inspect build-install
+just scripts-ossie-preview-test hex
 ```
 
-These forward to the package Justfile; the same recipes work directly from
-`packages/ossie-hex`. Development recipes use the workspace environment and
-lockfile. `just scripts-ossie-preview-test` exercises the isolated consumer
-installation. Apache owns the converter's PyPI release process. This repository
-builds and tests `ossie-hex` and distributes preview wheels through GitHub
-Releases. The [preview guide](scripts/ossie-preview/README.md) covers
-artifact builds, consumer dependency pins, installation tests, and the separate
-release workflow.
+The [preview guide](scripts/ossie-preview/README.md) covers supported
+converters, artifact builds, dependency pins, installation tests, and
+publication.
+
+[apache-ossie]: https://github.com/apache/ossie
 
 ## JavaScript and TypeScript toolchain
 

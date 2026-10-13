@@ -3,13 +3,11 @@ name: Ossie preview artifacts
 on:
   pull_request:
     paths:
-      - "packages/ossie-hex/**"
       - "scripts/ossie-preview/**"
       - ".github/workflows/ossie-preview.yml"
   push:
     branches: [main]
     paths:
-      - "packages/ossie-hex/**"
       - "scripts/ossie-preview/**"
       - ".github/workflows/ossie-preview.yml"
   workflow_dispatch:
