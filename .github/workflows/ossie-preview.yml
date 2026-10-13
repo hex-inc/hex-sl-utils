@@ -14,6 +14,27 @@ on:
       - ".github/workflows/ossie-preview.yml"
   workflow_dispatch:
     inputs:
+      converter:
+        description: "Converter to build and release"
+        default: hex
+        type: choice
+        options:
+          - hex
+          - dbt
+          - cube
+          - gooddata
+          - holistics
+          - honeydew
+          - microsoft
+          - nvidia
+          - omni
+          - ontology
+          - orionbelt
+          - sigma
+          - snowflake
+          - thoughtspot
+          - wisdom
+          - wisdom-semantic-view
       release_id:
         description: "Preview identifier, e.g. v2026.10.06 or v2026.10.06-2"
         required: true
@@ -27,7 +48,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ossie-preview-${{ inputs.release_id || github.run_id }}
+  group: ossie-preview-${{ inputs.converter || 'hex' }}-${{ inputs.release_id || github.run_id }}
   cancel-in-progress: false
 
 env:
@@ -38,6 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_id: ${{ steps.build.outputs.release_id }}
+      release_tag: ${{ steps.build.outputs.release_tag }}
+      converter: ${{ steps.build.outputs.converter }}
     steps:
       - name: Check out the source to release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -57,15 +80,21 @@ jobs:
           version: ${{ env.UV_VERSION }}
           python-version: "3.14"
           enable-cache: true
-          cache-dependency-glob: scripts/ossie-preview/requirements.lock
+          cache-dependency-glob: scripts/ossie-preview/sources.toml
       - name: Build the two wheels and release metadata
         id: build
         env:
           PREVIEW_ID: ${{ inputs.release_id || format('candidate-{0}', github.sha) }}
+          PREVIEW_CONVERTER: ${{ inputs.converter || 'hex' }}
         run: |
           uv run --no-project --python 3.14 python scripts/ossie-preview/main.py \
-            build "$PREVIEW_ID" --out-dir dist/ossie-preview --require-clean
-          printf 'release_id=%s\n' "$PREVIEW_ID" >> "$GITHUB_OUTPUT"
+            build "$PREVIEW_ID" --converter "$PREVIEW_CONVERTER" --out-dir dist/ossie-preview --require-clean
+          tag_prefix=ossie-preview
+          if [[ "$PREVIEW_CONVERTER" != "hex" ]]; then
+            tag_prefix="$tag_prefix/$PREVIEW_CONVERTER"
+          fi
+          printf 'release_id=%s\nconverter=%s\nrelease_tag=%s/%s\n' \
+            "$PREVIEW_ID" "$PREVIEW_CONVERTER" "$tag_prefix" "$PREVIEW_ID" >> "$GITHUB_OUTPUT"
       - name: Save the exact assets for testing and publishing
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -100,10 +129,11 @@ jobs:
       - name: Verify assets and install into private Python 3.12
         env:
           OSSIE_PREVIEW_ASSETS: ${{ github.workspace }}/dist/ossie-preview
+          OSSIE_PREVIEW_CONVERTER: ${{ needs.build.outputs.converter }}
         run: >-
           uv run --no-project --python 3.14
           --with pytest==9.1.1 --with PyYAML==6.0.3
-          python -m pytest scripts/ossie-preview/test_installation.py -q
+          python -m pytest scripts/ossie-preview/test_sources.py scripts/ossie-preview/test_installation.py -q
 
   publish:
     name: Publish GitHub preview release
@@ -123,15 +153,19 @@ jobs:
           name: ossie-preview
           path: assets/
       - name: Verify the payload
-        run: python3 scripts/ossie-preview/main.py verify --assets assets
+        env:
+          PREVIEW_CONVERTER: ${{ needs.build.outputs.converter }}
+        run: python3 scripts/ossie-preview/main.py verify --converter "$PREVIEW_CONVERTER" --assets assets
       - name: Upload to a draft release, then publish the complete preview
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           PREVIEW_ID: ${{ needs.build.outputs.release_id }}
+          PREVIEW_TAG: ${{ needs.build.outputs.release_tag }}
+          PREVIEW_CONVERTER: ${{ needs.build.outputs.converter }}
         run: |
-          gh release create "ossie-preview/$PREVIEW_ID" \
+          gh release create "$PREVIEW_TAG" \
             --target "$GITHUB_SHA" --draft --prerelease --latest=false \
-            --title "Hex Ossie preview $PREVIEW_ID" \
+            --title "$PREVIEW_CONVERTER Ossie preview $PREVIEW_ID" \
             --notes-file assets/RELEASE_NOTES.md assets/*
-          gh release edit "ossie-preview/$PREVIEW_ID" --draft=false --latest=false
+          gh release edit "$PREVIEW_TAG" --draft=false --latest=false

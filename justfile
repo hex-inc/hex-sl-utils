@@ -127,13 +127,10 @@ test-scripts: scripts-ossie-preview-test
 scripts-ossie-preview-build *args:
     uv run --locked python scripts/ossie-preview/main.py build {{args}}
 
-# Refresh PyPI pins separately from workspace resolution; review the resulting lock.
-scripts-ossie-preview-lock:
-    uv run --locked python scripts/ossie-preview/main.py lock
-
-# Build a local preview, then exercise its installation and conversion with real uv.
-scripts-ossie-preview-test: scripts-ossie-preview-build
-    uv run --locked python -m pytest scripts/ossie-preview/test_installation.py
+# Build and test one converter with real uv; defaults to Hex.
+scripts-ossie-preview-test converter="hex":
+    uv run --locked python scripts/ossie-preview/main.py build --converter {{converter}}
+    OSSIE_PREVIEW_CONVERTER={{converter}} uv run --locked python -m pytest scripts/ossie-preview/test_sources.py scripts/ossie-preview/test_installation.py
 
 # ---
 # Test Coverage

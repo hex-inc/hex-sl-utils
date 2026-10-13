@@ -1,0 +1,67 @@
+# Apache Ossie SDK and converter source snapshot. Pin full commit SHAs.
+commit = "2b1f9bfccb558a98b21e4d4576e072fb14a5d952"
+
+[converters.hex]
+package = "ossie-hex"
+directory = "converters/hex"
+
+[converters.dbt]
+package = "apache-ossie-dbt"
+directory = "converters/dbt"
+# Optional: commit = "<full commit SHA>" overrides the shared pin for dbt and its SDK.
+
+[converters.cube]
+package = "apache-ossie-cube"
+directory = "converters/cube"
+
+[converters.gooddata]
+package = "apache-ossie-gooddata"
+directory = "converters/gooddata"
+
+[converters.holistics]
+package = "apache-ossie-holistics"
+directory = "converters/holistics"
+
+[converters.honeydew]
+package = "apache-ossie-honeydew"
+directory = "converters/honeydew"
+
+[converters.microsoft]
+package = "apache-ossie-microsoft"
+directory = "converters/microsoft"
+
+[converters.nvidia]
+package = "apache-ossie-nvidia-auto-ontology"
+directory = "converters/nvidia"
+
+[converters.omni]
+package = "ossie-omni"
+directory = "converters/omni"
+
+[converters.ontology]
+package = "apache-ossie-ontology"
+directory = "converters/ontology"
+
+[converters.orionbelt]
+package = "apache-ossie-orionbelt"
+directory = "converters/orionbelt"
+
+[converters.sigma]
+package = "apache-ossie-sigma"
+directory = "converters/sigma"
+
+[converters.snowflake]
+package = "apache-ossie-snowflake"
+directory = "converters/snowflake"
+
+[converters.thoughtspot]
+package = "apache-ossie-thoughtspot"
+directory = "converters/thoughtspot"
+
+[converters.wisdom]
+package = "apache-ossie-wisdom"
+directory = "converters/wisdom"
+
+[converters.wisdom-semantic-view]
+package = "apache-ossie-wisdom-semantic-view"
+directory = "converters/wisdom-semantic-view"
