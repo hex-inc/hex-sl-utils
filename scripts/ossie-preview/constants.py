@@ -10,5 +10,4 @@ CONVERTER_REPOSITORY = "https://github.com/hex-inc/apache-ossie"
 RELEASE_REPOSITORY = "hex-inc/hex-sl-utils"
 
 PYTHON_VERSION = "3.12"
-DEPENDENCY_LOCK = SCRIPTS_DIRECTORY / "requirements.lock"
 DEFAULT_ASSETS_DIRECTORY = WORKSPACE_ROOT / "dist" / "ossie-preview"

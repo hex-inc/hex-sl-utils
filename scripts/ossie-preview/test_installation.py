@@ -39,6 +39,10 @@ def test_release_payload(assets: Path) -> None:
     assert "hex-sl-utils==" in requirements
     assert "git+" not in requirements
     assert "file:" not in requirements
+    assert "-e " not in requirements
+    assert "pytest==" not in requirements
+    assert "ossie-hex==" not in requirements
+    assert "apache-ossie==" not in requirements
 
 
 def test_install_and_convert(assets: Path, tmp_path: Path) -> None:

@@ -129,12 +129,12 @@ test-scripts: test-scripts-ossie-preview
 build-scripts-ossie-preview *args:
     uv run --locked python scripts/ossie-preview/main.py build {{args}}
 
-# Refresh PyPI pins separately from workspace resolution; review the resulting lock.
-scripts-ossie-preview-lock:
-    uv run --locked python scripts/ossie-preview/main.py lock
+# Run script unit tests; the preview workflow owns build and installation checks.
+test-scripts-ossie-preview:
+    uv run --locked python -m pytest scripts/ossie-preview/test_*.py -m 'not integration'
 
 # Build a local preview, then exercise its installation and conversion with real uv.
-test-scripts-ossie-preview: build-scripts-ossie-preview
+test-scripts-ossie-preview-installation: build-scripts-ossie-preview
     uv run --locked python -m pytest scripts/ossie-preview/test_*.py
 
 # ---

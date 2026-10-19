@@ -60,7 +60,7 @@ jobs:
           version: ${{ env.UV_VERSION }}
           python-version: "3.14"
           enable-cache: true
-          cache-dependency-glob: scripts/ossie-preview/requirements.lock
+          cache-dependency-glob: external/apache-ossie/converters/hex/uv.lock
       - name: Build the two wheels and release metadata
         id: build
         env:

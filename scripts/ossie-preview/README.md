@@ -69,10 +69,11 @@ ossie-hex export -i model.ossie.yaml -o hex/
 Run these commands from the repository root after `just setup-scripts`. The
 converter lives at `external/apache-ossie/converters/hex`; this repository
 records its commit through a Git submodule rather than carrying a second source
-copy. Build and test the resulting preview:
+copy. Run script unit tests with `just test-scripts-ossie-preview`. To build
+and test the complete preview locally:
 
 ```bash
-just test-scripts-ossie-preview
+just test-scripts-ossie-preview-installation
 ```
 
 The recipe builds into `dist/ossie-preview/` and tests those artifacts. To build
@@ -91,16 +92,12 @@ git add external/apache-ossie
 ```
 
 The Apache Ossie wheel follows the source declared in the converter's
-`pyproject.toml`, currently the same submodule's `python/` package. Refresh the
-consumer dependency pins when package requirements change:
-
-```bash
-just scripts-ossie-preview-lock
-```
-
-Review and commit the updated lock, then run `just test-scripts-ossie-preview`
-again. CI repeats the installation and conversion checks before a preview is
-published.
+`pyproject.toml`, currently the same submodule's `python/` package. Runtime
+dependency versions and hashes are exported from the converter's `uv.lock`.
+Updating the submodule advances these together. Run
+`just test-scripts-ossie-preview-installation` after an update; the preview
+workflow repeats the installation and conversion checks across all platforms
+before publication.
 
 Both wheels include upstream LICENSE and NOTICE files.
 
@@ -108,7 +105,7 @@ Both wheels include upstream LICENSE and NOTICE files.
 
 This process consists of the following scripts:
 
-- `main.py`: command-line entrypoint for building, locking, and verifying.
+- `main.py`: builds previews using upstream dependency pins and verifies assets.
 - `constants.py`: shared paths, package sources, and runtime version.
 - `build_wheels.py`: builds both packages from the converter's declared sources.
 - `release_artifacts.py`: writes release metadata and verifies the artifacts.
