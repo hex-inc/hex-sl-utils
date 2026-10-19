@@ -1,0 +1,12 @@
+# Database clients run on the workspace interpreter, independently of the utility floor.
+[environment]
+python-version = "3.14"
+root = ["packages/hex-sl-utils/src", "packages/hex-sl-utils/tests", "."]
+
+[src]
+include = ["packages/hex-sl-utils/tests/database"]
+exclude = [
+  "packages/hex-sl-utils/tests/database/driver/bigquery.py",
+  "packages/hex-sl-utils/tests/database/driver/redshift.py",
+  "packages/hex-sl-utils/tests/database/driver/snowflake.py",
+]

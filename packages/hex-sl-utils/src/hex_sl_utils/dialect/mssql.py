@@ -885,10 +885,12 @@ class MSSQLSqlGlotOverride(TSQL):
 
     class Tokenizer(TSQL.Tokenizer):
         # Override VAR_SINGLE_TOKENS to remove $ - we handle it as PARAMETER instead
-        VAR_SINGLE_TOKENS: ClassVar[set[str]] = {"@", "#"}
+        # SQLGlot uses this as a class variable but leaves it unannotated.
+        VAR_SINGLE_TOKENS: ClassVar[set[str]] = {"@", "#"}  # ty: ignore[invalid-attribute-override]
 
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
+        # SQLGlot uses this as a class variable but leaves it unannotated.
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {  # ty: ignore[invalid-attribute-override]
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

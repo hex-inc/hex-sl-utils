@@ -9,17 +9,17 @@ from hex_sl_utils.dialect import Dialect
 
 from ..snapshot_base import SelectionSnapshotTestBase
 
-CASES = [
+CASES: list[tuple[str | None, str, int]] = [
     # value, splitter, part_number
-    ["a-b-c", "-", 1],
-    ["a-b-c", "-", 2],
-    ["a-b-c", "-", 3],
-    ["a-b-c-d-e-f", "-", 3],
-    ["a b c", " ", 2],
-    ["a<>b<>c", "<>", 2],
-    ["", "-", 1],
-    ["a-b", "-", 4],
-    [None, "-", 1],
+    ("a-b-c", "-", 1),
+    ("a-b-c", "-", 2),
+    ("a-b-c", "-", 3),
+    ("a-b-c-d-e-f", "-", 3),
+    ("a b c", " ", 2),
+    ("a<>b<>c", "<>", 2),
+    ("", "-", 1),
+    ("a-b", "-", 4),
+    (None, "-", 1),
 ]
 
 
@@ -54,7 +54,7 @@ class SnapshotTest(SelectionSnapshotTestBase):
     def get_expected_df_from_input(
         cls, expression_input_data: pl.DataFrame, dialect: Dialect
     ) -> pl.DataFrame:
-        def reference_impl(s: str, d: str, part: int):
+        def reference_impl(s: str | None, d: str, part: int):
             if not s:
                 return s
             parts = s.split(d)

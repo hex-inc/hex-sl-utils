@@ -6,7 +6,7 @@ import pytest
 from inline_snapshot import snapshot
 
 from hex_sl_utils._vendor.sqlglot import exp
-from hex_sl_utils.calc.operators import CalcOp
+from hex_sl_utils.calc.operators import CalcOp, UnaryOp
 from hex_sl_utils.calc.parentheses import (
     OPERATOR_PRECEDENCE,
     parens_if_needed,
@@ -333,7 +333,7 @@ def test_nested_unary_operators_need_parens():
 
 def test_unary_operators_precedence():
     """Test various binary expressions with different unary operators."""
-    test_cases = [
+    test_cases: list[tuple[exp.Expression, UnaryOp]] = [
         (exp.Add(this=exp.column("a"), expression=exp.column("b")), "-"),
         (exp.Sub(this=exp.column("a"), expression=exp.column("b")), "+"),
         (exp.Mul(this=exp.column("a"), expression=exp.column("b")), "!"),

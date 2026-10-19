@@ -88,7 +88,8 @@ lint-fix-typescript:
 type-check: type-check-python type-check-typescript
 
 type-check-python:
-    uv run --locked --all-packages pyright
+    uv run --locked --all-packages ty check
+    uv run --locked --all-packages ty check --project packages/hex-sl-utils --python .venv
     just --justfile packages/ossie-hex/justfile typecheck
 
 type-check-typescript:
@@ -188,10 +189,10 @@ verify-calc-parser:
 check-database: check-database-local check-database-cloud
 
 check-database-local:
-    uv run --locked --all-packages --group database-local pyright --project pyrightconfig.database.local.json
+    uv run --locked --all-packages --group database-local ty check --config-file ty.database.local.toml
 
 check-database-cloud:
-    uv run --locked --all-packages --group database-cloud pyright --project pyrightconfig.database.cloud.json
+    uv run --locked --all-packages --group database-cloud ty check --config-file ty.database.cloud.toml
 
 test-database: test-database-local test-database-cloud
 

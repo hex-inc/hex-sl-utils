@@ -8,6 +8,7 @@ on:
       - "compose.yaml"
       - "docker/**"
       - "pyproject.toml"
+      - "ty.database.*.toml"
       - "uv.lock"
       - "devbox.json"
       - "devbox.lock"

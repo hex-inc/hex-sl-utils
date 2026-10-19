@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -221,7 +221,7 @@ def _super_preprocess(
 
 
 def placeholder_parser_mapping(
-    base_parsers: dict[TokenType, Callable[[Parser], exp.Expression | None]],
+    base_parsers: Mapping[TokenType, Callable[[Parser], exp.Expression | None]],
     *,
     parameter_fallback: Callable[[Parser], exp.Expression | None] | None = None,
 ) -> dict[TokenType, Callable[[Parser], exp.Expression | None]]:
@@ -372,7 +372,7 @@ def parse_brace_placeholder(parser: Parser) -> exp.Expression | None:
 
 def _parse_base_placeholder(
     parser: Parser,
-    base_parsers: dict[TokenType, Callable[[Parser], exp.Expression | None]],
+    base_parsers: Mapping[TokenType, Callable[[Parser], exp.Expression | None]],
     token_type: TokenType,
 ) -> exp.Expression | None:
     base_parser = base_parsers.get(token_type)

@@ -1,4 +1,4 @@
-# pyright: reportIncompatibleVariableOverride=false
+from __future__ import annotations
 
 from typing import Literal
 
@@ -18,7 +18,10 @@ from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.exception import TypeCheckError
 from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 
-_ISONEOF_COERCION_MAP: dict[DataType, type[FuncBase]] = {
+_ISONEOF_COERCION_MAP: dict[
+    DataType,
+    type[FuncToNumber | FuncToText | FuncToBoolean | FuncToDate],
+] = {
     DataType.NUMBER: FuncToNumber,
     DataType.STRING: FuncToText,
     DataType.BOOLEAN: FuncToBoolean,
@@ -202,9 +205,7 @@ class FuncIsOneOf(FuncBase):
                         f"no converter available for target type {target_type.name}"
                     )
                     raise TypeCheckError(msg)
-                converter = converter_cls(  # pyright: ignore[reportCallIssue]
-                    args=Args(root=[])
-                )
+                converter = converter_cls(args=Args(root=[]))
                 coerced = converter.compile([arg], dialect, context, tz)
                 # Boolean coercion produces predicates (e.g. arg != 0) which are
                 # not valid scalar values inside IN lists on MSSQL. Wrap for

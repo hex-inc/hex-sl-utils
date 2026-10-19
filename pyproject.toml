@@ -14,7 +14,6 @@ dev = [
   "libcst>=1.9.0,<2; python_version >= '3.14'",
   "packaging>=26.3",
   "polars>=1.5",
-  "pyright>=1.1.411",
   "pytest>=8.4.2",
   "pytest-cov>=7.1.0",
   "pyyaml>=6.0.3",
@@ -82,24 +81,11 @@ exclude_also = [
 ]
 show_missing = true
 
-[tool.pyright]
-include = ["packages", "scripts", "tests"]
-exclude = [
-  "**/_vendor",
-  "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
-  "packages/hex-sl-utils/tests/database",
-  "packages/ossie-hex", # Checked with ty using the converter configuration.
-]
-ignore = ["packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py"]
-pythonVersion = "3.14"
-typeCheckingMode = "standard"
-venv = ".venv"
-venvPath = "."
-executionEnvironments = [
-  { root = "packages/hex-sl-utils", pythonVersion = "3.9" },
-  { root = "scripts", pythonVersion = "3.14" },
-  { root = ".", pythonVersion = "3.14" },
-]
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.src]
+include = ["scripts", "tests"]
 
 [tool.ruff]
 extend-exclude = [

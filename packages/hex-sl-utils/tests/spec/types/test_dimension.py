@@ -6,7 +6,7 @@ from hex_sl_utils.spec.types import DataType, Dimension
 
 
 def test_dimension_without_optional_fields() -> None:
-    # should not fail pyright type checking
+    # should not fail type checking
     dimension = Dimension(id="order_id", type=DataType.STRING)
     assert_type(dimension, Dimension)
 

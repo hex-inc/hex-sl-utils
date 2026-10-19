@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import polars as pl
-import redshift_connector  # type: ignore[reportMissingImports]
+import redshift_connector
 
 from database.driver.connection import get_env_port, get_env_var
 from database.driver.polars_read_database import PolarsReadDatabaseDriver

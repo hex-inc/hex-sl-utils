@@ -4,7 +4,7 @@ from hex_sl_utils.spec.types import Model
 
 
 def test_model_without_optional_fields() -> None:
-    # should not fail pyright type checking
+    # should not fail type checking
     model = Model(id="order_items", base_sql_table="analytics.order_items")
     assert_type(model, Model)
 

@@ -152,7 +152,7 @@ def test_driver_normalizes_timestamptz_results() -> None:
 
     data_type = normalized.schema["timestamp"]
     assert isinstance(data_type, pl.Datetime)
-    assert data_type.time_zone == "America/New_York"  # type: ignore[reportAttributeAccessIssue]
+    assert data_type.time_zone == "America/New_York"
 
 
 class _ClosingDriver(SqlDriver):
