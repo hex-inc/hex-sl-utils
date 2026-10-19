@@ -73,7 +73,8 @@ class _ScalarExpressionWithDefaultType(ScalarExpression):
         }
     )
 
-    type: DataType = Field(default=NotImplemented)
+    # This abstract base uses a sentinel; concrete subclasses provide a DataType.
+    type: DataType = Field(default=NotImplemented)  # ty: ignore[invalid-assignment]
 
 
 class ScalarExpressionDefaultBoolean(_ScalarExpressionWithDefaultType):

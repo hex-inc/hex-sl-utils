@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from snowflake.connector import connect  # type: ignore[reportMissingImports]
+from snowflake.connector import connect
 
 from database.driver.connection import get_env_var
 from database.driver.polars_read_database import PolarsReadDatabaseDriver

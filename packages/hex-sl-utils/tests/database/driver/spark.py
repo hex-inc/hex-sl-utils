@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import polars as pl
-from pyspark.sql import SparkSession  # type: ignore[reportMissingImports]
+from pyspark.sql import SparkSession
 
 from database.driver.base import SqlDriver
 from database.driver.query import RenderedQuery

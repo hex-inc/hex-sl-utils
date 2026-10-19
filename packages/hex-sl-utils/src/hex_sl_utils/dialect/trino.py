@@ -476,7 +476,8 @@ class TrinoSqlGlotOverride(SqlGlotTrino):
 
     class Tokenizer(SqlGlotTrino.Tokenizer):
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
+        # SQLGlot uses this as a class variable but leaves it unannotated.
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {  # ty: ignore[invalid-attribute-override]
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

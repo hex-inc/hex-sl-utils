@@ -736,10 +736,12 @@ class ClickHouseSqlGlotOverride(SqlGlotClickHouse):
 
     class Tokenizer(SqlGlotClickHouse.Tokenizer):
         # Remove $ from heredoc strings to allow ${...} placeholders
-        HEREDOC_STRINGS: ClassVar[list[str | tuple[str, str]]] = []
+        # SQLGlot uses this as a class variable but leaves it unannotated.
+        HEREDOC_STRINGS: ClassVar[list[str | tuple[str, str]]] = []  # ty: ignore[invalid-attribute-override]
 
         # Add $ as PARAMETER token so ${...} can be parsed as placeholders
-        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {
+        # SQLGlot uses this as a class variable but leaves it unannotated.
+        SINGLE_TOKENS: ClassVar[dict[str, TokenType]] = {  # ty: ignore[invalid-attribute-override]
             **tokens.Tokenizer.SINGLE_TOKENS,
             "$": TokenType.PARAMETER,
         }

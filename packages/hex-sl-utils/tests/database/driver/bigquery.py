@@ -6,8 +6,8 @@ import json
 from typing import cast
 
 import polars as pl
-from google.cloud import bigquery  # type: ignore[reportAttributeAccessIssue]
-from google.oauth2 import service_account  # type: ignore[reportMissingImports]
+from google.cloud import bigquery
+from google.oauth2 import service_account
 
 from database.driver.base import SqlDriver
 from database.driver.connection import get_env_var

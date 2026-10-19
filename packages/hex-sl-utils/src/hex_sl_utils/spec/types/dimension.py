@@ -54,7 +54,7 @@ class Dimension(ScalarExpression):
         },
     )
 
-    id: EntityId = Field(  # pyright: ignore[reportGeneralTypeIssues]
+    id: EntityId = Field(
         ...,
         description=(
             "The unique identifier for this dimension.\n"

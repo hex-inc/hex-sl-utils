@@ -87,6 +87,13 @@ Python packages form a [uv workspace][uv-workspaces]. Configure each package for
 their minimum supported Python version in the `pyproject.toml` file. The
 workspace otherwise targets the latest stable Python version.
 
+Python type checks use [ty](https://docs.astral.sh/ty/). Run
+`just type-check-python` to check workspace scripts and tests plus both
+packages, using each package's minimum Python version. Vendored and generated
+Python sources are excluded. Database tests use separate dependency groups and
+configurations; run `just check-database-local` or `just check-database-cloud`
+to check them without connecting to a database.
+
 Declare shared Python development dependencies in the root `pyproject.toml`.
 Declare runtime dependencies in the consuming package's `pyproject.toml`. When
 one workspace package depends on another, declare the dependency normally and

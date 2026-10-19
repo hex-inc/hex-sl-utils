@@ -8,7 +8,7 @@ specific to the calc language.
 
 from __future__ import annotations
 
-from typing import get_args
+from typing import cast, get_args
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.calc.operators import CalcOp, OperandType, UnaryOp
@@ -110,7 +110,7 @@ def parens_if_needed(
         # Handle unary operator context
         # parent_op must be a UnaryOp in this context
         assert parent_op in get_args(UnaryOp), f"Invalid unary operator: {parent_op}"
-        if _needs_parens_unary(expr, parent_op):  # type: ignore[arg-type]
+        if _needs_parens_unary(expr, cast(UnaryOp, parent_op)):
             return exp.Paren(this=expr)
         return expr
 

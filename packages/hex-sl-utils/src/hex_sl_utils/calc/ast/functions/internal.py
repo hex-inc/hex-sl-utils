@@ -1,7 +1,5 @@
 """Internal chart functions for type conversions."""
 
-# pyright: reportIncompatibleVariableOverride=false
-
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import Field

@@ -26,3 +26,14 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 source-include = ["CHANGELOG.md"]
+
+[tool.ty.environment]
+python-version = "3.9"
+
+[tool.ty.src]
+include = ["src", "tests"]
+exclude = [
+  "src/hex_sl_utils/_vendor",
+  "src/hex_sl_utils/calc/_calc_parser_standalone.py",
+  "tests/database",
+]

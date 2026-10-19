@@ -1,5 +1,3 @@
-# pyright: reportIncompatibleVariableOverride=false
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Literal, TypeVar, Union

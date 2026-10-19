@@ -1,0 +1,16 @@
+# Database clients run on the workspace interpreter, independently of the utility floor.
+[environment]
+python-version = "3.14"
+root = ["packages/hex-sl-utils/src", "packages/hex-sl-utils/tests", "."]
+
+[src]
+include = ["packages/hex-sl-utils/tests/database"]
+exclude = [
+  "packages/hex-sl-utils/tests/database/driver/clickhouse.py",
+  "packages/hex-sl-utils/tests/database/driver/duckdb.py",
+  "packages/hex-sl-utils/tests/database/driver/mssql.py",
+  "packages/hex-sl-utils/tests/database/driver/mysql.py",
+  "packages/hex-sl-utils/tests/database/driver/postgres.py",
+  "packages/hex-sl-utils/tests/database/driver/spark.py",
+  "packages/hex-sl-utils/tests/database/driver/trino.py",
+]

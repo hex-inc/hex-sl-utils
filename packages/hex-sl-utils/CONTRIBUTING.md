@@ -9,7 +9,7 @@ only on `hex-sl-utils`, run these scoped equivalents from the repository root:
 ```bash
 uv run --locked ruff check packages/hex-sl-utils
 uv run --locked ruff format packages/hex-sl-utils
-uv run --locked pyright packages/hex-sl-utils
+uv run --locked --all-packages ty check --project packages/hex-sl-utils
 uv run --locked --package hex-sl-utils pytest packages/hex-sl-utils/tests
 uv build --package hex-sl-utils --no-sources
 ```
