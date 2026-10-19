@@ -4,7 +4,7 @@ from hex_sl_utils.spec.types import Relation, RelationType
 
 
 def test_relation_without_optional_fields() -> None:
-    # should not fail ty type checking
+    # should not fail type checking
     relation = Relation(
         id="customers",
         type=RelationType.MANY_TO_ONE,
