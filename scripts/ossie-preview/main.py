@@ -8,11 +8,11 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from build_wheels import build_wheels, load_apache_ossie_dependency_revision
+from build_wheels import build_wheels
 from constants import (
+    CONVERTER_SOURCE,
     DEFAULT_ASSETS_DIRECTORY,
     DEPENDENCY_LOCK,
-    OSSIE_HEX_PACKAGE,
     PYTHON_VERSION,
     WORKSPACE_ROOT,
 )
@@ -36,16 +36,18 @@ def _build_preview(release: str, output: Path, *, require_clean: bool = False) -
     """Build wheels, add installation metadata, then verify and copy the payload."""
     _validate_build(release, output)
     hex_revision = _converter_revision(require_clean=require_clean)
-    apache_revision = load_apache_ossie_dependency_revision()
+    workspace_revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True
+    ).strip()
     with tempfile.TemporaryDirectory(prefix="ossie-preview-build-") as temporary:
         directory = Path(temporary) / "assets"
-        wheels = build_wheels(directory, apache_revision)
+        wheels = build_wheels(directory)
         write_release_metadata(
             directory,
             wheels,
             release=release,
             hex_revision=hex_revision,
-            apache_revision=apache_revision,
+            workspace_revision=workspace_revision,
             dependencies=DEPENDENCY_LOCK.read_text(encoding="utf-8"),
         )
         verify_release_artifacts(directory)
@@ -60,9 +62,7 @@ def _lock_dependencies() -> None:
     """Resolve PyPI dependencies from both wheels, independently of the workspace."""
     with tempfile.TemporaryDirectory(prefix="ossie-preview-lock-") as temporary:
         directory = Path(temporary)
-        wheels = build_wheels(
-            directory / "wheels", load_apache_ossie_dependency_revision()
-        )
+        wheels = build_wheels(directory / "wheels")
         inputs = directory / "wheels.txt"
         inputs.write_text(
             "".join(f"{wheel}\n" for wheel in wheels),
@@ -148,6 +148,11 @@ def _validate_output_directory(output: Path) -> None:
 
 def _converter_revision(*, require_clean: bool) -> str:
     """Read the converter commit, requiring committed sources for CI builds."""
+    if not (CONVERTER_SOURCE / "converters" / "hex" / "pyproject.toml").is_file():
+        raise ValueError("Initialize the converter with just setup-scripts")
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=CONVERTER_SOURCE, text=True
+    ).strip()
     if require_clean:
         changes = subprocess.check_output(
             [
@@ -155,18 +160,16 @@ def _converter_revision(*, require_clean: bool) -> str:
                 "status",
                 "--porcelain",
                 "--",
-                str(OSSIE_HEX_PACKAGE.relative_to(WORKSPACE_ROOT)),
+                str(CONVERTER_SOURCE.relative_to(WORKSPACE_ROOT)),
             ],
             cwd=WORKSPACE_ROOT,
             text=True,
         )
         if changes:
             raise ValueError(
-                "Commit converter changes before preparing a published preview"
+                "Commit converter changes and its submodule pin before publishing"
             )
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True
-    ).strip()
+    return revision
 
 
 if __name__ == "__main__":

@@ -89,6 +89,7 @@ include = ["scripts", "tests"]
 
 [tool.ruff]
 extend-exclude = [
+  "external",
   "**/_vendor",
   "packages/hex-sl-utils/src/hex_sl_utils/calc/_calc_parser_standalone.py",
 ]
@@ -111,7 +112,7 @@ known-first-party = ["hex_sl_utils"]
 "packages/hex-sl-utils/tests/database/driver/base.py" = ["UP045"]
 
 [tool.rumdl]
-exclude = ["**/_vendor/**"]
+exclude = ["**/_vendor/**", "external/**"]
 flavor = "gfm"
 
 [tool.rumdl.MD013]

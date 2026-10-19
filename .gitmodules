@@ -1,0 +1,3 @@
+[submodule "external/apache-ossie"]
+	path = external/apache-ossie
+	url = https://github.com/hex-inc/apache-ossie.git

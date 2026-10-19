@@ -5,7 +5,11 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from constants import APACHE_OSSIE_SOURCE, PYTHON_VERSION, RELEASE_REPOSITORY
+from constants import (
+    CONVERTER_REPOSITORY,
+    PYTHON_VERSION,
+    RELEASE_REPOSITORY,
+)
 
 
 def write_release_metadata(
@@ -14,12 +18,12 @@ def write_release_metadata(
     *,
     release: str,
     hex_revision: str,
-    apache_revision: str,
+    workspace_revision: str,
     dependencies: str,
 ) -> None:
     """Write hashed installation requirements, source provenance, and checksums."""
     _write_requirements(directory, wheels, release, dependencies)
-    _write_release_notes(directory, release, hex_revision, apache_revision)
+    _write_release_notes(directory, release, hex_revision, workspace_revision)
     _write_checksums(directory)
 
 
@@ -52,18 +56,18 @@ def _write_release_notes(
     directory: Path,
     release: str,
     hex_revision: str,
-    apache_revision: str,
+    workspace_revision: str,
 ) -> None:
     (directory / "RELEASE_NOTES.md").write_text(
         f"# Preview of Hex's Apache Ossie converter ({release})\n\n"
-        f"- Hex converter: [commit](https://github.com/{RELEASE_REPOSITORY}/commit/"
+        f"- Apache Ossie and Hex converter: [commit]({CONVERTER_REPOSITORY}/commit/"
         f"{hex_revision})\n"
-        f"- Apache Ossie: [commit]({APACHE_OSSIE_SOURCE.removesuffix('.git')}/commit/"
-        f"{apache_revision})\n"
+        f"- Build and release configuration: [commit](https://github.com/"
+        f"{RELEASE_REPOSITORY}/commit/{workspace_revision})\n"
         f"- Runtime: Python {PYTHON_VERSION}\n"
         "- Runtime dependencies: pinned and hashed in `requirements.txt`\n\n"
         f"See the [preview guide](https://github.com/{RELEASE_REPOSITORY}/blob/"
-        f"{hex_revision}/scripts/ossie-preview/README.md) for installation and "
+        f"{workspace_revision}/scripts/ossie-preview/README.md) for installation and "
         "release details.\n",
         encoding="utf-8",
     )

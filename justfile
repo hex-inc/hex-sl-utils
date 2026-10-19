@@ -7,7 +7,14 @@ ci: setup check test verify-artifacts build-packages smoke-test-packages
 # ---
 # Setup
 
-setup: setup-uv setup-pnpm
+setup: setup-packages setup-scripts
+
+setup-packages: setup-uv setup-pnpm
+
+setup-scripts: setup-uv setup-submodules
+
+setup-submodules:
+    git submodule update --init external/apache-ossie
 
 setup-uv:
     uv sync --locked --all-packages
@@ -18,7 +25,7 @@ setup-pnpm:
 # ---
 # Build
 
-build: build-packages build-artifacts
+build: build-packages build-artifacts build-scripts
 
 build-packages: build-packages-python
 
@@ -98,7 +105,7 @@ type-check-typescript:
 # ---
 # Test
 
-test: test-packages test-workspace test-database-local test-database-cloud
+test: test-packages test-workspace test-scripts test-database-local test-database-cloud
 
 test-packages: test-python-packages
 
@@ -120,12 +127,14 @@ test-python-workspace:
 # ---
 # Scripts
 
-test-scripts: scripts-ossie-preview-test
+build-scripts: build-scripts-ossie-preview
+
+test-scripts: test-scripts-ossie-preview
 
 # Ossie preview
 
 # Build the two preview wheels and their pinned consumer installation requirements.
-scripts-ossie-preview-build *args:
+build-scripts-ossie-preview *args:
     uv run --locked python scripts/ossie-preview/main.py build {{args}}
 
 # Refresh PyPI pins separately from workspace resolution; review the resulting lock.
@@ -133,8 +142,8 @@ scripts-ossie-preview-lock:
     uv run --locked python scripts/ossie-preview/main.py lock
 
 # Build a local preview, then exercise its installation and conversion with real uv.
-scripts-ossie-preview-test: scripts-ossie-preview-build
-    uv run --locked python -m pytest scripts/ossie-preview/test_installation.py
+test-scripts-ossie-preview: build-scripts-ossie-preview
+    uv run --locked python -m pytest scripts/ossie-preview/test_*.py
 
 # ---
 # Test Coverage

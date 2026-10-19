@@ -17,7 +17,8 @@ just setup
 ```
 
 - Run `direnv allow` again after `.envrc` changes.
-- Run `just setup` again when dependency lockfiles change.
+- Run `just setup` again when dependency lockfiles or Git submodule contents
+  change.
 
 Run the complete local CI workflow after setup:
 
@@ -36,7 +37,7 @@ just check       # lint, format-check, and type-check
 just format      # apply automatic formatting and fixes
 just test        # run all tests
 just test-cov    # run tests and write coverage reports
-just build       # build every publishable package, artifact
+just build       # build packages, artifacts, and script outputs
 just smoke-test  # test package distributions in isolation
 just verify      # check generated artifacts are up to date
 just ci          # run (almost) all of the above

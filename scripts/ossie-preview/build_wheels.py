@@ -1,22 +1,23 @@
-"""Build the converter and canonical Apache Ossie as standalone Python wheels."""
+"""Build the converter and its Apache Ossie dependency as standalone wheels."""
 
-import re
 import shutil
 import subprocess
 import tempfile
 import tomllib
-import urllib.request
-import zipfile
 from pathlib import Path
 
-from constants import APACHE_OSSIE_SOURCE, OSSIE_HEX_PACKAGE, WORKSPACE_ROOT
+from constants import (
+    CONVERTER_SOURCE,
+    OSSIE_HEX_PACKAGE,
+    WORKSPACE_ROOT,
+)
 
 
-def build_wheels(directory: Path, revision: str) -> list[Path]:
+def build_wheels(directory: Path) -> list[Path]:
     """Build unpublished packages and require platform-independent wheels."""
     directory.mkdir(parents=True)
-    _build_workspace_wheel(directory)
-    _build_apache_ossie_wheel(revision, directory)
+    _build_source_wheel(OSSIE_HEX_PACKAGE, directory)
+    _build_source_wheel(load_apache_ossie_package(), directory)
     # uv creates this local build marker; it is not a release asset.
     (directory / ".gitignore").unlink(missing_ok=True)
     wheels = sorted(directory.glob("*.whl"))
@@ -27,42 +28,45 @@ def build_wheels(directory: Path, revision: str) -> list[Path]:
     return wheels
 
 
-def load_apache_ossie_dependency_revision() -> str:
-    """Read and validate the converter's canonical Apache development pin."""
+def load_apache_ossie_package() -> Path:
+    """Follow the converter's Apache Ossie source within the pinned submodule."""
     data = tomllib.loads((OSSIE_HEX_PACKAGE / "pyproject.toml").read_text())
     source = data["tool"]["uv"]["sources"]["apache-ossie"]
-    if (
-        source.get("git") != APACHE_OSSIE_SOURCE
-        or source.get("subdirectory") != "python"
-    ):
+    if "path" not in source:
         raise ValueError(
-            "Preview wheels must be built from upstream apache/ossie/python"
+            "Preview builds require an Apache Ossie path inside the submodule"
         )
-    revision = source.get("rev", "")
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise ValueError("Apache Ossie must be pinned to a full Git commit")
-    return revision
+    package = (OSSIE_HEX_PACKAGE / source["path"]).resolve()
+    if not package.is_relative_to(CONVERTER_SOURCE.resolve()):
+        raise ValueError("Apache Ossie source must stay inside the pinned submodule")
+    return package
 
 
-def _build_workspace_wheel(output: Path) -> None:
-    _build_wheel(OSSIE_HEX_PACKAGE, output)
+def _build_source_wheel(source: Path, output: Path) -> None:
+    if not (source / "pyproject.toml").is_file():
+        raise ValueError("Initialize the converter with just setup-scripts")
+    with tempfile.TemporaryDirectory(prefix="ossie-preview-source-") as temporary:
+        package = Path(temporary) / source.name
+        shutil.copytree(
+            source,
+            package,
+            ignore=shutil.ignore_patterns(".venv", "__pycache__", ".*cache", "dist"),
+        )
+        _include_notices(CONVERTER_SOURCE, package)
+        _build_wheel(package, output)
 
 
-def _build_apache_ossie_wheel(revision: str, output: Path) -> None:
-    with tempfile.TemporaryDirectory(prefix="apache-ossie-source-") as temporary:
-        source = Path(temporary)
-        archive = source / "ossie.zip"
-        url = f"{APACHE_OSSIE_SOURCE.removesuffix('.git')}/archive/{revision}.zip"
-        with urllib.request.urlopen(url, timeout=120) as response:
-            archive.write_bytes(response.read())
-        with zipfile.ZipFile(archive) as snapshot:
-            snapshot.extractall(source)
-        checkout = source / f"ossie-{revision}"
-        # The upstream Python project omits the repository notices. Include
-        # them in its standalone wheel without changing the package source.
-        for name in ("LICENSE", "NOTICE"):
-            shutil.copy2(checkout / name, checkout / "python" / name)
-        _build_wheel(checkout / "python", output)
+def _include_notices(checkout: Path, package: Path) -> None:
+    """Package repository notices in a temporary tree, leaving upstream clean."""
+    for name in ("LICENSE", "NOTICE"):
+        shutil.copy2(checkout / name, package / name)
+    pyproject = package / "pyproject.toml"
+    metadata = pyproject.read_text()
+    if "license-files" not in tomllib.loads(metadata)["project"]:
+        metadata = metadata.replace(
+            "[project]\n", '[project]\nlicense-files = ["LICENSE", "NOTICE"]\n', 1
+        )
+        pyproject.write_text(metadata)
 
 
 def _build_wheel(package: Path, output: Path) -> None:

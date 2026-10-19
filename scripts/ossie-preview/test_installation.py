@@ -32,8 +32,9 @@ def test_release_payload(assets: Path) -> None:
                     name.endswith(f"/licenses/{notice}") for name in package.namelist()
                 )
     sources = (assets / "RELEASE_NOTES.md").read_text()
-    assert "https://github.com/apache/ossie/commit/" in sources
-    assert "hex-inc/apache-ossie" not in sources
+    assert "Apache Ossie and Hex converter:" in sources
+    assert "https://github.com/hex-inc/apache-ossie/commit/" in sources
+    assert "Build and release configuration:" in sources
     requirements = (assets / "requirements.txt").read_text()
     assert "hex-sl-utils==" in requirements
     assert "git+" not in requirements

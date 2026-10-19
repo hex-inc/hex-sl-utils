@@ -4,8 +4,9 @@ from pathlib import Path
 
 SCRIPTS_DIRECTORY = Path(__file__).resolve().parent
 WORKSPACE_ROOT = Path(__file__).resolve().parents[2]
-OSSIE_HEX_PACKAGE = WORKSPACE_ROOT / "packages" / "ossie-hex"
-APACHE_OSSIE_SOURCE = "https://github.com/apache/ossie.git"
+CONVERTER_SOURCE = WORKSPACE_ROOT / "external" / "apache-ossie"
+OSSIE_HEX_PACKAGE = CONVERTER_SOURCE / "converters" / "hex"
+CONVERTER_REPOSITORY = "https://github.com/hex-inc/apache-ossie"
 RELEASE_REPOSITORY = "hex-inc/hex-sl-utils"
 
 PYTHON_VERSION = "3.12"
