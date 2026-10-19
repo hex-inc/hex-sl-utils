@@ -1,0 +1,30 @@
+{
+  "semantic_models": [
+    {
+      "name": "orders",
+      "node_relation": {
+        "alias": "orders",
+        "schema_name": "public",
+        "database": "analytics",
+        "relation_name": "analytics.public.orders"
+      },
+      "entities": [],
+      "measures": [],
+      "dimensions": [
+        { "name": "order_id", "type": "categorical" },
+        { "name": "amount", "type": "categorical" }
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "name": "total_amount",
+      "type": "simple",
+      "type_params": {
+        "expr": "amount",
+        "metric_aggregation_params": { "semantic_model": "orders", "agg": "sum" }
+      }
+    }
+  ],
+  "project_configuration": {}
+}

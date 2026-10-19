@@ -14,8 +14,9 @@ lives alongside each package under [`packages/`](packages/).
 
 ## External package releases
 
-- [`ossie-hex`](scripts/ossie-preview/README.md): Apache Ossie converter for the
-  Hex semantic layer format, built from a pinned upstream Git submodule.
+- [Apache Ossie previews](scripts/ossie-preview/README.md): Select converters
+  built from a pinned upstream Git submodule and installed together from one
+  shared dependency lock.
 
 ## License
 

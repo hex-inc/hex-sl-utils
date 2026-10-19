@@ -122,12 +122,15 @@ Update Python dependencies intentionally and commit `uv.lock`:
 uv lock --upgrade
 ```
 
-### Ossie converter
+### Apache Ossie converters
 
-The converter source lives in the `external/apache-ossie-converters` Git
-submodule, with its Apache Ossie dependency pinned by the nested `ossie`
-submodule. This repository builds `ossie-hex` and its Apache Ossie dependency as
-preview wheels for GitHub Releases. Apache owns PyPI publication. See the
+The converter sources live in the `external/apache-ossie-converters` Git
+submodule, with Apache Ossie pinned by its nested `ossie` submodule. This
+repository builds select vendor converters and their shared Apache
+Ossie dependency as preview wheels for GitHub Releases. The combined runtime
+lock lives in `scripts/ossie-preview/bundle/uv.lock`; refresh it with
+`just lock-scripts-ossie-preview` after dependency metadata changes. Apache owns
+PyPI publication. See the
 [preview guide](scripts/ossie-preview/README.md) for builds, installation tests,
 and releases.
 
