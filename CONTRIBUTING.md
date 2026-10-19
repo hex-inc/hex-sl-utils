@@ -89,8 +89,8 @@ their minimum supported Python version in the `pyproject.toml` file. The
 workspace otherwise targets the latest stable Python version.
 
 Python type checks use [ty](https://docs.astral.sh/ty/). Run
-`just type-check-python` to check workspace scripts and tests plus both
-packages, using each package's minimum Python version. Vendored and generated
+`just type-check-python` to check workspace scripts and tests plus the utility
+package, using its minimum Python version. Vendored and generated
 Python sources are excluded. Database tests use separate dependency groups and
 configurations; run `just check-database-local` or `just check-database-cloud`
 to check them without connecting to a database.
@@ -124,26 +124,11 @@ uv lock --upgrade
 
 ### Ossie converter
 
-`packages/ossie-hex` retains its Apache contributing guide and package Just
-recipes. Use the workspace setup above, then run converter recipes from the
-repository root:
-
-```bash
-just ossie check
-just ossie test
-just ossie snapshot-review
-just ossie test-python-matrix
-just ossie build build-inspect build-install
-```
-
-These forward to the package Justfile; the same recipes work directly from
-`packages/ossie-hex`. Development recipes use the workspace environment and
-lockfile. `just scripts-ossie-preview-test` exercises the isolated consumer
-installation. Apache owns the converter's PyPI release process. This repository
-builds and tests `ossie-hex` and distributes preview wheels through GitHub
-Releases. The [preview guide](scripts/ossie-preview/README.md) covers
-artifact builds, consumer dependency pins, installation tests, and the separate
-release workflow.
+The converter source lives in the `external/apache-ossie` Git submodule.
+This repository builds `ossie-hex` and its Apache Ossie dependency as preview
+wheels for GitHub Releases. Apache owns PyPI publication. See the
+[preview guide](scripts/ossie-preview/README.md) for builds, installation tests,
+and releases.
 
 ## JavaScript and TypeScript toolchain
 

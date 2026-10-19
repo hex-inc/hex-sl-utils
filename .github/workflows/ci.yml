@@ -99,8 +99,8 @@ jobs:
       - name: Run package tests
         if: matrix.python != '3.9' && matrix.python != '3.10'
         run: uv run --locked --all-packages pytest packages -m 'not database'
-      # The converter requires 3.11; test the utility package's older Python
-      # support outside workspace resolution, which intersects member floors.
+      # The workspace requires 3.11; test the utility package's older Python
+      # support outside workspace resolution.
       - name: Test utilities on older Python
         if: matrix.python == '3.9' || matrix.python == '3.10'
         run: |

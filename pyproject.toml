@@ -117,7 +117,3 @@ flavor = "gfm"
 
 [tool.rumdl.MD013]
 reflow = true
-
-[tool.rumdl.per-file-ignores]
-# The converter guide is preserved from Apache and links into that repository.
-"packages/ossie-hex/CONTRIBUTING.md" = ["MD057"]

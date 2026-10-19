@@ -97,7 +97,6 @@ type-check: type-check-python type-check-typescript
 type-check-python:
     uv run --locked --all-packages ty check
     uv run --locked --all-packages ty check --project packages/hex-sl-utils --python .venv
-    just --justfile packages/ossie-hex/justfile typecheck
 
 type-check-typescript:
     pnpm --recursive --if-present run check
@@ -111,13 +110,6 @@ test-packages: test-python-packages
 
 test-python-packages:
     uv run --locked --all-packages pytest packages -m 'not database'
-
-# Run any converter recipe from the repository root, e.g. just ossie snapshot-review.
-ossie *args:
-    just --justfile packages/ossie-hex/justfile {{args}}
-
-test-ossie *args:
-    just --justfile packages/ossie-hex/justfile test {{args}}
 
 test-workspace: test-python-workspace
 
