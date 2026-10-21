@@ -1,4 +1,4 @@
-"""Build and verify Hex's Ossie preview releases."""
+"""Build and verify the Hex and dbt Ossie preview bundle."""
 
 import argparse
 import re
@@ -10,9 +10,10 @@ from pathlib import Path
 
 from build_wheels import build_wheels
 from constants import (
+    BUNDLE_PROJECT,
     CONVERTER_SOURCE,
     DEFAULT_ASSETS_DIRECTORY,
-    OSSIE_HEX_PACKAGE,
+    RELEASE_PACKAGES,
     WORKSPACE_ROOT,
 )
 from release_artifacts import verify_release_artifacts, write_release_metadata
@@ -34,7 +35,7 @@ def main() -> None:
 def _build_preview(release: str, output: Path, *, require_clean: bool = False) -> None:
     """Build wheels, add installation metadata, then verify and copy the payload."""
     _validate_build(release, output)
-    hex_revision = _converter_revision(require_clean=require_clean)
+    source_revision = _converter_revision(require_clean=require_clean)
     workspace_revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True
     ).strip()
@@ -46,7 +47,7 @@ def _build_preview(release: str, output: Path, *, require_clean: bool = False) -
             directory,
             wheels,
             release=release,
-            hex_revision=hex_revision,
+            source_revision=source_revision,
             workspace_revision=workspace_revision,
             dependencies=dependencies,
         )
@@ -59,18 +60,21 @@ def _build_preview(release: str, output: Path, *, require_clean: bool = False) -
 
 
 def _export_dependencies() -> str:
-    """Export hashed runtime pins, replacing upstream local packages with wheels."""
+    """Export the combined runtime lock, replacing local packages with wheels."""
     return subprocess.check_output(
         [
             "uv",
             "export",
             "--project",
-            str(OSSIE_HEX_PACKAGE),
+            str(BUNDLE_PROJECT),
             "--locked",
             "--no-dev",
             "--no-emit-project",
-            "--no-emit-package",
-            "apache-ossie",
+            *[
+                argument
+                for name in RELEASE_PACKAGES
+                for argument in ("--no-emit-package", name)
+            ],
             "--format",
             "requirements-txt",
             "--no-header",
@@ -116,11 +120,12 @@ def _validate_build(release: str, output: Path) -> None:
 def _validate_output_directory(output: Path) -> None:
     """Allow replacing generated preview files, including a damaged old build."""
     metadata = {"requirements.txt", "RELEASE_NOTES.md", "SHA256SUMS"}
+    wheel_names = "|".join(name.replace("-", "_") for name in RELEASE_PACKAGES)
     if not output.is_dir():
         raise ValueError(f"Output is not a directory: {output}")
     for asset in output.iterdir():
         known = asset.name in metadata or re.fullmatch(
-            r"(?:apache_ossie|ossie_hex)-.+\.whl", asset.name
+            rf"(?:{wheel_names})-.+\.whl", asset.name
         )
         if asset.is_symlink() or not asset.is_file() or not known:
             raise ValueError(f"Output contains an unrelated file: {asset}")
@@ -128,7 +133,7 @@ def _validate_output_directory(output: Path) -> None:
 
 def _converter_revision(*, require_clean: bool) -> str:
     """Read the converter commit, requiring committed sources for CI builds."""
-    if not (OSSIE_HEX_PACKAGE / "pyproject.toml").is_file():
+    if not (CONVERTER_SOURCE / "ossie" / "python" / "pyproject.toml").is_file():
         raise ValueError("Initialize the converter with just setup-scripts")
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=CONVERTER_SOURCE, text=True

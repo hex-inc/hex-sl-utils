@@ -1,4 +1,4 @@
-"""Write and verify the installation metadata in an Ossie preview payload."""
+"""Write and verify installation metadata in an Ossie preview payload."""
 
 import hashlib
 import re
@@ -8,6 +8,7 @@ from urllib.parse import quote
 from constants import (
     CONVERTER_REPOSITORY,
     PYTHON_VERSION,
+    RELEASE_PACKAGES,
     RELEASE_REPOSITORY,
 )
 
@@ -17,13 +18,13 @@ def write_release_metadata(
     wheels: list[Path],
     *,
     release: str,
-    hex_revision: str,
+    source_revision: str,
     workspace_revision: str,
     dependencies: str,
 ) -> None:
     """Write hashed installation requirements, source provenance, and checksums."""
     _write_requirements(directory, wheels, release, dependencies)
-    _write_release_notes(directory, release, hex_revision, workspace_revision)
+    _write_release_notes(directory, release, source_revision, workspace_revision)
     _write_checksums(directory)
 
 
@@ -55,15 +56,18 @@ def _write_requirements(
 def _write_release_notes(
     directory: Path,
     release: str,
-    hex_revision: str,
+    source_revision: str,
     workspace_revision: str,
 ) -> None:
     (directory / "RELEASE_NOTES.md").write_text(
-        f"# Preview of Hex's Apache Ossie converter ({release})\n\n"
-        f"- Apache Ossie and Hex converter: [commit]({CONVERTER_REPOSITORY}/commit/"
-        f"{hex_revision})\n"
+        f"# Preview of Apache Ossie and select vendor converters ({release})\n\n"
+        f"- [Source commit]({CONVERTER_REPOSITORY}/commit/"
+        f"{source_revision})\n"
         f"- Build and release configuration: [commit](https://github.com/"
         f"{RELEASE_REPOSITORY}/commit/{workspace_revision})\n"
+        f"- Combined dependency lock: [bundle/uv.lock](https://github.com/"
+        f"{RELEASE_REPOSITORY}/blob/{workspace_revision}/"
+        "scripts/ossie-preview/bundle/uv.lock)\n"
         f"- Runtime: Python {PYTHON_VERSION}\n"
         "- Runtime dependencies: pinned and hashed in `requirements.txt`\n\n"
         f"See the [preview guide](https://github.com/{RELEASE_REPOSITORY}/blob/"
@@ -99,18 +103,15 @@ def _read_checksums(manifest: Path) -> dict[str, str]:
 
 def _verify_inventory(directory: Path, listed: set[str]) -> None:
     wheels = list(directory.glob("*-py3-none-any.whl"))
-    if (
-        len(wheels) != 2
-        or sum(wheel.name.startswith("apache_ossie-") for wheel in wheels) != 1
-        or sum(wheel.name.startswith("ossie_hex-") for wheel in wheels) != 1
-    ):
-        raise ValueError("Expected exactly the two wheels and release metadata")
+    names = sorted(wheel.name.split("-", 1)[0].replace("_", "-") for wheel in wheels)
+    if names != sorted(RELEASE_PACKAGES):
+        raise ValueError("Expected exactly the bundle wheels and release metadata")
     expected = {"requirements.txt", "RELEASE_NOTES.md"} | {
         wheel.name for wheel in wheels
     }
     actual = {asset.name for asset in directory.iterdir()}
     if listed != expected or actual != expected | {"SHA256SUMS"}:
-        raise ValueError("Expected exactly the two wheels and release metadata")
+        raise ValueError("Expected exactly the bundle wheels and release metadata")
 
 
 def _sha256(path: Path) -> str:

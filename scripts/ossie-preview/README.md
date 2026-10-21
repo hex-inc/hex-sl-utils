@@ -1,37 +1,41 @@
-# Preview of Apache Ossie and Hex conversion
+# Preview of Apache Ossie converters
 
-The Apache Ossie project, and specifically Hex's converter, are currently
+The Apache Ossie project, including vendor converters, is currently
 awaiting publication to a public registry. Apache controls this process, and
 presumably will release to PyPI. Until then, the necessary work can be made
 available here, through
 [GitHub Releases][github-releases].
 
-The goal is to make Ossie → Hex conversion installable by consumers while those
-packages remain unpublished.
+The goal is to make Vendor → Ossie → Hex conversion installable by consumers
+while those packages remain unpublished.
 
 ## What gets published
 
-Each preview contains the Hex converter and its Apache Ossie dependency from the
-pinned `hex-inc/apache-ossie-converters` Git submodule and its nested `ossie`
-submodule. They are built into wheels so consumers can install them without
-checking out source or compiling packages. Other runtime dependencies come from
-PyPI.
+Each preview contains select vendor converters and their shared Apache Ossie
+dependency from the pinned `hex-inc/apache-ossie-converters` Git submodule and
+its nested `ossie` submodule. They are built into wheels so consumers can
+install them without checking out source or compiling packages. Other runtime
+dependencies come from PyPI.
 
 The following artifacts are attached to a GitHub prerelease:
 
-- Two wheels: `ossie-hex` and `apache-ossie`.
-- `requirements.txt`: the wheel URLs and pinned dependencies needed to install.
-- `RELEASE_NOTES.md`: the converter, Apache Ossie, and build configuration
-  commits.
+- Apache Ossie wheel: `apache_ossie-<version>-py3-none-any.whl`
+- Vendor converter wheels: `<vendor-converter>-<version>-py3-none-any.whl`
+- `requirements.txt`: the wheel URLs and shared pinned dependencies needed to
+  install all converters in one environment.
+- `RELEASE_NOTES.md`: the upstream and build configuration commits and combined
+  dependency lock.
 - `SHA256SUMS`: checksums for verifying the downloaded files.
 
 ## Publish and verify
 
 The [Ossie preview artifacts workflow][preview-workflow] builds and tests
 previews on pull requests and relevant changes to `main`. It installs the built
-artifacts with real uv and private Python, then checks that conversion works on
-Linux, macOS, and Windows. Checksums verify that the files being published match
-the tested artifacts. Publication proceeds only after every platform passes.
+artifacts with real uv and private Python, then checks Vendor → Ossie → Hex
+conversion, both Vendor conversion directions, and dbt → Ossie → Hex in that
+same environment on Linux, macOS, and Windows. Checksums verify that the files
+being published match the tested artifacts. Publication proceeds only after
+every platform passes.
 
 To make a preview available to consumers, a maintainer merges the changes and
 runs that workflow on `main` with:
@@ -58,20 +62,20 @@ uv pip install --python .venv --require-hashes --only-binary :all: \
 ```
 
 Activate the environment with `source .venv/bin/activate` on macOS or Linux,
-or `.venv\Scripts\Activate.ps1` in Windows PowerShell. The installed command is
-`ossie-hex`; run it against an Ossie model to produce a Hex semantic project:
+or `.venv\Scripts\Activate.ps1` in Windows PowerShell. Each converter makes its
+own command avaialable. Convert a Vendor specification to Ossie, then
+to a Hex semantic project:
 
 ```bash
+# vendor-converter import -i <input> -o model.ossie.yaml
 ossie-hex export -i model.ossie.yaml -o hex/
 ```
 
 ## Develop and update locally
 
-Run these commands from the repository root after `just setup-scripts`. The
-converter lives at `external/apache-ossie-converters/hex`; this repository
-records its commit through a Git submodule rather than carrying a second source
-copy. Run script unit tests with `just test-scripts-ossie-preview`. To build
-and test the complete preview locally:
+Run these commands from the repository root after `just setup-scripts`. Run
+script tests with `just test-scripts-ossie-preview`. To build and test the
+complete preview locally:
 
 ```bash
 just test-scripts-ossie-preview-installation
@@ -84,32 +88,35 @@ without running tests, using the current date as the preview label:
 just build-scripts-ossie-preview
 ```
 
-To update the converter, select and commit its submodule revision:
+`bundle/pyproject.toml` selects which packages to release from the submodule.
+`bundle/uv.lock` pins compatible dependencies so the converters install
+together. Builds fail if this lock needs updating.
+
+To update the converters, select a submodule revision, refresh the lock, and
+test the result:
 
 ```bash
 git -C external/apache-ossie-converters fetch origin <commit>
 git -C external/apache-ossie-converters checkout --detach <commit>
 git -C external/apache-ossie-converters submodule update --init --recursive
-git add external/apache-ossie-converters
+just lock-scripts-ossie-preview
+just test-scripts-ossie-preview-installation
+git add external/apache-ossie-converters scripts/ossie-preview/bundle/uv.lock
 ```
 
-The Apache Ossie wheel follows the source declared in the converter's
-`pyproject.toml`, currently the nested `ossie` submodule's `python/` package.
-Runtime dependency versions and hashes are exported from the converter's
-`uv.lock`. Updating the submodule advances these together. Run
-`just test-scripts-ossie-preview-installation` after an update; the preview
-workflow repeats the installation and conversion checks across all platforms
-before publication.
+To refresh dependency versions, use `just lock-scripts-ossie-preview --upgrade`,
+then test and commit the updated lock.
 
-Both wheels include upstream LICENSE and NOTICE files.
+To add a Python converter, add its distribution name and source path to
+`bundle/pyproject.toml`, refresh the lock, and add a conversion test.
+
+Every wheel includes the LICENSE and NOTICE files from its own repository.
 
 ## Scripts
 
-This process consists of the following scripts:
-
-- `main.py`: builds previews using upstream dependency pins and verifies assets.
+- `main.py`: builds and verifies preview releases.
 - `constants.py`: shared paths, package sources, and runtime version.
-- `build_wheels.py`: builds both packages from the converter's declared sources.
+- `build_wheels.py`: builds wheels from the pinned submodule.
 - `release_artifacts.py`: writes release metadata and verifies the artifacts.
 - `test_installation.py`: verifies artifacts and tests installation and
   conversion.

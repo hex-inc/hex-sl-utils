@@ -123,9 +123,13 @@ build-scripts: build-scripts-ossie-preview
 
 test-scripts: test-scripts-ossie-preview
 
-# Ossie preview
+# Apache Ossie preview
 
-# Build the two preview wheels and their pinned consumer installation requirements.
+# Refresh the shared runtime dependency lock after changing converter sources.
+lock-scripts-ossie-preview *args:
+    uv lock --project scripts/ossie-preview/bundle {{args}}
+
+# Build the converter bundle and its pinned consumer installation requirements.
 build-scripts-ossie-preview *args:
     uv run --locked python scripts/ossie-preview/main.py build {{args}}
 
