@@ -24,8 +24,8 @@ jobs:
         with:
           devbox-version: ${{ env.DEVBOX_VERSION }}
           enable-cache: "true"
-      - name: Sync workspace
-        run: devbox run -- just setup
+      - name: Set up packages
+        run: devbox run -- just setup-packages
       - name: Check packages
         run: devbox run -- just check
       - name: Run package tests
@@ -38,6 +38,24 @@ jobs:
         run: devbox run -- just build-packages
       - name: Smoke-test package distributions
         run: devbox run -- just smoke-test-packages
+
+  test-scripts:
+    name: Test scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+      - name: Install Devbox
+        uses: jetify-com/devbox-install-action@8c6a66ed6273138b1915457069de78cb52fe3bd7 # v0.15.0
+        with:
+          devbox-version: ${{ env.DEVBOX_VERSION }}
+          enable-cache: "true"
+      - name: Set up scripts
+        run: devbox run -- just setup-scripts
+      - name: Run script tests
+        run: devbox run -- just test-scripts
 
   # Devbox pins Python 3.14 and does not support Windows runners; keep the
   # compatibility matrix on uv's selected interpreter instead.
@@ -81,8 +99,8 @@ jobs:
       - name: Run package tests
         if: matrix.python != '3.9' && matrix.python != '3.10'
         run: uv run --locked --all-packages pytest packages -m 'not database'
-      # The converter requires 3.11; test the utility package's older Python
-      # support outside workspace resolution, which intersects member floors.
+      # The workspace requires 3.11; test the utility package's older Python
+      # support outside workspace resolution.
       - name: Test utilities on older Python
         if: matrix.python == '3.9' || matrix.python == '3.10'
         run: |

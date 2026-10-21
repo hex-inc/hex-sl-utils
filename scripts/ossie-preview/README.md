@@ -11,16 +11,17 @@ packages remain unpublished.
 
 ## What gets published
 
-Each preview contains the Hex converter from this repository and Apache Ossie
-from a pinned upstream commit. They are built into wheels so consumers can
-install them without checking out source or compiling packages. Other runtime
-dependencies come from PyPI.
+Each preview contains the Hex converter and its Apache Ossie dependency from the
+pinned `hex-inc/apache-ossie` Git submodule. They are built into wheels so
+consumers can install them without checking out source or compiling packages.
+Other runtime dependencies come from PyPI.
 
 The following artifacts are attached to a GitHub prerelease:
 
 - Two wheels: `ossie-hex` and `apache-ossie`.
 - `requirements.txt`: the wheel URLs and pinned dependencies needed to install.
-- `RELEASE_NOTES.md`: the source commits used for the preview.
+- `RELEASE_NOTES.md`: the converter, Apache Ossie, and build configuration
+  commits.
 - `SHA256SUMS`: checksums for verifying the downloaded files.
 
 ## Publish and verify
@@ -65,40 +66,48 @@ ossie-hex export -i model.ossie.yaml -o hex/
 
 ## Develop and update locally
 
-Run these commands from the repository root. Make converter changes in
-`packages/ossie-hex`, then build and test the resulting preview:
+Run these commands from the repository root after `just setup-scripts`. The
+converter lives at `external/apache-ossie/converters/hex`; this repository
+records its commit through a Git submodule rather than carrying a second source
+copy. Run script unit tests with `just test-scripts-ossie-preview`. To build
+and test the complete preview locally:
 
 ```bash
-just scripts-ossie-preview-test
+just test-scripts-ossie-preview-installation
 ```
 
 The recipe builds into `dist/ossie-preview/` and tests those artifacts. To build
 without running tests, using the current date as the preview label:
 
 ```bash
-just scripts-ossie-preview-build
+just build-scripts-ossie-preview
 ```
 
-To advance Apache Ossie, update its source commit in the converter's
-`pyproject.toml`. Runtime dependency requirements are declared there too.
-Refresh the dependency locks to select exact versions for the preview:
+To update the converter, select and commit its submodule revision:
 
 ```bash
-uv lock
-just scripts-ossie-preview-lock
+git -C external/apache-ossie fetch origin <commit>
+git -C external/apache-ossie checkout --detach <commit>
+git add external/apache-ossie
 ```
 
-Review and commit the updated locks, then run `just scripts-ossie-preview-test`
-again. CI repeats the installation and conversion checks before a preview is
-published.
+The Apache Ossie wheel follows the source declared in the converter's
+`pyproject.toml`, currently the same submodule's `python/` package. Runtime
+dependency versions and hashes are exported from the converter's `uv.lock`.
+Updating the submodule advances these together. Run
+`just test-scripts-ossie-preview-installation` after an update; the preview
+workflow repeats the installation and conversion checks across all platforms
+before publication.
+
+Both wheels include upstream LICENSE and NOTICE files.
 
 ## Scripts
 
 This process consists of the following scripts:
 
-- `main.py`: command-line entrypoint for building, locking, and verifying.
+- `main.py`: builds previews using upstream dependency pins and verifies assets.
 - `constants.py`: shared paths, package sources, and runtime version.
-- `build_wheels.py`: builds both packages and reads the upstream source pin.
+- `build_wheels.py`: builds both packages from the converter's declared sources.
 - `release_artifacts.py`: writes release metadata and verifies the artifacts.
 - `test_installation.py`: verifies artifacts and tests installation and
   conversion.

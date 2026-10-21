@@ -43,8 +43,8 @@ jobs:
         with:
           devbox-version: ${{ env.DEVBOX_VERSION }}
           enable-cache: "true"
-      - name: Sync workspace
-        run: devbox run -- just setup
+      - name: Set up packages
+        run: devbox run -- just setup-packages
       - name: Validate release metadata
         id: release
         run: |

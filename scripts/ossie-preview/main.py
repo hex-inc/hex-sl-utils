@@ -1,4 +1,4 @@
-"""Build, verify, and refresh dependencies for Hex's Ossie preview releases."""
+"""Build and verify Hex's Ossie preview releases."""
 
 import argparse
 import re
@@ -8,45 +8,47 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from build_wheels import build_wheels, load_apache_ossie_dependency_revision
+from build_wheels import build_wheels
 from constants import (
+    CONVERTER_SOURCE,
     DEFAULT_ASSETS_DIRECTORY,
-    DEPENDENCY_LOCK,
     OSSIE_HEX_PACKAGE,
-    PYTHON_VERSION,
     WORKSPACE_ROOT,
 )
 from release_artifacts import verify_release_artifacts, write_release_metadata
 
 
 def main() -> None:
-    """Dispatch the three release-maintenance commands."""
+    """Dispatch the release build and verification commands."""
     args = _parse_arguments()
     if args.command == "build":
         _build_preview(
             args.release, args.out_dir.resolve(), require_clean=args.require_clean
         )
-    elif args.command == "lock":
-        _lock_dependencies()
-    else:
+    elif args.command == "verify":
         verify_release_artifacts(args.assets)
+    else:
+        raise ValueError(f"Unexpected command: {args.command}")
 
 
 def _build_preview(release: str, output: Path, *, require_clean: bool = False) -> None:
     """Build wheels, add installation metadata, then verify and copy the payload."""
     _validate_build(release, output)
     hex_revision = _converter_revision(require_clean=require_clean)
-    apache_revision = load_apache_ossie_dependency_revision()
+    workspace_revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True
+    ).strip()
+    dependencies = _export_dependencies()
     with tempfile.TemporaryDirectory(prefix="ossie-preview-build-") as temporary:
         directory = Path(temporary) / "assets"
-        wheels = build_wheels(directory, apache_revision)
+        wheels = build_wheels(directory)
         write_release_metadata(
             directory,
             wheels,
             release=release,
             hex_revision=hex_revision,
-            apache_revision=apache_revision,
-            dependencies=DEPENDENCY_LOCK.read_text(encoding="utf-8"),
+            workspace_revision=workspace_revision,
+            dependencies=dependencies,
         )
         verify_release_artifacts(directory)
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -56,50 +58,32 @@ def _build_preview(release: str, output: Path, *, require_clean: bool = False) -
     print(f"Built ossie-preview/{release} assets in {output}")
 
 
-def _lock_dependencies() -> None:
-    """Resolve PyPI dependencies from both wheels, independently of the workspace."""
-    with tempfile.TemporaryDirectory(prefix="ossie-preview-lock-") as temporary:
-        directory = Path(temporary)
-        wheels = build_wheels(
-            directory / "wheels", load_apache_ossie_dependency_revision()
-        )
-        inputs = directory / "wheels.txt"
-        inputs.write_text(
-            "".join(f"{wheel}\n" for wheel in wheels),
-            encoding="utf-8",
-        )
-        subprocess.run(
-            [
-                "uv",
-                "pip",
-                "compile",
-                str(inputs),
-                "--quiet",
-                "--upgrade",
-                "--python-version",
-                PYTHON_VERSION,
-                "--universal",
-                "--only-binary",
-                ":all:",
-                "--generate-hashes",
-                "--no-header",
-                "--no-annotate",
-                "--no-emit-package",
-                "ossie-hex",
-                "--no-emit-package",
-                "apache-ossie",
-                "--output-file",
-                str(DEPENDENCY_LOCK),
-            ],
-            cwd=WORKSPACE_ROOT,
-            check=True,
-        )
+def _export_dependencies() -> str:
+    """Export hashed runtime pins, replacing upstream local packages with wheels."""
+    return subprocess.check_output(
+        [
+            "uv",
+            "export",
+            "--project",
+            str(OSSIE_HEX_PACKAGE),
+            "--locked",
+            "--no-dev",
+            "--no-emit-project",
+            "--no-emit-package",
+            "apache-ossie",
+            "--format",
+            "requirements-txt",
+            "--no-header",
+            "--no-annotate",
+        ],
+        cwd=WORKSPACE_ROOT,
+        text=True,
+    )
 
 
 def _parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("lock", help="Refresh pinned, hashed PyPI dependencies")
     verify = commands.add_parser("verify", help="Verify a complete release payload")
     verify.add_argument("--assets", type=Path, default=DEFAULT_ASSETS_DIRECTORY)
     build = commands.add_parser(
@@ -125,10 +109,6 @@ def _validate_build(release: str, output: Path) -> None:
         raise ValueError(
             "Release identifier must contain only letters, numbers, '.', '_' or '-'"
         )
-    if not DEPENDENCY_LOCK.is_file():
-        raise ValueError(
-            "Run just scripts-ossie-preview-lock before building preview assets"
-        )
     if output.exists():
         _validate_output_directory(output)
 
@@ -148,6 +128,11 @@ def _validate_output_directory(output: Path) -> None:
 
 def _converter_revision(*, require_clean: bool) -> str:
     """Read the converter commit, requiring committed sources for CI builds."""
+    if not (CONVERTER_SOURCE / "converters" / "hex" / "pyproject.toml").is_file():
+        raise ValueError("Initialize the converter with just setup-scripts")
+    revision = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=CONVERTER_SOURCE, text=True
+    ).strip()
     if require_clean:
         changes = subprocess.check_output(
             [
@@ -155,18 +140,16 @@ def _converter_revision(*, require_clean: bool) -> str:
                 "status",
                 "--porcelain",
                 "--",
-                str(OSSIE_HEX_PACKAGE.relative_to(WORKSPACE_ROOT)),
+                str(CONVERTER_SOURCE.relative_to(WORKSPACE_ROOT)),
             ],
             cwd=WORKSPACE_ROOT,
             text=True,
         )
         if changes:
             raise ValueError(
-                "Commit converter changes before preparing a published preview"
+                "Commit converter changes and its submodule pin before publishing"
             )
-    return subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=WORKSPACE_ROOT, text=True
-    ).strip()
+    return revision
 
 
 if __name__ == "__main__":

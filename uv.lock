@@ -11,7 +11,6 @@ resolution-markers = [
 members = [
     "hex-sl-utils",
     "hex-sl-utils-workspace",
-    "ossie-hex",
 ]
 
 [[package]]
@@ -21,15 +20,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7", size = 15893, upload-time = "2026-07-23T20:16:13.995Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0", size = 13427, upload-time = "2026-07-23T20:16:12.938Z" },
-]
-
-[[package]]
-name = "apache-ossie"
-version = "0.2.0.dev0"
-source = { git = "https://github.com/apache/ossie.git?subdirectory=python&rev=b6c702ed1c07e91382a69e870c875cbd19570828#b6c702ed1c07e91382a69e870c875cbd19570828" }
-dependencies = [
-    { name = "pydantic" },
-    { name = "pyyaml" },
 ]
 
 [[package]]
@@ -1533,49 +1523,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ossie-hex"
-version = "0.2.0.dev0"
-source = { editable = "packages/ossie-hex" }
-dependencies = [
-    { name = "apache-ossie" },
-    { name = "hex-sl-utils" },
-    { name = "pydantic" },
-    { name = "pydantic-core" },
-    { name = "pyyaml" },
-    { name = "typing-extensions" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "inline-snapshot" },
-    { name = "pytest" },
-    { name = "ruff" },
-    { name = "rumdl" },
-    { name = "syrupy" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "apache-ossie", git = "https://github.com/apache/ossie.git?subdirectory=python&rev=b6c702ed1c07e91382a69e870c875cbd19570828" },
-    { name = "hex-sl-utils", editable = "packages/hex-sl-utils" },
-    { name = "pydantic", specifier = ">=2.13.4" },
-    { name = "pydantic-core", specifier = ">=2.46.4" },
-    { name = "pyyaml", specifier = ">=6.0" },
-    { name = "typing-extensions", specifier = ">=4.16.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "inline-snapshot", specifier = ">=0.35.4" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "ruff", specifier = ">=0.16.4" },
-    { name = "rumdl", specifier = ">=0.2.60" },
-    { name = "syrupy", specifier = ">=6.0.0" },
-    { name = "ty", specifier = ">=0.0.77" },
-]
-
-[[package]]
 name = "packaging"
 version = "26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -2404,18 +2351,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/fa/de/4464eebd4d2b3c5bf599af02b385b61bfc50d1c9494b58b705b8dafd50ca/sqlalchemy-redshift-0.8.14.tar.gz", hash = "sha256:1f1f78d8ef7febaf0553d64fe247fc08acbfec84d8e1d2dc8264c656cc623622", size = 55319, upload-time = "2023-04-07T16:56:33.993Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/17/8b/2c7201607a9a5d997ace6ca907d1dea9271fd399560b082d3432a72046af/sqlalchemy_redshift-0.8.14-py2.py3-none-any.whl", hash = "sha256:cfdfae2c8fb3043c181e2baedd4ee425c1ca7efed20f3c5ae274838d1015f919", size = 38701, upload-time = "2023-04-07T16:56:31.576Z" },
-]
-
-[[package]]
-name = "syrupy"
-version = "6.0.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "pytest" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d2/a7/3c797c76994dc817582abdda90ee31867a9883567b0add47dbc0ccb12ce4/syrupy-6.0.0.tar.gz", hash = "sha256:bf4f5f662a7b23a9e5711bd5597e301cd09c00f31be5fa4095f79da7b0585f3d", size = 99435, upload-time = "2026-08-22T20:48:39.493Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/ff/4d8ae6d6070ea73ee9d466701584a75db9586ce09de98f8f1b3276efad5f/syrupy-6.0.0-py3-none-any.whl", hash = "sha256:3efa16d767bd8614413cc20057552e4aec14428c6e5ea788c1f7e03047e8a5e4", size = 58047, upload-time = "2026-08-22T20:48:38.213Z" },
 ]
 
 [[package]]

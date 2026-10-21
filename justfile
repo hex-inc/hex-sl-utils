@@ -7,7 +7,14 @@ ci: setup check test verify-artifacts build-packages smoke-test-packages
 # ---
 # Setup
 
-setup: setup-uv setup-pnpm
+setup: setup-packages setup-scripts
+
+setup-packages: setup-uv setup-pnpm
+
+setup-scripts: setup-uv setup-submodules
+
+setup-submodules:
+    git submodule update --init external/apache-ossie
 
 setup-uv:
     uv sync --locked --all-packages
@@ -18,7 +25,7 @@ setup-pnpm:
 # ---
 # Build
 
-build: build-packages build-artifacts
+build: build-packages build-artifacts build-scripts
 
 build-packages: build-packages-python
 
@@ -90,7 +97,6 @@ type-check: type-check-python type-check-typescript
 type-check-python:
     uv run --locked --all-packages ty check
     uv run --locked --all-packages ty check --project packages/hex-sl-utils --python .venv
-    just --justfile packages/ossie-hex/justfile typecheck
 
 type-check-typescript:
     pnpm --recursive --if-present run check
@@ -98,19 +104,12 @@ type-check-typescript:
 # ---
 # Test
 
-test: test-packages test-workspace test-database-local test-database-cloud
+test: test-packages test-workspace test-scripts test-database-local test-database-cloud
 
 test-packages: test-python-packages
 
 test-python-packages:
     uv run --locked --all-packages pytest packages -m 'not database'
-
-# Run any converter recipe from the repository root, e.g. just ossie snapshot-review.
-ossie *args:
-    just --justfile packages/ossie-hex/justfile {{args}}
-
-test-ossie *args:
-    just --justfile packages/ossie-hex/justfile test {{args}}
 
 test-workspace: test-python-workspace
 
@@ -120,21 +119,23 @@ test-python-workspace:
 # ---
 # Scripts
 
-test-scripts: scripts-ossie-preview-test
+build-scripts: build-scripts-ossie-preview
+
+test-scripts: test-scripts-ossie-preview
 
 # Ossie preview
 
 # Build the two preview wheels and their pinned consumer installation requirements.
-scripts-ossie-preview-build *args:
+build-scripts-ossie-preview *args:
     uv run --locked python scripts/ossie-preview/main.py build {{args}}
 
-# Refresh PyPI pins separately from workspace resolution; review the resulting lock.
-scripts-ossie-preview-lock:
-    uv run --locked python scripts/ossie-preview/main.py lock
+# Run script unit tests; the preview workflow owns build and installation checks.
+test-scripts-ossie-preview:
+    uv run --locked python -m pytest scripts/ossie-preview/test_*.py -m 'not integration'
 
 # Build a local preview, then exercise its installation and conversion with real uv.
-scripts-ossie-preview-test: scripts-ossie-preview-build
-    uv run --locked python -m pytest scripts/ossie-preview/test_installation.py
+test-scripts-ossie-preview-installation: build-scripts-ossie-preview
+    uv run --locked python -m pytest scripts/ossie-preview/test_*.py
 
 # ---
 # Test Coverage
