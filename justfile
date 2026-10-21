@@ -14,7 +14,7 @@ setup-packages: setup-uv setup-pnpm
 setup-scripts: setup-uv setup-submodules
 
 setup-submodules:
-    git submodule update --init external/apache-ossie
+    git submodule update --init --recursive external/apache-ossie-converters
 
 setup-uv:
     uv sync --locked --all-packages

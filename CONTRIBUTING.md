@@ -124,9 +124,10 @@ uv lock --upgrade
 
 ### Ossie converter
 
-The converter source lives in the `external/apache-ossie` Git submodule.
-This repository builds `ossie-hex` and its Apache Ossie dependency as preview
-wheels for GitHub Releases. Apache owns PyPI publication. See the
+The converter source lives in the `external/apache-ossie-converters` Git
+submodule, with its Apache Ossie dependency pinned by the nested `ossie`
+submodule. This repository builds `ossie-hex` and its Apache Ossie dependency as
+preview wheels for GitHub Releases. Apache owns PyPI publication. See the
 [preview guide](scripts/ossie-preview/README.md) for builds, installation tests,
 and releases.
 

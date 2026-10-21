@@ -8,7 +8,7 @@ import pytest
 
 @pytest.fixture
 def converter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    package = tmp_path / "converters" / "hex"
+    package = tmp_path / "hex"
     package.mkdir(parents=True)
     monkeypatch.setattr(build_wheels, "OSSIE_HEX_PACKAGE", package)
     monkeypatch.setattr(build_wheels, "CONVERTER_SOURCE", tmp_path)
@@ -17,9 +17,9 @@ def converter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def test_apache_source_follows_converter(converter: Path) -> None:
     (converter / "pyproject.toml").write_text(
-        '[tool.uv.sources]\napache-ossie = { path = "../../python" }\n'
+        '[tool.uv.sources]\napache-ossie = { path = "../ossie/python" }\n'
     )
-    assert build_wheels.load_apache_ossie_package() == converter.parents[1] / "python"
+    assert build_wheels.load_apache_ossie_package() == converter.parent / "ossie/python"
 
 
 @pytest.mark.parametrize(

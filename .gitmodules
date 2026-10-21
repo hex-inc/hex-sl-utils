@@ -1,3 +1,3 @@
-[submodule "external/apache-ossie"]
-	path = external/apache-ossie
-	url = https://github.com/hex-inc/apache-ossie.git
+[submodule "external/apache-ossie-converters"]
+	path = external/apache-ossie-converters
+	url = https://github.com/hex-inc/apache-ossie-converters.git

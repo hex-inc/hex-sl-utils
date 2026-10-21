@@ -128,7 +128,7 @@ def _validate_output_directory(output: Path) -> None:
 
 def _converter_revision(*, require_clean: bool) -> str:
     """Read the converter commit, requiring committed sources for CI builds."""
-    if not (CONVERTER_SOURCE / "converters" / "hex" / "pyproject.toml").is_file():
+    if not (OSSIE_HEX_PACKAGE / "pyproject.toml").is_file():
         raise ValueError("Initialize the converter with just setup-scripts")
     revision = subprocess.check_output(
         ["git", "rev-parse", "HEAD"], cwd=CONVERTER_SOURCE, text=True
