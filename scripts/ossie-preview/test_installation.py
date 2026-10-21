@@ -95,6 +95,7 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
             "-c",
             "import importlib.metadata as m, pathlib, sys; "
             f"assert '.'.join(map(str, sys.version_info[:2])) == {PYTHON_VERSION!r}; "
+            "assert m.distribution('apache-ossie-hex').metadata['Name'] == 'apache-ossie-hex'; "
             "assert m.distribution('hex-sl-utils').read_text('direct_url.json') is None; "
             f"assert pathlib.Path(sys.base_prefix).is_relative_to(pathlib.Path({str(tmp_path / 'python')!r}))",
         )

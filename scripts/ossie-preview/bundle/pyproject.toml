@@ -4,7 +4,7 @@ version = "0.0.0"
 description = "Shared runtime dependency lock for the Apache Ossie preview converters"
 requires-python = ">=3.12"
 # Keep these as bare distribution names: the release builder uses this inventory.
-dependencies = ["apache-ossie", "apache-ossie-dbt", "ossie-hex"]
+dependencies = ["apache-ossie", "apache-ossie-dbt", "apache-ossie-hex"]
 
 [tool.uv]
 package = false
@@ -17,4 +17,4 @@ members = []
 [tool.uv.sources]
 apache-ossie = { path = "../../../external/apache-ossie-converters/ossie/python", editable = true }
 apache-ossie-dbt = { path = "../../../external/apache-ossie-converters/dbt" }
-ossie-hex = { path = "../../../external/apache-ossie-converters/hex" }
+apache-ossie-hex = { path = "../../../external/apache-ossie-converters/hex" }
