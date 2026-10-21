@@ -3,14 +3,14 @@ name: Ossie preview artifacts
 on:
   pull_request:
     paths:
-      - "external/apache-ossie"
+      - "external/apache-ossie-converters"
       - ".gitmodules"
       - "scripts/ossie-preview/**"
       - ".github/workflows/ossie-preview.yml"
   push:
     branches: [main]
     paths:
-      - "external/apache-ossie"
+      - "external/apache-ossie-converters"
       - ".gitmodules"
       - "scripts/ossie-preview/**"
       - ".github/workflows/ossie-preview.yml"
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          submodules: true
+          submodules: recursive
       - name: Require main for publishing
         env:
           PUBLISH: ${{ inputs.publish || false }}
@@ -60,7 +60,7 @@ jobs:
           version: ${{ env.UV_VERSION }}
           python-version: "3.14"
           enable-cache: true
-          cache-dependency-glob: external/apache-ossie/converters/hex/uv.lock
+          cache-dependency-glob: external/apache-ossie-converters/hex/uv.lock
       - name: Build the two wheels and release metadata
         id: build
         env:

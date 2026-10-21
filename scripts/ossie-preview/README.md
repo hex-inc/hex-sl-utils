@@ -12,9 +12,10 @@ packages remain unpublished.
 ## What gets published
 
 Each preview contains the Hex converter and its Apache Ossie dependency from the
-pinned `hex-inc/apache-ossie` Git submodule. They are built into wheels so
-consumers can install them without checking out source or compiling packages.
-Other runtime dependencies come from PyPI.
+pinned `hex-inc/apache-ossie-converters` Git submodule and its nested `ossie`
+submodule. They are built into wheels so consumers can install them without
+checking out source or compiling packages. Other runtime dependencies come from
+PyPI.
 
 The following artifacts are attached to a GitHub prerelease:
 
@@ -67,7 +68,7 @@ ossie-hex export -i model.ossie.yaml -o hex/
 ## Develop and update locally
 
 Run these commands from the repository root after `just setup-scripts`. The
-converter lives at `external/apache-ossie/converters/hex`; this repository
+converter lives at `external/apache-ossie-converters/hex`; this repository
 records its commit through a Git submodule rather than carrying a second source
 copy. Run script unit tests with `just test-scripts-ossie-preview`. To build
 and test the complete preview locally:
@@ -86,15 +87,16 @@ just build-scripts-ossie-preview
 To update the converter, select and commit its submodule revision:
 
 ```bash
-git -C external/apache-ossie fetch origin <commit>
-git -C external/apache-ossie checkout --detach <commit>
-git add external/apache-ossie
+git -C external/apache-ossie-converters fetch origin <commit>
+git -C external/apache-ossie-converters checkout --detach <commit>
+git -C external/apache-ossie-converters submodule update --init --recursive
+git add external/apache-ossie-converters
 ```
 
 The Apache Ossie wheel follows the source declared in the converter's
-`pyproject.toml`, currently the same submodule's `python/` package. Runtime
-dependency versions and hashes are exported from the converter's `uv.lock`.
-Updating the submodule advances these together. Run
+`pyproject.toml`, currently the nested `ossie` submodule's `python/` package.
+Runtime dependency versions and hashes are exported from the converter's
+`uv.lock`. Updating the submodule advances these together. Run
 `just test-scripts-ossie-preview-installation` after an update; the preview
 workflow repeats the installation and conversion checks across all platforms
 before publication.

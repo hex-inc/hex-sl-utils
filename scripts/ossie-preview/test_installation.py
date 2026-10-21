@@ -33,7 +33,7 @@ def test_release_payload(assets: Path) -> None:
                 )
     sources = (assets / "RELEASE_NOTES.md").read_text()
     assert "Apache Ossie and Hex converter:" in sources
-    assert "https://github.com/hex-inc/apache-ossie/commit/" in sources
+    assert "https://github.com/hex-inc/apache-ossie-converters/commit/" in sources
     assert "Build and release configuration:" in sources
     requirements = (assets / "requirements.txt").read_text()
     assert "hex-sl-utils==" in requirements

@@ -16,8 +16,10 @@ from constants import (
 def build_wheels(directory: Path) -> list[Path]:
     """Build unpublished packages and require platform-independent wheels."""
     directory.mkdir(parents=True)
-    _build_source_wheel(OSSIE_HEX_PACKAGE, directory)
-    _build_source_wheel(load_apache_ossie_package(), directory)
+    _build_source_wheel(OSSIE_HEX_PACKAGE, directory, checkout=CONVERTER_SOURCE)
+    _build_source_wheel(
+        load_apache_ossie_package(), directory, checkout=CONVERTER_SOURCE / "ossie"
+    )
     # uv creates this local build marker; it is not a release asset.
     (directory / ".gitignore").unlink(missing_ok=True)
     wheels = sorted(directory.glob("*.whl"))
@@ -42,7 +44,7 @@ def load_apache_ossie_package() -> Path:
     return package
 
 
-def _build_source_wheel(source: Path, output: Path) -> None:
+def _build_source_wheel(source: Path, output: Path, *, checkout: Path) -> None:
     if not (source / "pyproject.toml").is_file():
         raise ValueError("Initialize the converter with just setup-scripts")
     with tempfile.TemporaryDirectory(prefix="ossie-preview-source-") as temporary:
@@ -52,7 +54,7 @@ def _build_source_wheel(source: Path, output: Path) -> None:
             package,
             ignore=shutil.ignore_patterns(".venv", "__pycache__", ".*cache", "dist"),
         )
-        _include_notices(CONVERTER_SOURCE, package)
+        _include_notices(checkout, package)
         _build_wheel(package, output)
 
 
