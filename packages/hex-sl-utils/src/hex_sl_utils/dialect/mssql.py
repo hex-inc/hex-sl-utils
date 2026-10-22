@@ -127,13 +127,17 @@ class MSSQL(Dialect):
                 true=exp.Literal.number(1),
                 false=exp.Literal.number(0),
             )
-            return TypedSelectExpression.from_sqlglot(sg_expr, DataType.NUMBER)
+            return TypedSelectExpression.from_sqlglot(
+                sg_expr, DataType.NUMBER, expr.kind
+            )
         elif (
             context in (ExpressionContext.WHERE, ExpressionContext.HAVING)
             and expr.data_type == DataType.NUMBER
         ):
             sg_expr = exp.NEQ(this=expr.expression, expression=exp.Literal.number(0))
-            return TypedSelectExpression.from_sqlglot(sg_expr, DataType.BOOLEAN)
+            return TypedSelectExpression.from_sqlglot(
+                sg_expr, DataType.BOOLEAN, expr.kind
+            )
 
         return expr
 

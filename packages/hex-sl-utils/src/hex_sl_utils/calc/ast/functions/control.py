@@ -6,6 +6,7 @@ from pydantic import Field
 
 from hex_sl_utils._vendor.sqlglot import exp
 from hex_sl_utils.calc.ast.args import Args
+from hex_sl_utils.calc.ast.binary.comparison import BinaryEqual
 from hex_sl_utils.calc.ast.functions.base import FuncBase
 from hex_sl_utils.calc.ast.functions.cast import (
     FuncToBoolean,
@@ -13,6 +14,7 @@ from hex_sl_utils.calc.ast.functions.cast import (
     FuncToNumber,
     FuncToText,
 )
+from hex_sl_utils.calc.parentheses import parens_if_needed
 from hex_sl_utils.datatype import DataType
 from hex_sl_utils.dialect.dialect import Dialect
 from hex_sl_utils.exception import TypeCheckError
@@ -207,18 +209,22 @@ class FuncIsOneOf(FuncBase):
                     raise TypeCheckError(msg)
                 converter = converter_cls(args=Args(root=[]))
                 coerced = converter.compile([arg], dialect, context, tz)
-                # Boolean coercion produces predicates (e.g. arg != 0) which are
-                # not valid scalar values inside IN lists on MSSQL. Wrap for
-                # PROJECTION context to convert predicates to scalar integers.
-                if target_type == DataType.BOOLEAN:
-                    coerced = dialect.wrap_expression_for_context(
-                        coerced, ExpressionContext.PROJECTION
-                    )
                 coerced_options.append(coerced)
 
         # Build IN expression
-        option_exprs = [arg.expression for arg in coerced_options]
-        in_expr = exp.In(this=value_expr.expression, expressions=option_exprs)
+        option_exprs = [
+            dialect.wrap_expression_for_context(
+                arg, ExpressionContext.PROJECTION
+            ).expression
+            for arg in coerced_options
+        ]
+        value = dialect.wrap_expression_for_context(
+            value_expr, ExpressionContext.PROJECTION
+        ).expression
+        in_expr = exp.In(
+            this=parens_if_needed(value, "=", operand_type="left"),
+            expressions=option_exprs,
+        )
 
         return TypedSelectExpression.from_sqlglot(
             in_expr, DataType.BOOLEAN, value_expr.kind
@@ -281,14 +287,9 @@ class FuncSwitch(FuncBase):
 
         # Build case conditions
         conditions = []
-        for i in range(len(cases)):
-            # Build equality condition: value == case
-            eq_expr = TypedSelectExpression.from_sqlglot(
-                exp.EQ(this=value.expression, expression=cases[i].expression),
-                DataType.BOOLEAN,
-                value.kind,
-            )
-            conditions.append((eq_expr, results[i]))
+        for case, result in zip(cases, results):
+            eq_expr = BinaryEqual.compile_operands(value, case, dialect, tz)
+            conditions.append((eq_expr, result))
 
         # Use dialect's build_case method
         return dialect.build_case(conditions, default)

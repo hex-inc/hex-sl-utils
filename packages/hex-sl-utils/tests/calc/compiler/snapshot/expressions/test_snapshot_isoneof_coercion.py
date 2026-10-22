@@ -199,7 +199,7 @@ IIF(
 );
 IIF([int_col] IN (1, TRY_CAST('2' AS FLOAT), 3), 1, 0);
 IIF([date_col] IN (TRY_CAST('2021-01-01' AS DATE), TRY_CAST('2021-01-02' AS DATE)), 1, 0);
-IIF([bool_col] IN (IIF(1 <> 0, 1, 0)), 1, 0);
+IIF(IIF([bool_col] <> 0, 1, 0) IN (IIF(1 <> 0, 1, 0)), 1, 0);
 IIF((1 = 0), 1, 0);
 
 -- === MYSQL ===

@@ -66,8 +66,12 @@ def test_wrapping_for_lower_precedence():
     assert result.this is add_expr
 
 
-def test_no_wrapping_for_non_binary():
-    """Non-binary expressions should never be wrapped."""
+def test_atomic_operands_do_not_need_parentheses():
+    """Atomic operands (literals and column references) need no extra grouping.
+
+    Other non-binary SQLGlot expressions, including Not, In, Between, and
+    AtTimeZone, can need parentheses when embedded in another operation.
+    """
     literal = exp.Literal.number(42)
     column = exp.Column(this="test_col")
 
@@ -138,17 +142,21 @@ def test_associativity_for_modulo():
     assert result.this is mod_expr
 
 
-def test_non_left_associative_operators():
-    """Test that non-left-associative operators don't need special right-operand handling."""
+def test_arithmetic_operands_follow_associativity():
+    """Preserve right-operand grouping even for associative arithmetic operators.
+
+    Addition is mathematically associative, but floating-point rounding can make
+    a + (b + c) differ from (a + b) + c. Keep the right operand grouped; the left
+    operand already follows SQL's left-associative parsing.
+    """
     add_expr = exp.Add(this=exp.column("a"), expression=exp.column("b"))
 
-    # Test left operand (should not need parens for same precedence)
-    result_left = parens_if_needed(add_expr, "+", operand_type="left")
-    assert not isinstance(result_left, exp.Paren)
+    left = parens_if_needed(add_expr, "+", operand_type="left")
+    right = parens_if_needed(add_expr, "+", operand_type="right")
 
-    # Test right operand (should not need parens for same precedence)
-    result_right = parens_if_needed(add_expr, "+", operand_type="right")
-    assert not isinstance(result_right, exp.Paren)
+    assert left is add_expr
+    assert isinstance(right, exp.Paren)
+    assert right.this is add_expr
 
 
 def test_mixed_arithmetic_precedence():
@@ -216,13 +224,15 @@ def test_chained_division():
     assert isinstance(result_right, exp.Paren)
 
 
-def test_unknown_child_operator():
-    """Test with child expression type not mapped."""
-    # Create a custom expression type that's not in our mapping
+def test_function_operands_do_not_need_parentheses():
+    """Named function calls delimit their arguments and form a single operand.
+
+    This exemption is specific to function-call syntax. An unrecognized operator
+    can bind to the surrounding expression, so it must be grouped instead.
+    """
     custom_expr = exp.Anonymous(this="CUSTOM_FUNC", expressions=[exp.column("a")])
     result = parens_if_needed(custom_expr, "+", operand_type="left")
 
-    # Unknown child expressions don't need parens
     assert result is custom_expr
     assert not isinstance(result, exp.Paren)
 
@@ -467,9 +477,8 @@ def test_nested_comparisons_preserve_grouping(operator, symbol, operand_type):
 
     result = parens_if_needed(operand, symbol, operand_type=operand_type)
 
-    assert not isinstance(result, exp.Paren)
-    # Temporarily capture the ungrouped output until expression grouping is preserved.
-    assert result is operand
+    assert isinstance(result, exp.Paren)
+    assert result.this is operand
 
 
 @pytest.mark.parametrize("operand_type", ["left", "right"])
@@ -477,31 +486,44 @@ def test_nested_comparisons_preserve_grouping(operator, symbol, operand_type):
     "operand",
     [
         exp.Not(this=exp.column("a")),
+        exp.Is(this=exp.column("a"), expression=exp.Null()),
         exp.In(this=exp.column("a"), expressions=[exp.Literal.number(1)]),
         exp.Between(
             this=exp.column("a"), low=exp.Literal.number(1), high=exp.Literal.number(2)
         ),
+        exp.Like(this=exp.column("a"), expression=exp.Literal.string("a%")),
+        exp.BitwiseAnd(this=exp.column("a"), expression=exp.column("b")),
     ],
 )
 def test_unmapped_operators_preserve_grouping(operand, operand_type):
     result = parens_if_needed(operand, "=", operand_type=operand_type)
 
-    assert not isinstance(result, exp.Paren)
-    # Temporarily capture the ungrouped output until expression grouping is preserved.
-    assert result is operand
+    assert isinstance(result, exp.Paren)
+    assert result.this is operand
 
 
 @pytest.mark.parametrize(
     ("parent_op", "operator"),
-    [("+", exp.Sub), ("*", exp.Div)],
+    [("-", exp.Add), ("+", exp.Sub), ("*", exp.Div), ("/", exp.Mul), ("%", exp.Mul)],
 )
 def test_right_arithmetic_operands_preserve_grouping(parent_op, operator):
     operand = operator(this=exp.column("a"), expression=exp.column("b"))
 
     result = parens_if_needed(operand, parent_op, operand_type="right")
 
-    assert not isinstance(result, exp.Paren)
-    # Temporarily capture the ungrouped output until expression grouping is preserved.
+    assert isinstance(result, exp.Paren)
+    assert result.this is operand
+
+
+@pytest.mark.parametrize("operand_type", ["left", "right"])
+@pytest.mark.parametrize("parent_op", ["&&", "||"])
+def test_not_operands_do_not_need_parentheses_in_logical_operations(
+    parent_op, operand_type
+):
+    operand = exp.Not(this=exp.column("a"))
+
+    result = parens_if_needed(operand, parent_op, operand_type=operand_type)
+
     assert result is operand
 
 
@@ -580,3 +602,75 @@ def test_compiler_preserves_sql_expression_divisor_grouping(divisor_sql, divisor
     assert isinstance(division, exp.Div)
     assert isinstance(division.right, exp.Paren)
     assert isinstance(division.right.this, divisor_type)
+
+
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
+@pytest.mark.parametrize("operand_type", ["left", "right"])
+@pytest.mark.parametrize(
+    "child_operator", [exp.EQ, exp.NEQ, exp.LT, exp.LTE, exp.GT, exp.GTE]
+)
+@pytest.mark.parametrize(
+    ("parent_operator", "symbol"),
+    [
+        (exp.EQ, "="),
+        (exp.NEQ, "!="),
+        (exp.LT, "<"),
+        (exp.LTE, "<="),
+        (exp.GT, ">"),
+        (exp.GTE, ">="),
+    ],
+)
+def test_comparison_grouping_round_trips(
+    dialect_name, operand_type, child_operator, parent_operator, symbol
+):
+    dialect = Dialect.from_name(dialect_name)
+    child = child_operator(this=exp.column("a"), expression=exp.column("b"))
+    operand = parens_if_needed(child, symbol, operand_type=operand_type)
+    left, right = (
+        (operand, exp.column("c"))
+        if operand_type == "left"
+        else (exp.column("c"), operand)
+    )
+    expression = parent_operator(this=left, expression=right)
+
+    sql = expression.sql(dialect=dialect.sqlglot_dialect())
+    parsed = parse_one(sql, dialect=dialect.sqlglot_dialect())
+
+    expected = expression.transform(
+        lambda node: node.this if isinstance(node, exp.Paren) else node
+    )
+    actual = parsed.transform(
+        lambda node: node.this if isinstance(node, exp.Paren) else node
+    )
+    assert actual == expected
+
+
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
+@pytest.mark.parametrize("operand_type", ["left", "right"])
+@pytest.mark.parametrize(
+    "predicate_sql",
+    ["NOT (x > 0)", "x IS NULL", "x IN (1, 2)", "x BETWEEN 1 AND 2", "x LIKE 'a%'"],
+)
+def test_predicate_operand_grouping_round_trips(
+    dialect_name, operand_type, predicate_sql
+):
+    dialect = Dialect.from_name(dialect_name)
+    predicate = parse_one(predicate_sql, dialect=dialect.sqlglot_dialect())
+    operand = parens_if_needed(predicate, "=", operand_type=operand_type)
+    left, right = (
+        (operand, exp.column("flag"))
+        if operand_type == "left"
+        else (exp.column("flag"), operand)
+    )
+    expression = exp.EQ(this=left, expression=right)
+
+    sql = expression.sql(dialect=dialect.sqlglot_dialect())
+    parsed = parse_one(sql, dialect=dialect.sqlglot_dialect())
+
+    expected = expression.transform(
+        lambda node: node.this if isinstance(node, exp.Paren) else node
+    )
+    actual = parsed.transform(
+        lambda node: node.this if isinstance(node, exp.Paren) else node
+    )
+    assert actual == expected

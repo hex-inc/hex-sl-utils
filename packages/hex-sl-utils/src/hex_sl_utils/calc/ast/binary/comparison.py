@@ -18,16 +18,18 @@ class BinaryComparisonBase(BinaryBase):
     Base class for binary comparison operators
     """
 
+    @classmethod
     def _validate_comparison_operator_arg_types(
-        self, left_type: DataType, right_type: DataType
+        cls, left_type: DataType, right_type: DataType
     ) -> None:
         ts_types = (DataType.TIMESTAMP, DataType.TIMESTAMPTZ, DataType.DATE)
         if left_type in ts_types and right_type in ts_types:
             # mixing timestamp, timestamptz, and date is allowed
             return
         elif left_type != right_type:
+            operator = cls.model_fields["binary"].default
             msg = (
-                f"Unsupported binary operator {self.get_op()} for data types "
+                f"Unsupported binary operator {operator} for data types "
                 f"{left_type} and {right_type}"
             )
             raise TypeCheckError(msg)
@@ -74,6 +76,17 @@ class BinaryComparisonBase(BinaryBase):
         dialect: Dialect,
         timezone: str,
     ) -> TypedSelectExpression:
+        return self.compile_operands(left_expr, right_expr, dialect, timezone)
+
+    @classmethod
+    def compile_operands(
+        cls,
+        left_expr: TypedSelectExpression,
+        right_expr: TypedSelectExpression,
+        dialect: Dialect,
+        timezone: str,
+    ) -> TypedSelectExpression:
+        """Compile typed operands with the dialect's scalar and comparison rules."""
         # For cases like booleans in mssql, we need to wrap the expression as if
         # it were at the top-level before applying comparison binary operators
         left_expr = dialect.wrap_expression_for_context(
@@ -83,11 +96,11 @@ class BinaryComparisonBase(BinaryBase):
             right_expr, ExpressionContext.PROJECTION
         )
 
-        self._validate_comparison_operator_arg_types(
+        cls._validate_comparison_operator_arg_types(
             left_expr.data_type, right_expr.data_type
         )
         kind = ExpressionKind._validate_infer_kind([left_expr.kind, right_expr.kind])
-        return self.perform_compile(left_expr, right_expr, dialect, kind, timezone)
+        return cls.perform_compile(left_expr, right_expr, dialect, kind, timezone)
 
     @classmethod
     def perform_compile(

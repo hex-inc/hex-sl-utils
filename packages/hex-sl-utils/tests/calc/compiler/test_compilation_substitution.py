@@ -4,6 +4,7 @@ from inline_snapshot import snapshot
 from hex_sl_utils._vendor.sqlglot import exp, parse_one
 from hex_sl_utils.calc.parser import parse_calc_expression
 from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
 from hex_sl_utils.dialect.clickhouse import ClickHouse
 from hex_sl_utils.dialect.duckdb import DuckDB
 from hex_sl_utils.dialect.mssql import MSSQL
@@ -40,31 +41,27 @@ def test_compilation_substitution():
 
 
 @pytest.mark.parametrize(
-    ("formula", "expected", "ungrouped"),
+    ("formula", "expected"),
     [
-        ("true = (false = false)", "TRUE = (FALSE = FALSE)", "TRUE = FALSE = FALSE"),
-        ("(true = false) = false", "(TRUE = FALSE) = FALSE", "TRUE = FALSE = FALSE"),
-        ("true = (7 < 4)", "TRUE = (7 < 4)", "TRUE = 7 < 4"),
-        ("!false < false", "(NOT FALSE) < FALSE", "NOT FALSE < FALSE"),
-        ("false = isoneof(2, 2)", "FALSE = (2 IN (2))", "FALSE = 2 IN (2)"),
-        (
-            "isoneof(true || false, false)",
-            "(TRUE OR FALSE) IN (FALSE)",
-            "TRUE OR FALSE IN (FALSE)",
-        ),
+        ("true = (false = false)", "TRUE = (FALSE = FALSE)"),
+        ("(true = false) = false", "(TRUE = FALSE) = FALSE"),
+        ("true = (7 < 4)", "TRUE = (7 < 4)"),
+        ("!false < false", "(NOT FALSE) < FALSE"),
+        ("false = isnull(null)", "FALSE = (NULL IS NULL)"),
+        ("false = isoneof(2, 2)", "FALSE = (2 IN (2))"),
+        ("isoneof(true || false, false)", "(TRUE OR FALSE) IN (FALSE)"),
         (
             "switch(true || false, false, 7, 11)",
             "CASE WHEN (TRUE OR FALSE) = FALSE THEN 7 ELSE 11 END",
-            "CASE WHEN TRUE OR FALSE = FALSE THEN 7 ELSE 11 END",
         ),
         (
             "switch(false, false || true, 7, 11)",
             "CASE WHEN FALSE = (FALSE OR TRUE) THEN 7 ELSE 11 END",
-            "CASE WHEN FALSE = FALSE OR TRUE THEN 7 ELSE 11 END",
         ),
+        ("24 - (7 + 4)", "24 - (7 + 4)"),
     ],
 )
-def test_compilation_preserves_grouping(formula, expected, ungrouped):
+def test_compilation_preserves_grouping(formula, expected):
     dialect = DuckDB()
 
     result = dialect.compile_calc_expr(
@@ -76,14 +73,12 @@ def test_compilation_preserves_grouping(formula, expected, ungrouped):
     )
     sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
 
-    assert sql != expected
-    # Temporarily capture the ungrouped output until expression grouping is preserved.
-    assert sql == ungrouped
+    assert sql == expected
 
 
 @pytest.mark.parametrize(
     "predicate_sql",
-    ["x IN (1, 2)", "x BETWEEN 1 AND 2", "NOT x"],
+    ["x IS NULL", "x IN (1, 2)", "x BETWEEN 1 AND 2", "x LIKE 'a%'", "NOT x"],
 )
 def test_compilation_preserves_substituted_predicate_grouping(predicate_sql):
     dialect = DuckDB()
@@ -103,39 +98,31 @@ def test_compilation_preserves_substituted_predicate_grouping(predicate_sql):
     sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
     predicate_sql = predicate.sql(dialect=dialect.sqlglot_dialect())
 
-    assert sql != f"FALSE = ({predicate_sql})"
-    # Temporarily capture the ungrouped output until expression grouping is preserved.
-    assert sql == f"FALSE = {predicate_sql}"
+    assert sql == f"FALSE = ({predicate_sql})"
 
 
 @pytest.mark.parametrize(
-    ("formula", "expected", "unwrapped"),
+    ("formula", "expected"),
     [
         (
             "isoneof(true || false, false)",
             "IIF(IIF((1 = 1) OR (1 = 0), 1, 0) IN (IIF((1 = 0), 1, 0)), 1, 0)",
-            "IIF((1 = 1) OR (1 = 0) IN (0), 1, 0)",
         ),
         (
             "isoneof(true, false || true)",
             "IIF(IIF((1 = 1), 1, 0) IN (IIF((1 = 0) OR (1 = 1), 1, 0)), 1, 0)",
-            "IIF(1 IN ((1 = 0) OR (1 = 1)), 1, 0)",
         ),
         (
             "switch(true || false, false, 7, 11)",
             "CASE WHEN IIF((1 = 1) OR (1 = 0), 1, 0) = IIF((1 = 0), 1, 0) THEN 7 ELSE 11 END",
-            "CASE WHEN (1 = 1) OR (1 = 0) = 0 THEN 7 ELSE 11 END",
         ),
         (
             "switch(false, false || true, 7, 11)",
             "CASE WHEN IIF((1 = 0), 1, 0) = IIF((1 = 0) OR (1 = 1), 1, 0) THEN 7 ELSE 11 END",
-            "CASE WHEN 0 = (1 = 0) OR (1 = 1) THEN 7 ELSE 11 END",
         ),
     ],
 )
-def test_mssql_control_predicates_compile_as_scalar_operands(
-    formula, expected, unwrapped
-):
+def test_mssql_control_predicates_compile_as_scalar_operands(formula, expected):
     dialect = MSSQL()
 
     result = dialect.compile_calc_expr(
@@ -147,9 +134,7 @@ def test_mssql_control_predicates_compile_as_scalar_operands(
     )
     sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
 
-    assert sql != expected
-    # Temporarily capture the predicate output until operands compile as scalar values.
-    assert sql == unwrapped
+    assert sql == expected
 
 
 @pytest.mark.parametrize("kind", [ExpressionKind.AGGREGATION, ExpressionKind.WINDOW])
@@ -177,9 +162,7 @@ def test_mssql_context_conversion_preserves_expression_kind(
     result = dialect.wrap_expression_for_context(expression, context)
 
     assert result.data_type == expected_type
-    assert result.kind != kind
-    # Temporarily capture the inferred column kind until semantic kinds are preserved.
-    assert result.kind == ExpressionKind.COLUMN
+    assert result.kind == kind
 
 
 @pytest.mark.parametrize("kind", [ExpressionKind.AGGREGATION, ExpressionKind.WINDOW])
@@ -206,10 +189,29 @@ def test_mssql_predicate_composition_preserves_expression_kind(kind, formula):
         substitutions={"predicate": predicate},
     )
 
-    assert result.kind != kind
-    # Temporarily capture the inferred kind until semantic kinds are preserved.
-    assert result.kind == (
-        ExpressionKind.SCALAR
-        if formula.startswith("switch(")
-        else ExpressionKind.COLUMN
+    assert result.kind == kind
+
+
+@pytest.mark.parametrize("dialect_name", Dialect.all_dialects)
+@pytest.mark.parametrize(
+    ("formula", "expected_sql"),
+    [
+        ("(2 ^ 3) ^ 2", "POWER(POWER(2, 3), 2)"),
+        ("2 ^ (3 ^ 2)", "POWER(2, POWER(3, 2))"),
+    ],
+)
+def test_compiler_preserves_nested_power_grouping(dialect_name, formula, expected_sql):
+    dialect = Dialect.from_name(dialect_name)
+
+    result = dialect.compile_calc_expr(
+        parse_calc_expression(formula),
+        context=ExpressionContext.PROJECTION,
+        columns={},
+        timezone="UTC",
+        parameters={},
+    )
+    sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
+
+    assert parse_one(sql, dialect=dialect.sqlglot_dialect()) == parse_one(
+        expected_sql, dialect=dialect.sqlglot_dialect()
     )
