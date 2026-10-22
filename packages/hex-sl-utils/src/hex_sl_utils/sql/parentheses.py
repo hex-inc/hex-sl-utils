@@ -3,7 +3,7 @@ Parentheses handling for calc language SQL expression generation.
 
 This module provides unified logic for determining when parentheses are needed
 around subexpressions based on operator precedence and associativity rules
-specific to the calc language.
+of the emitted SQL while preserving the parsed calc expression tree.
 """
 
 from __future__ import annotations
@@ -35,36 +35,66 @@ OPERATOR_PRECEDENCE = {
 }
 
 
-def _needs_parens_binary(child_expr: exp.Expression, parent_op: str) -> bool:
-    """Check if child expression needs parentheses based on operator precedence."""
-    # Map sqlglot expression types to our operator strings
-    expr_type_to_op: dict[type[exp.Expression], str] = {
-        exp.Or: "||",
-        exp.And: "&&",
-        exp.EQ: "=",
-        exp.NEQ: "!=",
-        exp.LT: "<",
-        exp.LTE: "<=",
-        exp.GT: ">",
-        exp.GTE: ">=",
-        exp.Add: "+",
-        exp.Sub: "-",
-        exp.Mul: "*",
-        exp.Div: "/",
-        exp.Mod: "%",
-        exp.Pow: "^",
-    }
+_BINARY_EXPRESSION_OPERATORS: dict[type[exp.Expression], str] = {
+    exp.Or: "||",
+    exp.And: "&&",
+    exp.EQ: "=",
+    exp.NEQ: "!=",
+    exp.LT: "<",
+    exp.LTE: "<=",
+    exp.GT: ">",
+    exp.GTE: ">=",
+    exp.Add: "+",
+    exp.Sub: "-",
+    exp.Mul: "*",
+    exp.Div: "/",
+    exp.Mod: "%",
+}
+_COMPARISON_OPERATORS = frozenset(["=", "!=", "<", "<=", ">", ">="])
+_SAFE_OPERAND_TYPES = (
+    exp.Paren,
+    exp.Column,
+    exp.Literal,
+    exp.Boolean,
+    exp.Null,
+    exp.Pow,
+    exp.Neg,
+    exp.Parameter,
+    exp.Placeholder,
+    exp.Identifier,
+    exp.Var,
+)
 
-    child_op = expr_type_to_op.get(type(child_expr))
-    if not child_op:
-        # Preserve grouping when an SQL operator has no calc precedence rule.
-        return isinstance(child_expr, exp.Binary)
+
+def _needs_parens_binary(
+    child_expr: exp.Expression, parent_op: str, operand_type: OperandType
+) -> bool:
+    child_op = _BINARY_EXPRESSION_OPERATORS.get(type(child_expr))
+    if child_op is None:
+        if isinstance(child_expr, exp.Not) and parent_op in ("&&", "||"):
+            # SQL NOT binds tighter than AND/OR, but looser than comparisons.
+            # Omit its outer parentheses only for these logical parents.
+            return False
+        return not (
+            isinstance(child_expr, _SAFE_OPERAND_TYPES)
+            or (
+                isinstance(child_expr, exp.Func)
+                and not isinstance(child_expr, (exp.Binary, exp.Unary))
+            )
+        )
+
+    # Calc gives relational operators higher precedence than equality. SQL
+    # dialects can use one comparison level or reject ungrouped chains.
+    if parent_op in _COMPARISON_OPERATORS and child_op in _COMPARISON_OPERATORS:
+        return True
 
     parent_prec = OPERATOR_PRECEDENCE.get(parent_op, 0)
-    child_prec = OPERATOR_PRECEDENCE.get(child_op, 0)
-
-    # Need parentheses if child has lower precedence
-    return child_prec < parent_prec
+    child_prec = OPERATOR_PRECEDENCE[child_op]
+    return child_prec < parent_prec or (
+        operand_type == "right"
+        and child_prec == parent_prec
+        and parent_op not in ("&&", "||")
+    )
 
 
 def _needs_parens_unary(expr: exp.Expression, unary_op: UnaryOp) -> bool:
@@ -114,26 +144,8 @@ def parens_if_needed(
             return exp.Paren(this=expr)
         return expr
 
-    # Handle binary operator context
-    if _needs_parens_binary(expr, parent_op):
+    if _needs_parens_binary(expr, parent_op, operand_type):
         return exp.Paren(this=expr)
-
-    # Special case for right operands of left-associative operators
-    # with same precedence (e.g., a - (b - c) vs (a - b) - c)
-    if operand_type == "right" and parent_op in ("-", "/", "%"):
-        expr_type_to_op: dict[type[exp.Expression], str] = {
-            exp.Add: "+",
-            exp.Sub: "-",
-            exp.Mul: "*",
-            exp.Div: "/",
-            exp.Mod: "%",
-        }
-        child_op = expr_type_to_op.get(type(expr))
-        if child_op and OPERATOR_PRECEDENCE.get(child_op) == OPERATOR_PRECEDENCE.get(
-            parent_op
-        ):
-            return exp.Paren(this=expr)
-
     return expr
 
 
