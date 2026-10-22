@@ -11,6 +11,7 @@ from hex_sl_utils.dialect.dialect_name import DialectName, normalize_dialect_nam
 from hex_sl_utils.exception import UnsupportedByDialectError
 from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 from hex_sl_utils.expr.expr_substitution import _needs_parens_for_substitution
+from hex_sl_utils.sql.parentheses import parens_if_needed
 from hex_sl_utils.time import TimeTruncUnit
 from hex_sl_utils.utils import assert_unreachable
 
@@ -1340,8 +1341,6 @@ class Dialect:
         Returns:
             A TypedSelectExpression representing the division
         """
-
-        from hex_sl_utils.calc.parentheses import parens_if_needed
 
         left_expr = parens_if_needed(left.expression, "/", operand_type="left")
         right_expr = parens_if_needed(right.expression, "/", operand_type="right")
