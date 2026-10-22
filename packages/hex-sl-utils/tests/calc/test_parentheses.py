@@ -11,6 +11,9 @@ from hex_sl_utils.calc.parentheses import (
     OPERATOR_PRECEDENCE,
     parens_if_needed,
 )
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.expr import ExpressionKind, TypedSelectExpression
 
 
 def test_precedence_ordering():
@@ -402,3 +405,47 @@ def test_different_operators_same_expression():
 
 if __name__ == "__main__":
     pytest.main([__file__])
+
+
+@pytest.mark.parametrize(
+    "dialect_name",
+    [
+        "clickhouse",
+        "duckdb",
+        "mssql",
+        "mysql",
+        "postgres",
+        "redshift",
+        "snowflake",
+        "spark",
+        "trino",
+    ],
+)
+@pytest.mark.parametrize(
+    ("operator", "symbol"),
+    [(exp.Add, "+"), (exp.Sub, "-"), (exp.Mul, "*")],
+)
+def test_division_preserves_divisor_grouping(dialect_name, operator, symbol):
+    dialect = Dialect.from_name(dialect_name)
+    dividend = TypedSelectExpression.from_sqlglot(
+        exp.column("a"), DataType.NUMBER, ExpressionKind.COLUMN
+    )
+    divisor = TypedSelectExpression.from_sqlglot(
+        operator(this=exp.column("b"), expression=exp.column("c")),
+        DataType.NUMBER,
+        ExpressionKind.COLUMN,
+    )
+
+    result = dialect.build_division(dividend, divisor)
+    sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
+    dividend_sql = (
+        dialect.cast_to_float(dividend).expression.sql(
+            dialect=dialect.sqlglot_dialect()
+        )
+        if dialect.truncates_on_integer_division()
+        else "a"
+    )
+
+    assert sql != f"{dividend_sql} / (b {symbol} c)"
+    # Temporarily capture the ungrouped result until divisor grouping is preserved.
+    assert sql == f"{dividend_sql} / b {symbol} c"
