@@ -1347,7 +1347,11 @@ class Dialect:
         if isinstance(left_expr, (exp.Add, exp.Sub)):
             left_expr = exp.Paren(this=left_expr)
 
-        div_expr = exp.Div(this=left_expr, expression=right.expression)
+        right_expr = right.expression
+        if isinstance(right_expr, exp.Binary):
+            right_expr = exp.Paren(this=right_expr)
+
+        div_expr = exp.Div(this=left_expr, expression=right_expr)
 
         # Determine expression kind
         kind = ExpressionKind._validate_infer_kind([left.kind, right.kind])

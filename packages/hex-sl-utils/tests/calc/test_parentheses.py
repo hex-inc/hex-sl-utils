@@ -446,6 +446,4 @@ def test_division_preserves_divisor_grouping(dialect_name, operator, symbol):
         else "a"
     )
 
-    assert sql != f"{dividend_sql} / (b {symbol} c)"
-    # Temporarily capture the ungrouped result until divisor grouping is preserved.
-    assert sql == f"{dividend_sql} / b {symbol} c"
+    assert sql == f"{dividend_sql} / (b {symbol} c)"
