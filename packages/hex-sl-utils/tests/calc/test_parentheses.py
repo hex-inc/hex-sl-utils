@@ -404,20 +404,8 @@ def test_different_operators_same_expression():
     assert isinstance(result, exp.Paren)
 
 
-@pytest.mark.parametrize(
-    ("parent_op", "child_operator", "child_sql"),
-    [("-", exp.Add, "b + c"), ("/", exp.Mul, "b * c"), ("%", exp.Mul, "b * c")],
-)
-def test_same_precedence_right_operand_preserves_grouping(
-    parent_op, child_operator, child_sql
-):
-    child = child_operator(this=exp.column("b"), expression=exp.column("c"))
-
-    result = parens_if_needed(child, parent_op, operand_type="right")
-
-    assert result.sql() == f"({child_sql})"
-    assert parens_if_needed(child, parent_op, operand_type="left") is child
-    assert parens_if_needed(result, parent_op, operand_type="right") is result
+if __name__ == "__main__":
+    pytest.main([__file__])
 
 
 @pytest.mark.parametrize(
@@ -460,6 +448,77 @@ def test_division_preserves_divisor_grouping(dialect_name, operator, symbol):
     )
 
     assert sql == f"{dividend_sql} / (b {symbol} c)"
+
+
+@pytest.mark.parametrize("operand_type", ["left", "right"])
+@pytest.mark.parametrize(
+    ("operator", "symbol"),
+    [
+        (exp.EQ, "="),
+        (exp.NEQ, "!="),
+        (exp.LT, "<"),
+        (exp.LTE, "<="),
+        (exp.GT, ">"),
+        (exp.GTE, ">="),
+    ],
+)
+def test_nested_comparisons_preserve_grouping(operator, symbol, operand_type):
+    operand = operator(this=exp.column("a"), expression=exp.column("b"))
+
+    result = parens_if_needed(operand, symbol, operand_type=operand_type)
+
+    assert not isinstance(result, exp.Paren)
+    # Temporarily capture the ungrouped output until expression grouping is preserved.
+    assert result is operand
+
+
+@pytest.mark.parametrize("operand_type", ["left", "right"])
+@pytest.mark.parametrize(
+    "operand",
+    [
+        exp.Not(this=exp.column("a")),
+        exp.In(this=exp.column("a"), expressions=[exp.Literal.number(1)]),
+        exp.Between(
+            this=exp.column("a"), low=exp.Literal.number(1), high=exp.Literal.number(2)
+        ),
+    ],
+)
+def test_unmapped_operators_preserve_grouping(operand, operand_type):
+    result = parens_if_needed(operand, "=", operand_type=operand_type)
+
+    assert not isinstance(result, exp.Paren)
+    # Temporarily capture the ungrouped output until expression grouping is preserved.
+    assert result is operand
+
+
+@pytest.mark.parametrize(
+    ("parent_op", "operator"),
+    [("+", exp.Sub), ("*", exp.Div)],
+)
+def test_right_arithmetic_operands_preserve_grouping(parent_op, operator):
+    operand = operator(this=exp.column("a"), expression=exp.column("b"))
+
+    result = parens_if_needed(operand, parent_op, operand_type="right")
+
+    assert not isinstance(result, exp.Paren)
+    # Temporarily capture the ungrouped output until expression grouping is preserved.
+    assert result is operand
+
+
+@pytest.mark.parametrize(
+    ("parent_op", "child_operator", "child_sql"),
+    [("-", exp.Add, "b + c"), ("/", exp.Mul, "b * c"), ("%", exp.Mul, "b * c")],
+)
+def test_same_precedence_right_operand_preserves_grouping(
+    parent_op, child_operator, child_sql
+):
+    child = child_operator(this=exp.column("b"), expression=exp.column("c"))
+
+    result = parens_if_needed(child, parent_op, operand_type="right")
+
+    assert result.sql() == f"({child_sql})"
+    assert parens_if_needed(child, parent_op, operand_type="left") is child
+    assert parens_if_needed(result, parent_op, operand_type="right") is result
 
 
 @pytest.mark.parametrize(
@@ -521,7 +580,3 @@ def test_compiler_preserves_sql_expression_divisor_grouping(divisor_sql, divisor
     assert isinstance(division, exp.Div)
     assert isinstance(division.right, exp.Paren)
     assert isinstance(division.right.this, divisor_type)
-
-
-if __name__ == "__main__":
-    pytest.main([__file__])
