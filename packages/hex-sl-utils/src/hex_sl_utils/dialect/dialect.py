@@ -1341,13 +1341,11 @@ class Dialect:
             A TypedSelectExpression representing the division
         """
 
-        # Wrap left operand in parentheses if it's a binary op with lower precedence
-        # This handles cases like (a - b) / c vs a - b / c
-        left_expr = left.expression
-        if isinstance(left_expr, (exp.Add, exp.Sub)):
-            left_expr = exp.Paren(this=left_expr)
+        from hex_sl_utils.calc.parentheses import parens_if_needed
 
-        div_expr = exp.Div(this=left_expr, expression=right.expression)
+        left_expr = parens_if_needed(left.expression, "/", operand_type="left")
+        right_expr = parens_if_needed(right.expression, "/", operand_type="right")
+        div_expr = exp.Div(this=left_expr, expression=right_expr)
 
         # Determine expression kind
         kind = ExpressionKind._validate_infer_kind([left.kind, right.kind])

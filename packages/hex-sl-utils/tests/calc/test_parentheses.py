@@ -5,12 +5,16 @@ from typing import cast
 import pytest
 from inline_snapshot import snapshot
 
-from hex_sl_utils._vendor.sqlglot import exp
+from hex_sl_utils._vendor.sqlglot import exp, parse_one
+from hex_sl_utils.calc import CalcExpr, parse_calc_expression
 from hex_sl_utils.calc.operators import CalcOp, UnaryOp
 from hex_sl_utils.calc.parentheses import (
     OPERATOR_PRECEDENCE,
     parens_if_needed,
 )
+from hex_sl_utils.datatype import DataType
+from hex_sl_utils.dialect import Dialect
+from hex_sl_utils.expr import ExpressionContext, ExpressionKind, TypedSelectExpression
 
 
 def test_precedence_ordering():
@@ -398,6 +402,125 @@ def test_different_operators_same_expression():
     # With unary operator (parens needed)
     result = parens_if_needed(expr, "-", operand_type="unary")
     assert isinstance(result, exp.Paren)
+
+
+@pytest.mark.parametrize(
+    ("parent_op", "child_operator", "child_sql"),
+    [("-", exp.Add, "b + c"), ("/", exp.Mul, "b * c"), ("%", exp.Mul, "b * c")],
+)
+def test_same_precedence_right_operand_preserves_grouping(
+    parent_op, child_operator, child_sql
+):
+    child = child_operator(this=exp.column("b"), expression=exp.column("c"))
+
+    result = parens_if_needed(child, parent_op, operand_type="right")
+
+    assert result.sql() == f"({child_sql})"
+    assert parens_if_needed(child, parent_op, operand_type="left") is child
+    assert parens_if_needed(result, parent_op, operand_type="right") is result
+
+
+@pytest.mark.parametrize(
+    "dialect_name",
+    [
+        "clickhouse",
+        "duckdb",
+        "mssql",
+        "mysql",
+        "postgres",
+        "redshift",
+        "snowflake",
+        "spark",
+        "trino",
+    ],
+)
+@pytest.mark.parametrize(
+    ("operator", "symbol"),
+    [(exp.Add, "+"), (exp.Sub, "-"), (exp.Mul, "*")],
+)
+def test_division_preserves_divisor_grouping(dialect_name, operator, symbol):
+    dialect = Dialect.from_name(dialect_name)
+    dividend = TypedSelectExpression.from_sqlglot(
+        exp.column("a"), DataType.NUMBER, ExpressionKind.COLUMN
+    )
+    divisor = TypedSelectExpression.from_sqlglot(
+        operator(this=exp.column("b"), expression=exp.column("c")),
+        DataType.NUMBER,
+        ExpressionKind.COLUMN,
+    )
+
+    result = dialect.build_division(dividend, divisor)
+    sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
+    dividend_sql = (
+        dialect.cast_to_float(dividend).expression.sql(
+            dialect=dialect.sqlglot_dialect()
+        )
+        if dialect.truncates_on_integer_division()
+        else "a"
+    )
+
+    assert sql == f"{dividend_sql} / (b {symbol} c)"
+
+
+@pytest.mark.parametrize(
+    "dialect_name", [name for name in Dialect.all_dialects if name != "bigquery"]
+)
+@pytest.mark.parametrize(
+    ("source", "grouped_operand"),
+    [
+        ("10 - (2 + 3)", "(2 + 3)"),
+        ("12 / (2 * 3)", "(2 * 3)"),
+        ("20 % (2 * 3)", "(2 * 3)"),
+    ],
+)
+def test_compiler_preserves_right_operand_grouping(
+    dialect_name, source, grouped_operand
+):
+    dialect = Dialect.from_name(dialect_name)
+
+    result = dialect.compile_calc_expr(
+        parse_calc_expression(source),
+        context=ExpressionContext.PROJECTION,
+        columns={},
+        timezone="UTC",
+        parameters={},
+    )
+
+    arithmetic = result.expression
+    if isinstance(arithmetic, exp.Case):
+        arithmetic = arithmetic.args["default"]
+
+    assert grouped_operand in arithmetic.sql(dialect=dialect.sqlglot_dialect())
+
+
+@pytest.mark.parametrize(
+    ("divisor_sql", "divisor_type"),
+    [("6 & 3", exp.BitwiseAnd), ("7 // 2", exp.IntDiv)],
+)
+def test_compiler_preserves_sql_expression_divisor_grouping(divisor_sql, divisor_type):
+    dialect = Dialect.from_name("duckdb")
+    calc = CalcExpr.model_validate(
+        {
+            "binary": "/",
+            "lhs": {"number": 12},
+            "rhs": {"sql": divisor_sql, "data_type": DataType.NUMBER},
+        }
+    )
+
+    result = dialect.compile_calc_expr(
+        calc,
+        context=ExpressionContext.PROJECTION,
+        columns={},
+        timezone="UTC",
+        parameters={},
+    )
+    sql = result.expression.sql(dialect=dialect.sqlglot_dialect())
+    parsed = parse_one(sql, dialect=dialect.sqlglot_dialect())
+    division = parsed.args["default"]
+
+    assert isinstance(division, exp.Div)
+    assert isinstance(division.right, exp.Paren)
+    assert isinstance(division.right.this, divisor_type)
 
 
 if __name__ == "__main__":

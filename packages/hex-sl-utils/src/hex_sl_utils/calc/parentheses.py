@@ -57,8 +57,8 @@ def _needs_parens_binary(child_expr: exp.Expression, parent_op: str) -> bool:
 
     child_op = expr_type_to_op.get(type(child_expr))
     if not child_op:
-        # Not a binary operator, no parens needed
-        return False
+        # Preserve grouping when an SQL operator has no calc precedence rule.
+        return isinstance(child_expr, exp.Binary)
 
     parent_prec = OPERATOR_PRECEDENCE.get(parent_op, 0)
     child_prec = OPERATOR_PRECEDENCE.get(child_op, 0)
@@ -122,7 +122,9 @@ def parens_if_needed(
     # with same precedence (e.g., a - (b - c) vs (a - b) - c)
     if operand_type == "right" and parent_op in ("-", "/", "%"):
         expr_type_to_op: dict[type[exp.Expression], str] = {
+            exp.Add: "+",
             exp.Sub: "-",
+            exp.Mul: "*",
             exp.Div: "/",
             exp.Mod: "%",
         }
