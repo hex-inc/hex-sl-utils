@@ -15,22 +15,14 @@ on:
       - "scripts/ossie-preview/**"
       - ".github/workflows/ossie-preview.yml"
   workflow_dispatch:
-    inputs:
-      release_id:
-        description: "Preview identifier, e.g. v2026.10.06 or v2026.10.06-2"
-        required: true
-        type: string
-      publish:
-        description: "Publish the tested assets as a GitHub prerelease (main only)"
-        default: false
-        type: boolean
 
 permissions:
   contents: read
 
 concurrency:
-  group: ossie-preview-${{ inputs.release_id || github.run_id }}
+  group: ossie-preview-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 
 env:
   UV_VERSION: "0.12.5"
@@ -39,22 +31,29 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.build.outputs.release_id }}
+      release_id: ${{ steps.release.outputs.release_id }}
+      publish: ${{ steps.release.outputs.publish }}
     steps:
       - name: Check out the source to release
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           submodules: recursive
-      - name: Require main for publishing
+          fetch-depth: 0
+      - name: Select a changed preview and allocate its version
+        id: release
         env:
-          PUBLISH: ${{ inputs.publish || false }}
+          PUBLISH: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.repository == 'hex-inc/hex-sl-utils' }}
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          if [[ "$PUBLISH" == "true" && "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "::error::Publish preview releases from main"
-            exit 1
+          if [[ "$PUBLISH" == "true" ]]; then
+            python3 scripts/ossie-preview/plan_release.py --publish --github-output "$GITHUB_OUTPUT"
+          else
+            python3 scripts/ossie-preview/plan_release.py --github-output "$GITHUB_OUTPUT"
           fi
       - name: Install uv
+        if: steps.release.outputs.release_id != ''
         uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: ${{ env.UV_VERSION }}
@@ -62,14 +61,14 @@ jobs:
           enable-cache: true
           cache-dependency-glob: scripts/ossie-preview/bundle/uv.lock
       - name: Build the converter bundle and release metadata
-        id: build
+        if: steps.release.outputs.release_id != ''
         env:
-          PREVIEW_ID: ${{ inputs.release_id || format('candidate-{0}', github.sha) }}
+          PREVIEW_ID: ${{ steps.release.outputs.release_id }}
         run: |
           uv run --no-project --python 3.14 python scripts/ossie-preview/main.py \
             build "$PREVIEW_ID" --out-dir dist/ossie-preview --require-clean
-          printf 'release_id=%s\n' "$PREVIEW_ID" >> "$GITHUB_OUTPUT"
       - name: Save the exact assets for testing and publishing
+        if: steps.release.outputs.release_id != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ossie-preview
@@ -79,6 +78,7 @@ jobs:
   test:
     name: Install and convert (${{ matrix.os }})
     needs: build
+    if: needs.build.outputs.release_id != ''
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -118,7 +118,7 @@ jobs:
   publish:
     name: Publish GitHub preview release
     needs: [build, test]
-    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.repository == 'hex-inc/hex-sl-utils'
+    if: needs.build.outputs.publish == 'true' && github.ref == 'refs/heads/main' && github.repository == 'hex-inc/hex-sl-utils'
     runs-on: ubuntu-latest
     permissions:
       contents: write
