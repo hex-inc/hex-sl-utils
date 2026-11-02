@@ -37,14 +37,22 @@ same environment on Linux, macOS, and Windows. Checksums verify that the files
 being published match the tested artifacts. Publication proceeds only after
 every platform passes.
 
-To make a preview available to consumers, a maintainer merges the changes and
-runs that workflow on `main` with:
+Merging changed release inputs to `main` automatically builds, tests, and
+publishes a GitHub prerelease. CI compares the pinned converters, bundle
+configuration and lock, and build scripts with the latest published preview.
+Documentation, test, fixture, and workflow changes alone do not publish a
+release.
 
-- `release_id`: a unique date version, such as `v2026.10.06` or `v2026.10.06-2`.
-- `publish`: enabled.
+Versions follow `vYYYY.MM.DD` using the UTC date, with `-2`, `-3`, and so on for
+additional previews that day. Existing tags and draft releases reserve their
+versions. Release runs on the same branch queue so version selection and
+publication cannot overlap.
 
-CI builds, verifies, and uploads the artifacts to GitHub Releases. Maintainers
-do not need to build or upload files manually.
+The workflow can also be dispatched manually to retry a failed release.
+Dispatches on `main` use the same change detection and automatic version
+selection; unchanged inputs skip the build and publication. Dispatches on other
+branches and pull request builds only produce candidate artifacts. Publication
+still requires all five platforms to pass.
 
 A consumer selects a published preview using its identifier and the
 `requirements.txt` download URL, and verifies the file using its SHA-256 digest
@@ -115,6 +123,7 @@ Every wheel includes the LICENSE and NOTICE files from its own repository.
 ## Scripts
 
 - `main.py`: builds and verifies preview releases.
+- `plan_release.py`: detects changed release inputs and selects a dated version.
 - `constants.py`: shared paths, package sources, and runtime version.
 - `build_wheels.py`: builds wheels from the pinned submodule.
 - `release_artifacts.py`: writes release metadata and verifies the artifacts.
