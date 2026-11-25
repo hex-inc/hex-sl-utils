@@ -147,9 +147,7 @@ def test_install_and_convert(assets: Path, tmp_path: Path) -> None:
     assert ossie["datasets"][0]["name"] == "orders"
     assert ossie["datasets"][0]["source"] == "analytics.public.orders"
     assert ossie["metrics"][0]["name"] == "total_amount"
-    assert ossie["metrics"][0]["expression"]["dialects"][0]["expression"] == (
-        "SUM(orders.amount)"
-    )
+    assert ossie["metrics"][0]["expression"]["sql"] == "SUM(orders.amount)"
 
     roundtrip = tmp_path / "roundtrip.json"
     _assert_success(
